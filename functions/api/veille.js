@@ -123,7 +123,8 @@ function parseFeed(xml, source) {
 
   for (const item of items) {
     const title = cleanText(readTag(item, "title"));
-    const description = cleanText(readTag(item, "description")).slice(0, 320);
+    const descriptionMarkup = readTag(item, "description") || readTag(item, "content:encoded");
+    const description = cleanText(descriptionMarkup).slice(0, 320);
     const dateValue = cleanText(readTag(item, "pubDate") || readTag(item, "date"));
     const timestamp = Date.parse(dateValue);
     const link = safeArticleUrl(cleanText(readTag(item, "link")), source.feed);
@@ -145,6 +146,7 @@ function parseFeed(xml, source) {
       sourceName: source.name,
       type: classify(normalized),
       matchedTerms: [...new Set(matchedTerms)],
+      image: extractImage(item, source.feed),
       city: matchedCity?.name || null,
       region: matchedCity?.region || null,
       position: matchedCity?.position || null,
@@ -152,6 +154,36 @@ function parseFeed(xml, source) {
     if (articles.length >= MAX_ARTICLES_PER_SOURCE) break;
   }
   return articles;
+}
+
+function extractImage(item, baseUrl) {
+  const mediaTags = item.match(/<(?:media:content|media:thumbnail|enclosure)\b[^>]*>/gi) || [];
+  for (const tag of mediaTags) {
+    const attributes = Object.fromEntries(
+      [...tag.matchAll(/([\w:-]+)\s*=\s*(?:"([^"]*)"|'([^']*)')/g)]
+        .map((match) => [match[1].toLowerCase(), match[2] ?? match[3] ?? ""]),
+    );
+    const type = (attributes.type || "").toLowerCase();
+    const medium = (attributes.medium || "").toLowerCase();
+    const isThumbnail = /^<media:thumbnail\b/i.test(tag);
+    if (!attributes.url || (!isThumbnail && !type.startsWith("image/") && medium !== "image")) continue;
+    const image = safeImageUrl(decodeEntities(attributes.url), baseUrl);
+    if (image) return image;
+  }
+
+  const html = decodeEntities(item.replace(/<!\[CDATA\[([\s\S]*?)\]\]>/gi, "$1"));
+  const imageTag = html.match(/<img\b[^>]*>/i)?.[0];
+  const imageSource = imageTag?.match(/\b(?:src|data-src)\s*=\s*(?:"([^"]*)"|'([^']*)')/i);
+  return imageSource ? safeImageUrl(imageSource[1] ?? imageSource[2], baseUrl) : null;
+}
+
+function safeImageUrl(value, baseUrl) {
+  try {
+    const url = new URL(value, baseUrl);
+    return url.protocol === "https:" ? url.href : null;
+  } catch {
+    return null;
+  }
 }
 
 function readTag(xml, tag) {

@@ -11,7 +11,7 @@ afterEach(() => {
 
 test("agrège et attribue les articles récents des sept flux", async () => {
   globalThis.fetch = async () => new Response(
-    `<rss><channel><item><title>Manifestation à Lyon : actualité &amp; contexte</title><link>https://media.example/article</link><pubDate>${now}</pubDate><description><![CDATA[<p>Rassemblement rapporté dans la ville.</p>]]></description></item></channel></rss>`,
+    `<rss><channel><item><title>Manifestation à Lyon : actualité &amp; contexte</title><link>https://media.example/article</link><pubDate>${now}</pubDate><description><![CDATA[<p>Rassemblement rapporté dans la ville.</p>]]></description><media:thumbnail url="https://media.example/image.jpg" /></item></channel></rss>`,
     { status: 200 },
   );
 
@@ -27,6 +27,7 @@ test("agrège et attribue les articles récents des sept flux", async () => {
   assert.equal(payload.articles[0].type, "rassemblement");
   assert.equal(payload.articles[0].sourceName, "franceinfo");
   assert.equal(payload.articles[0].link, "https://media.example/article");
+  assert.equal(payload.articles[0].image, "https://media.example/image.jpg");
 });
 
 test("ignore les articles anciens, hors sujet et les liens non HTTP", async () => {
@@ -36,6 +37,7 @@ test("ignore les articles anciens, hors sujet et les liens non HTTP", async () =
       <item><title>Manifestation ancienne</title><link>https://media.example/old</link><pubDate>${oldDate}</pubDate></item>
       <item><title>Recette du jour</title><link>https://media.example/irrelevant</link><pubDate>${now}</pubDate></item>
       <item><title>Manifestation à Paris</title><link>javascript:alert(1)</link><pubDate>${now}</pubDate></item>
+      <item><title>Manifestation à Lyon</title><link>https://media.example/image-test</link><pubDate>${now}</pubDate><media:thumbnail url="http://media.example/image.jpg" /></item>
     </channel></rss>`,
     { status: 200 },
   );
@@ -44,7 +46,8 @@ test("ignore les articles anciens, hors sujet et les liens non HTTP", async () =
   const payload = await response.json();
 
   assert.equal(response.status, 200);
-  assert.equal(payload.articles.length, 0);
+  assert.equal(payload.articles.length, 1);
+  assert.equal(payload.articles[0].image, null);
 });
 
 test("signale une indisponibilité explicite quand tous les flux échouent", async () => {

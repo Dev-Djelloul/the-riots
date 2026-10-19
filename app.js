@@ -12,6 +12,17 @@ const TYPE_LABELS = {
   autre: "Sujet associé",
 };
 
+const LIVE_CHANNELS = {
+  franceinfo: {
+    id: "UCOv5-FGhC0WlB68txYqcPIA",
+    name: "franceinfo",
+  },
+  bfmtv: {
+    id: "UCQFWFHmme7s4wTnR3Qh6Yaw",
+    name: "BFMTV",
+  },
+};
+
 const state = {
   articles: [],
   sources: [],
@@ -25,6 +36,8 @@ const state = {
 
 const feed = document.querySelector("#feed-list");
 const markers = document.querySelector("#map-markers");
+const visualFeed = document.querySelector("#visual-feed");
+const mapEmpty = document.querySelector("#map-empty");
 const emptyState = document.querySelector("#empty-state");
 const refreshButton = document.querySelector("#refresh-button");
 
@@ -50,6 +63,7 @@ function getVisibleArticles() {
 function render() {
   const articles = getVisibleArticles();
   feed.replaceChildren(...articles.map(createArticleCard));
+  renderVisuals(articles);
   const mapped = articles.filter((article) => article.position);
   const cityGroups = [...mapped.reduce((groups, article) => {
     const group = groups.get(article.city) || [];
@@ -58,6 +72,7 @@ function render() {
     return groups;
   }, new Map()).values()];
   markers.replaceChildren(...cityGroups.map(createMarker));
+  mapEmpty.hidden = mapped.length > 0;
   const isEmpty = articles.length === 0;
   emptyState.hidden = !isEmpty;
   feed.hidden = isEmpty;
@@ -70,6 +85,82 @@ function render() {
   document.querySelector("#map-result-count").textContent = `${cityGroups.length} VILLE${cityGroups.length === 1 ? "" : "S"} · ${mapped.length} ARTICLE${mapped.length === 1 ? "" : "S"}`;
   document.querySelector("#count-all").textContent = String(state.articles.length).padStart(2, "0");
   renderSources();
+}
+
+function renderVisuals(articles) {
+  const selected = articles.slice(0, 3);
+  visualFeed.className = `visual-grid visual-count-${selected.length}`;
+  if (selected.length === 0) {
+    const empty = document.createElement("div");
+    empty.className = "visual-empty";
+    empty.textContent = "Les aperçus apparaîtront ici dès qu’un flux publiera un article illustré.";
+    visualFeed.replaceChildren(empty);
+  } else {
+    visualFeed.replaceChildren(...selected.map((article, index) => createVisualCard(article, index)));
+  }
+  document.querySelector("#visual-count").textContent = String(selected.length).padStart(2, "0");
+}
+
+function createVisualCard(article, index) {
+  const card = document.createElement("a");
+  card.className = `visual-card${index === 0 ? " visual-card-featured" : ""}`;
+  card.href = article.link;
+  card.target = "_blank";
+  card.rel = "noopener noreferrer";
+  card.setAttribute("aria-label", `${article.sourceName} : ${article.title}. Ouvrir l’article complet.`);
+
+  const media = document.createElement("div");
+  media.className = `visual-media visual-tone-${article.type || "autre"}`;
+  const placeholder = document.createElement("div");
+  placeholder.className = "visual-placeholder";
+  const initials = document.createElement("span");
+  initials.className = "visual-initials";
+  initials.textContent = article.sourceName.slice(0, 2).toLocaleUpperCase("fr");
+  const placeholderLabel = document.createElement("span");
+  placeholderLabel.className = "visual-placeholder-label";
+  placeholderLabel.textContent = "APERÇU NON FOURNI PAR LE FLUX";
+  placeholder.append(initials, placeholderLabel);
+  media.append(placeholder);
+
+  if (isSafeImageUrl(article.image)) {
+    const image = document.createElement("img");
+    image.className = "visual-image";
+    image.src = article.image;
+    image.alt = "";
+    image.loading = "lazy";
+    image.decoding = "async";
+    image.referrerPolicy = "no-referrer";
+    image.addEventListener("load", () => placeholder.remove(), { once: true });
+    image.addEventListener("error", () => image.remove(), { once: true });
+    media.prepend(image);
+  }
+
+  const shade = document.createElement("div");
+  shade.className = "visual-shade";
+  const caption = document.createElement("div");
+  caption.className = "visual-caption";
+  const meta = document.createElement("span");
+  meta.className = "visual-meta";
+  meta.textContent = `${article.sourceName} · ${formatDate(article.publishedAt)}`;
+  const title = document.createElement("span");
+  title.className = "visual-title";
+  title.textContent = article.title;
+  const linkHint = document.createElement("span");
+  linkHint.className = "visual-link-hint";
+  linkHint.textContent = "Ouvrir la source ↗";
+  caption.append(meta, title, linkHint);
+  media.append(shade, caption);
+  card.append(media);
+  return card;
+}
+
+function isSafeImageUrl(value) {
+  if (!value) return false;
+  try {
+    return new URL(value).protocol === "https:";
+  } catch {
+    return false;
+  }
 }
 
 function createArticleCard(article) {
@@ -328,6 +419,27 @@ document.querySelector("#reset-filters").addEventListener("click", () => {
 });
 
 refreshButton.addEventListener("click", loadArticles);
+
+document.querySelectorAll(".load-stream").forEach((button) => {
+  button.addEventListener("click", () => {
+    const channel = LIVE_CHANNELS[button.dataset.channel];
+    const card = button.closest(".live-stream-card");
+    const poster = card.querySelector(".stream-poster");
+    if (!channel || poster.querySelector("iframe")) return;
+
+    const player = document.createElement("iframe");
+    player.className = "stream-player";
+    player.title = `Direct ${channel.name} sur YouTube`;
+    player.src = `https://www.youtube-nocookie.com/embed/live_stream?channel=${encodeURIComponent(channel.id)}`;
+    player.allow = "encrypted-media; picture-in-picture; web-share";
+    player.allowFullscreen = true;
+    player.loading = "lazy";
+    player.referrerPolicy = "strict-origin-when-cross-origin";
+    poster.replaceChildren(player);
+    button.textContent = "Lecteur chargé";
+    button.disabled = true;
+  });
+});
 
 const aboutDialog = document.querySelector("#about-dialog");
 document.querySelector("#about-button").addEventListener("click", () => aboutDialog.showModal());
