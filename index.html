@@ -1,0 +1,189 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#111210" />
+    <meta
+      name="description"
+      content="Une veille éditoriale sur les événements en France, avec sources et état de vérification clairement indiqués."
+    />
+    <title>Veille — événements en France</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=DM+Sans:wght@400;500;600;700&family=Playfair+Display:wght@500;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <div class="app-shell">
+      <header class="topbar">
+        <a class="brand" href="#" aria-label="Veille, accueil">
+          <span class="brand-mark" aria-hidden="true">V.</span>
+          <span class="brand-name">VEILLE<span class="brand-dot">.</span></span>
+        </a>
+        <div class="topbar-center">
+          <span class="edition">OBSERVATOIRE INDÉPENDANT</span>
+          <span class="topbar-divider"></span>
+          <span id="today-label" class="today-label">ÉDITION FRANCE</span>
+        </div>
+        <button class="about-button" id="about-button" type="button">
+          <span class="about-icon" aria-hidden="true">i</span>
+          À propos
+        </button>
+      </header>
+
+      <main>
+        <section class="intro">
+          <div class="intro-copy">
+            <p class="eyebrow"><span class="eyebrow-line"></span> L’ACTUALITÉ, MISE EN PERSPECTIVE</p>
+            <h1>Comprendre ce qui<br /><em>se passe sur le terrain.</em></h1>
+            <p class="intro-description">
+              Une veille des événements signalés en France, contextualisés et reliés à leurs sources.
+            </p>
+          </div>
+          <div class="live-status" aria-live="polite">
+            <span class="status-icon" aria-hidden="true"><span></span></span>
+            <div>
+              <strong id="status-label">CONNEXION AUX SOURCES</strong>
+              <span id="refresh-state">Chargement des flux RSS…</span>
+            </div>
+            <button class="refresh-button" id="refresh-button" type="button" aria-label="Actualiser les articles" title="Actualiser les articles">
+              <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M16 8a6.5 6.5 0 0 0-11-3L3 7m0-4v4h4m-3 5a6.5 6.5 0 0 0 11 3l2-2m0 4v-4h-4"></path></svg>
+            </button>
+          </div>
+        </section>
+
+        <div class="demo-notice" role="note">
+          <span class="notice-symbol" aria-hidden="true">✳</span>
+          <p><strong>Veille de presse, pas vérification des faits.</strong> Titres et extraits proviennent des flux RSS des médias cités. Couverture non exhaustive ; un article ne confirme pas à lui seul un événement.</p>
+        </div>
+
+        <section class="workspace" aria-label="Tableau de veille">
+          <aside class="sidebar">
+            <div class="sidebar-heading">
+              <span class="section-kicker">EXPLORER</span>
+              <span class="side-index">01 — 03</span>
+            </div>
+            <label class="search-field">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6.5"></circle><path d="m16 16 4 4"></path></svg>
+              <input id="search-input" type="search" placeholder="Ville, région…" autocomplete="off" />
+              <kbd>⌘ K</kbd>
+            </label>
+
+            <div class="filter-group">
+              <p class="filter-label">PÉRIODE</p>
+              <div class="filter-options" id="period-filters">
+                <button class="filter-option active" type="button" data-period="all"><span>Tout voir</span><span class="option-count" id="count-all">04</span></button>
+                <button class="filter-option" type="button" data-period="today"><span>Aujourd’hui</span></button>
+                <button class="filter-option" type="button" data-period="week"><span>7 derniers jours</span></button>
+              </div>
+            </div>
+
+            <div class="filter-group">
+              <p class="filter-label">SUJETS ÉVOQUÉS</p>
+              <div class="type-list" id="type-filters">
+                <button class="type-option active" type="button" data-type="all"><span class="type-dot all-dot"></span> Tous les sujets</button>
+                <button class="type-option" type="button" data-type="rassemblement"><span class="type-dot dot-amber"></span> Rassemblement</button>
+                <button class="type-option" type="button" data-type="tensions"><span class="type-dot dot-coral"></span> Tensions / violences</button>
+                <button class="type-option" type="button" data-type="degradations"><span class="type-dot dot-lilac"></span> Dégâts évoqués</button>
+              </div>
+            </div>
+
+            <details class="sources-section" open>
+              <summary class="filter-label">SOURCES SUIVIES <span id="source-count">—</span></summary>
+              <ul class="source-list" id="source-list" aria-live="polite"></ul>
+            </details>
+
+            <div class="sidebar-bottom">
+              <span class="source-icon" aria-hidden="true">↗</span>
+              <p>Les articles restent attribués à leurs médias d’origine. Ouvre la source pour lire le contexte.</p>
+            </div>
+          </aside>
+
+          <section class="map-panel" aria-label="Carte schématique de France">
+            <div class="map-topline">
+              <div>
+                <span class="section-kicker">REPÈRES GÉOGRAPHIQUES</span>
+                <h2>France métropolitaine</h2>
+              </div>
+              <span class="map-date"><span class="mini-dot"></span> VILLES CITÉES DANS LES TITRES</span>
+            </div>
+            <div class="map-stage">
+              <div class="map-grid" aria-hidden="true"></div>
+              <svg class="france-map" viewBox="0 0 460 510" role="img" aria-label="Carte schématique, repères approximatifs issus des titres d’articles">
+                <defs>
+                  <pattern id="mapHatch" width="9" height="9" patternTransform="rotate(45)" patternUnits="userSpaceOnUse">
+                    <line x1="0" y1="0" x2="0" y2="9" stroke="#25342f" stroke-width="1" />
+                  </pattern>
+                  <clipPath id="franceClip">
+                    <path d="M179 34 222 42 249 32 277 50 308 48 324 71 354 75 362 106 392 124 379 155 402 178 391 205 408 226 393 256 406 282 386 308 392 336 369 353 373 379 348 392 342 422 312 434 288 456 260 451 238 472 213 454 185 465 163 446 134 451 120 426 93 417 90 390 64 375 76 345 57 320 71 291 51 265 71 241 60 211 83 189 78 158 105 148 113 121 143 113 149 84 175 77 174 51Z" />
+                  </clipPath>
+                </defs>
+                <g class="map-contours" clip-path="url(#franceClip)">
+                  <path d="M25 150 Q150 85 275 122 T470 85 M15 210 Q125 180 240 212 T465 190 M20 276 Q130 242 250 277 T460 248 M30 335 Q150 310 265 336 T455 310 M60 395 Q165 365 290 402 T430 380" />
+                  <path d="M90 40 Q115 150 150 245 T170 480 M150 25 Q175 145 210 260 T240 485 M225 25 Q235 130 280 245 T305 470 M300 30 Q280 145 340 245 T365 420" />
+                </g>
+                <path class="map-outline" d="M179 34 222 42 249 32 277 50 308 48 324 71 354 75 362 106 392 124 379 155 402 178 391 205 408 226 393 256 406 282 386 308 392 336 369 353 373 379 348 392 342 422 312 434 288 456 260 451 238 472 213 454 185 465 163 446 134 451 120 426 93 417 90 390 64 375 76 345 57 320 71 291 51 265 71 241 60 211 83 189 78 158 105 148 113 121 143 113 149 84 175 77 174 51Z" />
+                <path class="corsica" d="m391 421 8 6-2 13-8 10-4-8 3-13z" />
+                <g class="map-markers" id="map-markers"></g>
+              </svg>
+              <div class="map-label label-paris">PARIS</div>
+              <div class="map-label label-lyon">LYON</div>
+              <div class="map-label label-marseille">MARSEILLE</div>
+              <div class="map-label label-bordeaux">BORDEAUX</div>
+              <div class="map-scale"><span></span> FRANCE</div>
+              <div class="map-legend"><span class="legend-ring"></span> REPÈRE APPROXIMATIF</div>
+            </div>
+            <div class="map-footer">
+              <span>VILLE MENTIONNÉE DANS LE TITRE · PAS DE GÉOLOCALISATION</span>
+              <span id="map-result-count">0 REPÈRE</span>
+            </div>
+          </section>
+
+          <section class="feed-panel" aria-label="Articles de presse">
+            <div class="feed-heading">
+              <div>
+                <span class="section-kicker">LE FIL</span>
+                <h2>Articles récents <span class="feed-count" id="feed-count">—</span></h2>
+              </div>
+              <button id="sort-button" class="sort-button" type="button" aria-label="Changer l’ordre de tri" title="Changer l’ordre de tri">
+                <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M4 5h12M6 10h8m-6 5h4"></path></svg>
+              </button>
+            </div>
+            <div class="feed-list" id="feed-list" aria-live="polite"></div>
+            <div class="empty-state" id="empty-state" hidden>
+              <span aria-hidden="true">⌕</span>
+              <strong id="empty-title">Chargement des flux</strong>
+              <p id="empty-message">Récupération des derniers articles auprès des médias suivis.</p>
+              <button type="button" id="reset-filters" hidden>Réinitialiser les filtres</button>
+            </div>
+            <div class="feed-footer">
+              <span class="feed-footer-mark">V.</span>
+              <span>Voir clair, sans attiser.</span>
+            </div>
+          </section>
+        </section>
+
+        <footer class="page-footer">
+          <span>VEILLE — AGRÉGATEUR DE PRESSE</span>
+          <span>Un article n’est pas une vérification indépendante ; manifestations et émeutes ne sont pas synonymes.</span>
+          <span>© 2026</span>
+        </footer>
+      </main>
+    </div>
+
+    <dialog class="about-dialog" id="about-dialog">
+      <button class="dialog-close" type="button" id="dialog-close" aria-label="Fermer">×</button>
+      <span class="section-kicker">À PROPOS DE VEILLE</span>
+      <h2>L’information mérite<br /><em>du contexte.</em></h2>
+      <p>Veille rassemble des titres et extraits récents de flux RSS publics de médias français. Chaque article reste attribué à son éditeur et renvoie à sa page d’origine.</p>
+      <p>Il s’agit d’une veille de presse par mots-clés, ni exhaustive ni vérifiée indépendamment. Les repères cartographiques ne sont affichés que lorsqu’une ville figure dans le titre, et restent approximatifs. Un rassemblement ou une manifestation n’est pas, en soi, une émeute.</p>
+      <div class="dialog-rule"></div>
+      <span class="dialog-foot">INFORMER · SOURCER · CONTEXTUALISER</span>
+    </dialog>
+    <script src="app.js"></script>
+  </body>
+</html>
