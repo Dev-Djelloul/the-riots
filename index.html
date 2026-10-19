@@ -87,7 +87,7 @@
             </div>
             <span class="visual-board-note">LECTEURS OFFICIELS · CLIQUE POUR CHARGER</span>
           </div>
-          <p class="live-privacy-note">Le flux vidéo est fourni par YouTube. Le lecteur ne se connecte à YouTube qu’à ta demande ; le direct dépend de sa disponibilité sur la chaîne.</p>
+          <p class="live-privacy-note">Le lecteur franceinfo est intégré depuis YouTube. BFMTV et CNEWS ouvrent leur direct sur leurs sites officiels, qui n’autorisent pas l’intégration dans cette page.</p>
           <div class="live-stream-grid">
             <article class="live-stream-card" data-channel="franceinfo">
               <div class="stream-poster">
@@ -99,18 +99,31 @@
                 <strong>franceinfo</strong>
                 <span>Lecteur officiel · YouTube</span>
                 <button class="load-stream" type="button" data-channel="franceinfo">Charger le direct</button>
+                <a class="stream-open" data-channel="franceinfo" href="https://www.youtube.com/@franceinfo/live" target="_blank" rel="noopener noreferrer">Ouvrir sur YouTube ↗</a>
               </div>
             </article>
             <article class="live-stream-card" data-channel="bfmtv">
               <div class="stream-poster">
                 <span class="stream-badge"><span></span> BFMTV</span>
                 <span class="stream-play" aria-hidden="true">▶</span>
-                <span class="stream-poster-hint">DIRECT DE LA CHAÎNE · SI DISPONIBLE</span>
+                <span class="stream-poster-hint">LECTEUR OFFICIEL · BFM.TV</span>
               </div>
               <div class="stream-caption">
                 <strong>BFMTV</strong>
-                <span>Lecteur officiel · YouTube</span>
-                <button class="load-stream" type="button" data-channel="bfmtv">Charger le direct</button>
+                <span>Direct · site officiel</span>
+                <a class="stream-open stream-site-link" data-channel="bfmtv" href="https://www.bfmtv.com/en-direct/" target="_blank" rel="noopener noreferrer">Voir le direct ↗</a>
+              </div>
+            </article>
+            <article class="live-stream-card" data-channel="cnews">
+              <div class="stream-poster">
+                <span class="stream-badge"><span></span> CNEWS</span>
+                <span class="stream-play" aria-hidden="true">↗</span>
+                <span class="stream-poster-hint">LECTEUR OFFICIEL · CNEWS.FR</span>
+              </div>
+              <div class="stream-caption">
+                <strong>CNEWS</strong>
+                <span>Direct · site officiel</span>
+                <a class="stream-open stream-site-link" data-channel="cnews" href="https://www.cnews.fr/le-direct" target="_blank" rel="noopener noreferrer">Voir le direct ↗</a>
               </div>
             </article>
           </div>
@@ -128,22 +141,22 @@
             <span>MOTS-CLÉS / HASHTAG</span>
             <input id="social-query" type="search" value="manifestation France" autocomplete="off" />
           </label>
-          <p class="social-privacy-note">Les directs Twitch trouvés apparaissent ici si l’API est configurée. Facebook, Instagram et TikTok ne proposent pas de recherche publique générale dans leurs API accessibles sans approbation ; leurs contenus ne sont pas intégrés. Instagram permet toutefois d’ouvrir directement le hashtag recherché.</p>
+          <p class="social-privacy-note">Les vignettes Twitch sont fournies par son API si elle est configurée. Colle un lien de publication, vidéo ou direct public pour afficher le lecteur officiel de Facebook, Instagram, TikTok ou Twitch. La recherche automatique sur les autres réseaux requiert des accès API actuellement indisponibles.</p>
           <div class="social-platform-grid">
             <article class="social-platform-card" data-platform="facebook">
               <span class="social-platform-name">Facebook</span>
-              <span class="social-platform-detail">Non intégré : publications des pages publiques soumises à autorisation Meta.</span>
+              <span class="social-platform-detail">Lecteur de publication disponible avec un lien public ; la recherche de pages exige une autorisation Meta.</span>
               <a class="social-platform-action" href="https://developers.facebook.com/docs/pages-api" target="_blank" rel="noopener noreferrer">Conditions de l’API ↗</a>
             </article>
             <article class="social-platform-card" data-platform="instagram">
               <span class="social-platform-name">Instagram</span>
-              <span class="social-platform-detail">Non intégré : API hashtag réservée aux comptes professionnels et autorisations Meta.</span>
+              <span class="social-platform-detail">Lecteur d’une publication publique et recherche hashtag externe ; l’API intégrée exige les autorisations Meta.</span>
               <a class="social-platform-action" data-instagram-search href="https://www.instagram.com/explore/tags/manifestation/" target="_blank" rel="noopener noreferrer">Ouvrir #manifestation ↗</a>
               <a class="social-platform-action" href="https://developers.facebook.com/docs/instagram-platform/instagram-graph-api/reference/ig-hashtag-search/" target="_blank" rel="noopener noreferrer">Conditions de l’API ↗</a>
             </article>
             <article class="social-platform-card" data-platform="tiktok">
               <span class="social-platform-name">TikTok</span>
-              <span class="social-platform-detail">Non intégré : la recherche vidéo relève de la Research API approuvée.</span>
+              <span class="social-platform-detail">Lecteur d’une vidéo publique par lien ; la recherche intégrée relève de la Research API approuvée.</span>
               <a class="social-platform-action" href="https://developers.tiktok.com/products/research-api/" target="_blank" rel="noopener noreferrer">Conditions de l’API ↗</a>
             </article>
             <article class="social-platform-card" data-platform="twitch">
@@ -152,6 +165,15 @@
               <a class="social-platform-action" data-social-docs="twitch" href="https://dev.twitch.tv/docs/authentication/getting-tokens-oauth/#oauth-client-credentials-flow" target="_blank" rel="noopener noreferrer">Configuration API ↗</a>
             </article>
           </div>
+          <div class="social-embed-form">
+            <label class="social-embed-input">
+              <span>LIEN D’UNE PUBLICATION OU VIDÉO PUBLIQUE</span>
+              <input id="social-post-url" type="url" placeholder="Colle un lien Facebook, Instagram, TikTok ou Twitch" autocomplete="url" />
+            </label>
+            <button id="add-social-post" type="button">Afficher l’aperçu</button>
+          </div>
+          <p class="social-embed-status" id="social-embed-status" aria-live="polite">Les aperçus chargent le lecteur officiel après validation du lien.</p>
+          <div class="social-embed-feed" id="social-embed-feed"></div>
           <div class="social-feed" id="social-feed" aria-live="polite"></div>
         </section>
 
@@ -170,10 +192,11 @@
             <div class="filter-group">
               <p class="filter-label">PÉRIODE</p>
               <div class="filter-options" id="period-filters">
-                <button class="filter-option active" type="button" data-period="all"><span>Tout voir</span><span class="option-count" id="count-all">04</span></button>
+                <button class="filter-option active" type="button" data-period="all"><span>Historique disponible</span><span class="option-count" id="count-all">04</span></button>
                 <button class="filter-option" type="button" data-period="today"><span>Aujourd’hui</span></button>
                 <button class="filter-option" type="button" data-period="week"><span>7 derniers jours</span></button>
               </div>
+              <p class="filter-note">Historique fourni par les flux RSS encore disponibles ; ce n’est pas une archive exhaustive depuis le début des événements.</p>
             </div>
 
             <div class="filter-group">
@@ -203,14 +226,15 @@
                 <span class="section-kicker">REPÈRES GÉOGRAPHIQUES</span>
                 <h2>France métropolitaine</h2>
               </div>
-              <span class="map-date"><span class="mini-dot"></span> VILLES CITÉES · REPÈRES APPROXIMATIFS</span>
+              <span class="map-date"><span class="mini-dot"></span> ZONES ROUGES · VILLES CITÉES</span>
             </div>
             <div class="map-stage">
-              <div id="france-map" class="geographic-map" role="application" aria-label="Carte interactive OpenStreetMap de la France avec des repères approximatifs par ville"></div>
+              <div id="france-map" class="geographic-map" role="application" aria-label="Carte géographique interactive de la France avec des zones rouges approximatives autour des villes citées"></div>
+              <div class="map-tile-warning" id="map-tile-warning" hidden>Fond sombre indisponible · nouvelle tentative en cours</div>
               <div class="map-empty" id="map-empty" hidden>Aucune ville connue citée dans les titres<br /><span>Les repères approximatifs apparaissent lorsqu’un titre nomme une ville suivie.</span></div>
             </div>
             <div class="map-footer">
-              <span>REPÈRE APPROXIMATIF · VILLE CITÉE DANS UN TITRE · PAS DE LOCALISATION DE L’ÉVÉNEMENT</span>
+              <span>ZONE ROUGE APPROXIMATIVE · VILLE CITÉE · PAS DE GÉOLOCALISATION D’ÉVÉNEMENT</span>
               <span id="map-result-count">0 REPÈRE</span>
             </div>
           </section>

@@ -1,10 +1,10 @@
 # Veille
 
-Veille agrège les flux RSS publics de franceinfo, BFMTV, CNEWS, Le Monde, France 24, Libération et Ouest-France. La fonction `functions/api/veille.js` récupère les flux côté serveur, conserve les articles de moins de sept jours correspondant à des mots-clés de veille et renvoie le média, la date, l’extrait, l’éventuelle vignette fournie par le flux et le lien de l’article original. Le tableau de bord propose une régie visuelle des trois derniers articles, les lecteurs YouTube officiels de franceinfo et BFMTV (chargés à la demande), une carte interactive OpenStreetMap et un fil de cartes attribuées aux éditeurs. Le fil de presse fonctionne sans identifiant ; la recherche Twitch est optionnelle et demande des secrets API configurés côté serveur.
+Veille agrège les flux RSS publics de franceinfo, BFMTV, CNEWS, Le Monde, France 24, Libération et Ouest-France. La fonction `functions/api/veille.js` récupère les articles encore exposés par ces flux et correspondant aux mots-clés suivis, puis renvoie leur média, date, extrait, vignette éventuelle et lien original. Le tableau de bord propose une régie visuelle des trois derniers articles, les lecteurs de chaînes, une carte interactive OpenStreetMap et un fil de cartes attribuées aux éditeurs. Le fil de presse fonctionne sans identifiant ; la recherche Twitch est optionnelle et demande des secrets API configurés côté serveur.
 
 ## Développement et publication
 
-Le site est servi à la racine du projet, avec les Pages Functions dans `functions/`.
+Le site est servi à la racine du projet, avec les Pages Functions dans `functions/`. La carte utilise les tuiles OpenStreetMap sans clé, assombries dans l’interface ; les lecteurs sociaux acceptent les liens publics compatibles collés par l’utilisateur. Le direct franceinfo est intégré depuis YouTube ; les liens BFMTV et CNEWS ouvrent leurs lecteurs officiels.
 
 ```sh
 npx wrangler pages dev .
@@ -18,13 +18,16 @@ La seconde commande publie la version sur le projet Cloudflare Pages indiqué. N
 - La veille est rafraîchie à l’ouverture et toutes les cinq minutes. Le bouton d’actualisation permet aussi une mise à jour manuelle.
 - Les mots-clés classent uniquement les articles trouvés dans les flux consultés ; les catégories ne sont ni des constats ni des vérifications indépendantes.
 - Les flux RSS et la recherche par mots-clés ne constituent pas une couverture exhaustive de l’actualité.
+- Le filtre « Historique disponible » affiche les articles conservés dans les flux RSS au moment de la collecte (jusqu’à 50 articles pertinents par source). La durée de rétention dépend de chaque média ; il n’existe pas d’archive exhaustive ni de garantie de couvrir le début des événements.
+- « Aujourd’hui » utilise la journée locale de l’appareil ; « 7 derniers jours » couvre une fenêtre glissante de sept fois 24 heures.
 - Un repère sur la carte n’apparaît que si le titre nomme une ville connue. Il indique une mention dans un titre, jamais une localisation précise d’un événement.
-- La carte utilise Leaflet et les tuiles OpenStreetMap, avec attribution affichée. Les marqueurs sont centrés sur des coordonnées de ville et restent approximatifs ; ils ne géolocalisent pas les événements. Les tuiles sont chargées depuis OpenStreetMap lorsque la carte s’affiche.
+- La carte utilise Leaflet et les tuiles OpenStreetMap, assombries côté interface et avec attribution visible. Les cercles rouges sont des zones indicatives centrées sur les villes citées ; ils ne représentent pas les limites administratives ni la localisation vérifiée d’un événement.
 - Les articles et extraits restent attribués à leur média d’origine et renvoient vers la publication source.
 - Les images ne sont montrées que si elles sont fournies dans le flux RSS ; sinon, la carte l’indique. L’application n’héberge ni ne recopie les images ou vidéos.
-- Les lecteurs des chaînes ne s’activent qu’après un clic et peuvent être indisponibles lorsque la chaîne n’émet pas de direct intégrable. Leur chargement contacte YouTube.
-- Les API sociales officielles n’offrent pas une recherche générale anonyme pour Facebook, Instagram ou TikTok : Facebook demande l’autorisation Meta Page Public Content Access pour lire les pages non gérées ; Instagram exige un compte professionnel lié et des permissions d’accès aux hashtags publics ; TikTok réserve la recherche de vidéos publiques par mots-clés à la Research API approuvée. L’application n’utilise pas de scraping ni de service d’agrégation tiers. Instagram propose un lien direct vers le hashtag correspondant au premier mot de recherche.
-- Les directs Twitch sont réellement recherchés via Helix Search Channels quand `TWITCH_CLIENT_ID` et `TWITCH_CLIENT_SECRET` sont configurés comme secrets Cloudflare Pages. Ces identifiants restent côté serveur et ne doivent pas être ajoutés au dépôt ou au navigateur. Sans eux, Veille affiche explicitement que la source n’est pas configurée. L’entrée de recherche lance la recherche Twitch ; pour Instagram, son premier mot devient un hashtag.
+- Le lecteur franceinfo ne s’active qu’après un clic et peut être indisponible lorsque la chaîne n’émet pas de direct intégrable. BFMTV et CNEWS s’ouvrent sur leur site officiel, qui ne permet pas l’intégration de leur player dans cette page. Le chargement du lecteur franceinfo contacte YouTube.
+- Les API sociales officielles n’offrent pas une recherche générale anonyme pour Facebook, Instagram ou TikTok : Facebook demande l’autorisation Meta Page Public Content Access pour lire les pages non gérées ; Instagram exige un compte professionnel lié et des permissions d’accès aux hashtags publics ; TikTok réserve la recherche de vidéos publiques par mots-clés à la Research API approuvée. L’application n’utilise pas de scraping ni de service d’agrégation tiers. L’interface ouvre le hashtag Instagram correspondant au premier mot de recherche et peut intégrer un aperçu officiel à partir d’un lien public collé par l’utilisateur (Facebook, Instagram, TikTok, Twitch).
+- Les directs Twitch sont réellement recherchés via Helix Search Channels quand `TWITCH_CLIENT_ID` et `TWITCH_CLIENT_SECRET` sont configurés comme secrets Cloudflare Pages ; leurs vignettes renvoient vers la chaîne. Ces identifiants restent côté serveur. Sans eux, Veille indique que la source n’est pas configurée. Les lecteurs YouTube des chaînes officielles disposent aussi d’un lien de repli vers la chaîne si aucun direct n’est intégrable.
+- Le panneau d’articles récents a une hauteur plafonnée sur grand écran et défile indépendamment ; la liste complète n’allonge plus toute la page.
 
 ## Tests
 

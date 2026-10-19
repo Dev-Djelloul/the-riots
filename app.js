@@ -14,12 +14,17 @@ const TYPE_LABELS = {
 
 const LIVE_CHANNELS = {
   franceinfo: {
-    id: "UCOv5-FGhC0WlB68txYqcPIA",
+    id: "UCO6K_kkdP-lnSCiO3tPx7WA",
     name: "franceinfo",
+    liveUrl: "https://www.youtube.com/@franceinfo/live",
   },
   bfmtv: {
-    id: "UCQFWFHmme7s4wTnR3Qh6Yaw",
     name: "BFMTV",
+    liveUrl: "https://www.bfmtv.com/en-direct/",
+  },
+  cnews: {
+    name: "CNEWS",
+    liveUrl: "https://www.cnews.fr/le-direct",
   },
 };
 
@@ -50,18 +55,29 @@ if (map) {
     attribution: '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer">OpenStreetMap</a> contributors',
     updateWhenIdle: true,
   }).addTo(map);
+  map.on("tileerror", () => {
+    document.querySelector("#map-tile-warning").hidden = false;
+  });
+  map.on("tileload", () => {
+    document.querySelector("#map-tile-warning").hidden = true;
+  });
 } else {
   mapEmpty.hidden = false;
   mapEmpty.textContent = "La carte n’a pas pu être chargée. Vérifie ta connexion puis actualise la page.";
 }
 
 function getVisibleArticles() {
-  const now = Date.now();
+  const now = new Date();
+  const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+  const startOfTomorrow = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1).getTime();
   return state.articles
     .filter((article) => {
       if (state.period === "all") return true;
-      const age = now - Date.parse(article.publishedAt);
-      return state.period === "today" ? age < 24 * 60 * 60 * 1000 : age < 7 * 24 * 60 * 60 * 1000;
+      const publishedAt = Date.parse(article.publishedAt);
+      if (!Number.isFinite(publishedAt) || publishedAt > now.getTime()) return false;
+      if (state.period === "today") return publishedAt >= startOfToday && publishedAt < startOfTomorrow;
+      if (state.period === "week") return publishedAt >= now.getTime() - 7 * 24 * 60 * 60 * 1000;
+      return false;
     })
     .filter((article) => state.type === "all" || article.type === state.type)
     .filter((article) => {
@@ -96,7 +112,7 @@ function render() {
     : "Essaie une autre recherche ou modifie les filtres.";
   document.querySelector("#reset-filters").hidden = state.articles.length === 0;
   document.querySelector("#feed-count").textContent = String(articles.length).padStart(2, "0");
-  document.querySelector("#map-result-count").textContent = `${cityGroups.length} VILLE${cityGroups.length === 1 ? "" : "S"} · ${mapped.length} ARTICLE${mapped.length === 1 ? "" : "S"}`;
+  document.querySelector("#map-result-count").textContent = `${cityGroups.length} ZONE${cityGroups.length === 1 ? "" : "S"} APPROX. · ${mapped.length} ARTICLE${mapped.length === 1 ? "" : "S"}`;
   document.querySelector("#count-all").textContent = String(state.articles.length).padStart(2, "0");
   renderSources();
 }
@@ -122,6 +138,20 @@ function renderSocial(payload) {
       link.href = article.link;
       link.target = "_blank";
       link.rel = "noopener noreferrer";
+      if (isSafeImageUrl(article.image)) {
+        const image = document.createElement("img");
+        image.className = "social-result-image";
+        image.src = article.image;
+        image.alt = "";
+        image.loading = "lazy";
+        image.referrerPolicy = "no-referrer";
+        link.append(image);
+      } else {
+        const placeholder = document.createElement("span");
+        placeholder.className = "social-result-placeholder";
+        placeholder.textContent = "DIRECT";
+        link.append(placeholder);
+      }
       const title = document.createElement("strong");
       title.textContent = article.title;
       const meta = document.createElement("span");
@@ -322,14 +352,29 @@ function renderMap(cityGroups) {
   cityGroups.forEach((articles) => {
     const [latitude, longitude] = articles[0].position;
     const selected = articles.some((article) => state.selected === article.id);
+    L.circle([latitude, longitude], {
+      radius: 32000 + Math.min(36000, articles.length * 2500),
+      color: "#ff2638",
+      weight: 1,
+      opacity: 0.8,
+      fillColor: "#ed1c2e",
+      fillOpacity: 0.18,
+      interactive: false,
+    }).addTo(map);
     const marker = L.circleMarker([latitude, longitude], {
       radius: Math.min(14, 7 + Math.log2(articles.length)),
-      color: selected ? "#f3c299" : "#d8a67d",
+      color: selected ? "#ff8a93" : "#ff2638",
       weight: 2,
-      fillColor: selected ? "#f3c299" : "#d8a67d",
-      fillOpacity: 0.78,
+      fillColor: "#ed1c2e",
+      fillOpacity: 0.92,
     });
-    marker.bindPopup(createCityPopup(articles[0].city, articles));
+    marker.bindPopup(createCityPopup(articles[0].city, articles), {
+      maxWidth: 360,
+      minWidth: 240,
+      autoPan: true,
+      autoPanPadding: [24, 24],
+      keepInView: true,
+    });
     marker.addTo(map);
   });
 }
@@ -338,9 +383,9 @@ function createCityPopup(city, articles) {
   const popup = document.createElement("div");
   popup.className = "map-popup";
   const heading = document.createElement("strong");
-  heading.textContent = `${city} · repère approximatif`;
+  heading.textContent = `${city} · ${articles.length} article${articles.length === 1 ? "" : "s"}`;
   const note = document.createElement("p");
-  note.textContent = "Ville citée dans le titre ; l’emplacement de l’événement n’est pas vérifié.";
+  note.textContent = "Zone approximative centrée sur la ville citée ; les événements ne sont pas géolocalisés. Faites défiler la liste pour tout voir.";
   const list = document.createElement("ul");
   articles.forEach((article) => {
     const item = document.createElement("li");
@@ -450,7 +495,7 @@ function formatClock(value) {
 }
 
 document.querySelector("#period-filters").addEventListener("click", (event) => {
-  const button = event.target.closest("[data-period]");
+  const button = event.target instanceof Element ? event.target.closest("[data-period]") : null;
   if (!button) return;
   state.period = button.dataset.period;
   document.querySelectorAll("[data-period]").forEach((item) => item.classList.toggle("active", item === button));
@@ -517,16 +562,86 @@ document.querySelectorAll(".load-stream").forEach((button) => {
     const player = document.createElement("iframe");
     player.className = "stream-player";
     player.title = `Direct ${channel.name} sur YouTube`;
-    player.src = `https://www.youtube-nocookie.com/embed/live_stream?channel=${encodeURIComponent(channel.id)}`;
-    player.allow = "encrypted-media; picture-in-picture; web-share";
+    player.src = `https://www.youtube.com/embed/live_stream?channel=${encodeURIComponent(channel.id)}&autoplay=1&mute=1`;
+    player.allow = "autoplay; encrypted-media; picture-in-picture; web-share";
     player.allowFullscreen = true;
     player.loading = "lazy";
     player.referrerPolicy = "strict-origin-when-cross-origin";
     poster.replaceChildren(player);
-    button.textContent = "Lecteur chargé";
+    button.textContent = "Lecteur intégré";
     button.disabled = true;
   });
 });
+
+document.querySelectorAll(".stream-open").forEach((link) => {
+  link.href = LIVE_CHANNELS[link.dataset.channel]?.liveUrl || "#";
+});
+
+const socialEmbedInput = document.querySelector("#social-post-url");
+const socialEmbedStatus = document.querySelector("#social-embed-status");
+document.querySelector("#add-social-post").addEventListener("click", () => {
+  const embed = createSocialEmbed(socialEmbedInput.value.trim());
+  if (!embed) {
+    socialEmbedStatus.textContent = "Lien non reconnu. Colle une publication Instagram/Facebook, une vidéo TikTok ou un lien public Twitch.";
+    socialEmbedStatus.classList.add("error");
+    return;
+  }
+  socialEmbedStatus.textContent = `Lecteur officiel ${embed.platform} ajouté. S’il est bloqué par la plateforme, ouvre le lien source.`;
+  socialEmbedStatus.classList.remove("error");
+  const card = document.createElement("article");
+  card.className = `social-embed-card social-embed-${embed.platform.toLowerCase()}`;
+  const frame = document.createElement("iframe");
+  frame.title = `Aperçu ${embed.platform}`;
+  frame.src = embed.src;
+  frame.loading = "lazy";
+  frame.referrerPolicy = "strict-origin-when-cross-origin";
+  frame.allow = "autoplay; encrypted-media; picture-in-picture; web-share";
+  frame.allowFullscreen = true;
+  const source = document.createElement("a");
+  source.href = embed.href;
+  source.target = "_blank";
+  source.rel = "noopener noreferrer";
+  source.textContent = `Ouvrir sur ${embed.platform} ↗`;
+  card.append(frame, source);
+  document.querySelector("#social-embed-feed").prepend(card);
+  socialEmbedInput.value = "";
+});
+
+function createSocialEmbed(value) {
+  let url;
+  try {
+    url = new URL(value);
+  } catch {
+    return null;
+  }
+  if (url.protocol !== "https:" || url.username || url.password) return null;
+  const hostname = url.hostname.toLowerCase().replace(/^www\./, "");
+  if (hostname === "tiktok.com") {
+    const match = url.pathname.match(/^\/@[\w.-]+\/video\/(\d+)/);
+    return match ? { platform: "TikTok", href: url.href, src: `https://www.tiktok.com/embed/v2/${match[1]}` } : null;
+  }
+  if (hostname === "instagram.com") {
+    const match = url.pathname.match(/^\/(p|reel|tv)\/([A-Za-z0-9_-]+)/);
+    return match ? { platform: "Instagram", href: url.href, src: `https://www.instagram.com/${match[1]}/${match[2]}/embed/` } : null;
+  }
+  if ((hostname === "facebook.com" || hostname.endsWith(".facebook.com")) && /\/(?:.*\/posts\/|watch\/|videos\/|reel\/|share\/)/i.test(url.pathname)) {
+    return { platform: "Facebook", href: url.href, src: `https://www.facebook.com/plugins/post.php?href=${encodeURIComponent(url.href)}&show_text=true&width=500` };
+  }
+  const twitchParent = `parent=${encodeURIComponent(window.location.hostname)}`;
+  if (hostname === "clips.twitch.tv") {
+    const match = url.pathname.match(/^\/([a-zA-Z0-9_-]+)\/?$/);
+    return match ? { platform: "Twitch", href: url.href, src: `https://clips.twitch.tv/embed?clip=${encodeURIComponent(match[1])}&${twitchParent}` } : null;
+  }
+  if (hostname === "twitch.tv") {
+    const clip = url.pathname.match(/^\/[a-zA-Z0-9_]+\/clip\/([a-zA-Z0-9_-]+)/);
+    if (clip) return { platform: "Twitch", href: url.href, src: `https://clips.twitch.tv/embed?clip=${encodeURIComponent(clip[1])}&${twitchParent}` };
+    const video = url.pathname.match(/^\/videos\/(\d+)/);
+    if (video) return { platform: "Twitch", href: url.href, src: `https://player.twitch.tv/?video=v${video[1]}&${twitchParent}` };
+    const channel = url.pathname.match(/^\/([a-zA-Z0-9_]+)\/?$/);
+    return channel ? { platform: "Twitch", href: url.href, src: `https://player.twitch.tv/?channel=${encodeURIComponent(channel[1])}&${twitchParent}&muted=true` } : null;
+  }
+  return null;
+}
 
 const aboutDialog = document.querySelector("#about-dialog");
 document.querySelector("#about-button").addEventListener("click", () => aboutDialog.showModal());

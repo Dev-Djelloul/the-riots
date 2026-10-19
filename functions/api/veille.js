@@ -41,7 +41,7 @@ const MATCHERS = [
 ];
 
 const MAX_FEED_BYTES = 1_000_000;
-const MAX_ARTICLES_PER_SOURCE = 12;
+const MAX_ARTICLES_PER_SOURCE = 50;
 
 export async function onRequestGet() {
   const sourceResults = await Promise.all(SOURCES.map(async (source) => {
@@ -66,7 +66,7 @@ export async function onRequestGet() {
   const sources = sourceResults.map((result) => result.source);
   const articles = sourceResults.flatMap((result) => result.articles)
     .sort((a, b) => new Date(b.publishedAt) - new Date(a.publishedAt))
-    .slice(0, 60);
+    .slice(0, SOURCES.length * MAX_ARTICLES_PER_SOURCE);
   const availableSources = sources.filter((source) => source.status === "ok").length;
   const status = availableSources === 0 ? 503 : 200;
 
@@ -117,7 +117,6 @@ async function readLimitedText(response, maxBytes) {
 function parseFeed(xml, source) {
   const items = xml.match(/<item(?:\s[^>]*)?>[\s\S]*?<\/item>/gi) || [];
   const now = Date.now();
-  const maxAge = 7 * 24 * 60 * 60 * 1000;
   const articles = [];
   const seen = new Set();
 
@@ -128,7 +127,7 @@ function parseFeed(xml, source) {
     const dateValue = cleanText(readTag(item, "pubDate") || readTag(item, "date"));
     const timestamp = Date.parse(dateValue);
     const link = safeArticleUrl(cleanText(readTag(item, "link")), source.feed);
-    if (!title || !link || !Number.isFinite(timestamp) || timestamp > now + 60 * 60 * 1000 || now - timestamp > maxAge) continue;
+    if (!title || !link || !Number.isFinite(timestamp) || timestamp > now + 60 * 60 * 1000) continue;
 
     const normalized = normalize(`${title} ${description}`);
     const matchedTerms = TERMS.filter((term) => normalized.includes(normalize(term)));

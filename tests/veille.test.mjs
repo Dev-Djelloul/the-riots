@@ -31,11 +31,11 @@ test("agrège et attribue les articles récents des sept flux", async () => {
   assert.deepEqual(payload.articles[0].position, [45.764, 4.8357]);
 });
 
-test("ignore les articles anciens, hors sujet et les liens non HTTP", async () => {
+test("conserve l’historique RSS disponible et ignore les articles hors sujet et liens non HTTP", async () => {
   const oldDate = new Date(Date.now() - 10 * 24 * 60 * 60 * 1000).toUTCString();
   globalThis.fetch = async () => new Response(
     `<rss><channel>
-      <item><title>Manifestation ancienne</title><link>https://media.example/old</link><pubDate>${oldDate}</pubDate></item>
+      <item><title>Manifestation ancienne à Marseille</title><link>https://media.example/old</link><pubDate>${oldDate}</pubDate></item>
       <item><title>Recette du jour</title><link>https://media.example/irrelevant</link><pubDate>${now}</pubDate></item>
       <item><title>Manifestation à Paris</title><link>javascript:alert(1)</link><pubDate>${now}</pubDate></item>
       <item><title>Manifestation à Lyon</title><link>https://media.example/image-test</link><pubDate>${now}</pubDate><media:thumbnail url="http://media.example/image.jpg" /></item>
@@ -47,8 +47,9 @@ test("ignore les articles anciens, hors sujet et les liens non HTTP", async () =
   const payload = await response.json();
 
   assert.equal(response.status, 200);
-  assert.equal(payload.articles.length, 1);
-  assert.equal(payload.articles[0].image, null);
+  assert.equal(payload.articles.length, 14);
+  assert.ok(payload.articles.some((article) => article.title === "Manifestation ancienne à Marseille"));
+  assert.ok(payload.articles.every((article) => article.image === null));
 });
 
 test("signale une indisponibilité explicite quand tous les flux échouent", async () => {
