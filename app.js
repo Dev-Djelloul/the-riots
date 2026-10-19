@@ -101,6 +101,55 @@ function render() {
   renderSources();
 }
 
+function renderSocial(payload) {
+  const container = document.querySelector("#social-feed");
+  const twitchSource = payload.sources?.find((source) => source.id === "twitch");
+  const twitchStatus = document.querySelector('[data-social-status="twitch"]');
+  if (twitchSource) {
+    twitchStatus.textContent = twitchSource.message;
+    twitchStatus.className = `social-platform-status ${twitchSource.status}`;
+  }
+  container.replaceChildren();
+  if (payload.articles?.length) {
+    const heading = document.createElement("h3");
+    heading.className = "social-feed-heading";
+    heading.textContent = `Twitch · directs en cours pour « ${payload.query} »`;
+    const grid = document.createElement("div");
+    grid.className = "social-result-grid";
+    for (const article of payload.articles) {
+      const link = document.createElement("a");
+      link.className = "social-result";
+      link.href = article.link;
+      link.target = "_blank";
+      link.rel = "noopener noreferrer";
+      const title = document.createElement("strong");
+      title.textContent = article.title;
+      const meta = document.createElement("span");
+      meta.textContent = `${article.sourceName} · ${article.description}`;
+      link.append(title, meta);
+      grid.append(link);
+    }
+    container.append(heading, grid);
+  }
+}
+
+async function loadSocial(query = "manifestation France") {
+  const container = document.querySelector("#social-feed");
+  try {
+    const response = await fetch(`/api/social?q=${encodeURIComponent(query)}`, {
+      headers: { Accept: "application/json" },
+    });
+    if (!response.ok) throw new Error(`Réponse inattendue (${response.status})`);
+    renderSocial(await response.json());
+  } catch (error) {
+    console.error("Impossible de charger les sources sociales.", error);
+    const status = document.querySelector('[data-social-status="twitch"]');
+    status.textContent = "Vérification de la source impossible.";
+    status.className = "social-platform-status unavailable";
+    container.replaceChildren();
+  }
+}
+
 function renderVisuals(articles) {
   const selected = articles.slice(0, 3);
   visualFeed.className = `visual-grid visual-count-${selected.length}`;
@@ -391,6 +440,7 @@ async function loadArticles() {
   } finally {
     refreshButton.disabled = false;
     refreshButton.classList.remove("refreshing");
+    loadSocial(document.querySelector("#social-query").value.trim() || "manifestation France");
   }
 }
 
@@ -439,18 +489,22 @@ document.querySelector("#reset-filters").addEventListener("click", () => {
 refreshButton.addEventListener("click", loadArticles);
 
 const socialQuery = document.querySelector("#social-query");
-const socialSearchUrls = {
-  facebook: (query) => `https://www.facebook.com/search/top?q=${encodeURIComponent(query)}`,
-  tiktok: (query) => `https://www.tiktok.com/search?q=${encodeURIComponent(query)}`,
-  twitch: (query) => `https://www.twitch.tv/search?term=${encodeURIComponent(query)}`,
-};
-
+const instagramSearch = document.querySelector("[data-instagram-search]");
+let socialSearchTimer;
 socialQuery.addEventListener("input", () => {
-  const query = socialQuery.value.trim();
-  document.querySelectorAll(".social-platform-card").forEach((card) => {
-    const createUrl = socialSearchUrls[card.dataset.platform];
-    if (createUrl) card.href = createUrl(query);
-  });
+  const tag = socialQuery.value.trim().replace(/^#+/, "").split(/\s+/)[0]
+    .normalize("NFD").replace(/\p{Diacritic}/gu, "").replace(/[^\p{Letter}\p{Number}_]/gu, "");
+  if (tag) {
+    instagramSearch.href = `https://www.instagram.com/explore/tags/${encodeURIComponent(tag)}/`;
+    instagramSearch.textContent = `Ouvrir #${tag} ↗`;
+  } else {
+    instagramSearch.href = "https://www.instagram.com/";
+    instagramSearch.textContent = "Ouvrir Instagram ↗";
+  }
+  window.clearTimeout(socialSearchTimer);
+  socialSearchTimer = window.setTimeout(() => {
+    loadSocial(socialQuery.value.trim() || "manifestation France");
+  }, 600);
 });
 
 document.querySelectorAll(".load-stream").forEach((button) => {

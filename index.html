@@ -122,35 +122,37 @@
               <span class="section-kicker">SOURCES SOCIALES</span>
               <h2>Réseaux sociaux</h2>
             </div>
-            <span class="visual-board-note">RECHERCHES PUBLIQUES · RÉSULTATS NON VÉRIFIÉS</span>
+            <span class="visual-board-note">API OFFICIELLES · ACCÈS AUTORISÉS</span>
           </div>
           <label class="social-search">
-            <span>MOTS-CLÉS</span>
+            <span>MOTS-CLÉS / HASHTAG</span>
             <input id="social-query" type="search" value="manifestation France" autocomplete="off" />
           </label>
-          <p class="social-privacy-note">Les mots-clés préremplissent Facebook, TikTok et Twitch. Instagram s’ouvre séparément : lance la recherche par hashtag sur la plateforme. Aucun contenu social n’est récupéré ni vérifié dans Veille ; certaines recherches peuvent demander une connexion.</p>
+          <p class="social-privacy-note">Les directs Twitch trouvés apparaissent ici si l’API est configurée. Facebook, Instagram et TikTok ne proposent pas de recherche publique générale dans leurs API accessibles sans approbation ; leurs contenus ne sont pas intégrés. Instagram permet toutefois d’ouvrir directement le hashtag recherché.</p>
           <div class="social-platform-grid">
-            <a class="social-platform-card" data-platform="facebook" href="https://www.facebook.com/search/top?q=manifestation%20France" target="_blank" rel="noopener noreferrer" referrerpolicy="no-referrer">
+            <article class="social-platform-card" data-platform="facebook">
               <span class="social-platform-name">Facebook</span>
-              <span class="social-platform-detail">Publications et pages · accès selon la plateforme</span>
-              <span class="social-platform-action">Ouvrir la recherche ↗</span>
-            </a>
-            <a class="social-platform-card" data-platform="instagram" href="https://www.instagram.com/" target="_blank" rel="noopener noreferrer" referrerpolicy="no-referrer">
+              <span class="social-platform-detail">Non intégré : publications des pages publiques soumises à autorisation Meta.</span>
+              <a class="social-platform-action" href="https://developers.facebook.com/docs/pages-api" target="_blank" rel="noopener noreferrer">Conditions de l’API ↗</a>
+            </article>
+            <article class="social-platform-card" data-platform="instagram">
               <span class="social-platform-name">Instagram</span>
-              <span class="social-platform-detail">Ouvrir Instagram, puis rechercher un hashtag</span>
-              <span class="social-platform-action">Ouvrir Instagram ↗</span>
-            </a>
-            <a class="social-platform-card" data-platform="tiktok" href="https://www.tiktok.com/search?q=manifestation%20France" target="_blank" rel="noopener noreferrer" referrerpolicy="no-referrer">
+              <span class="social-platform-detail">Non intégré : API hashtag réservée aux comptes professionnels et autorisations Meta.</span>
+              <a class="social-platform-action" data-instagram-search href="https://www.instagram.com/explore/tags/manifestation/" target="_blank" rel="noopener noreferrer">Ouvrir #manifestation ↗</a>
+              <a class="social-platform-action" href="https://developers.facebook.com/docs/instagram-platform/instagram-graph-api/reference/ig-hashtag-search/" target="_blank" rel="noopener noreferrer">Conditions de l’API ↗</a>
+            </article>
+            <article class="social-platform-card" data-platform="tiktok">
               <span class="social-platform-name">TikTok</span>
-              <span class="social-platform-detail">Vidéos publiques correspondant aux mots-clés</span>
-              <span class="social-platform-action">Ouvrir la recherche ↗</span>
-            </a>
-            <a class="social-platform-card" data-platform="twitch" href="https://www.twitch.tv/search?term=manifestation%20France" target="_blank" rel="noopener noreferrer" referrerpolicy="no-referrer">
+              <span class="social-platform-detail">Non intégré : la recherche vidéo relève de la Research API approuvée.</span>
+              <a class="social-platform-action" href="https://developers.tiktok.com/products/research-api/" target="_blank" rel="noopener noreferrer">Conditions de l’API ↗</a>
+            </article>
+            <article class="social-platform-card" data-platform="twitch">
               <span class="social-platform-name">Twitch</span>
-              <span class="social-platform-detail">Chaînes et directs correspondants</span>
-              <span class="social-platform-action">Ouvrir la recherche ↗</span>
-            </a>
+              <span class="social-platform-status" data-social-status="twitch">Vérification de la source…</span>
+              <a class="social-platform-action" data-social-docs="twitch" href="https://dev.twitch.tv/docs/authentication/getting-tokens-oauth/#oauth-client-credentials-flow" target="_blank" rel="noopener noreferrer">Configuration API ↗</a>
+            </article>
           </div>
+          <div class="social-feed" id="social-feed" aria-live="polite"></div>
         </section>
 
         <section class="workspace" aria-label="Tableau de veille">
