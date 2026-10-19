@@ -28,6 +28,7 @@ test("agrège et attribue les articles récents des sept flux", async () => {
   assert.equal(payload.articles[0].sourceName, "franceinfo");
   assert.equal(payload.articles[0].link, "https://media.example/article");
   assert.equal(payload.articles[0].image, "https://media.example/image.jpg");
+  assert.deepEqual(payload.articles[0].position, [45.764, 4.8357]);
 });
 
 test("ignore les articles anciens, hors sujet et les liens non HTTP", async () => {

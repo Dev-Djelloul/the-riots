@@ -35,11 +35,25 @@ const state = {
 };
 
 const feed = document.querySelector("#feed-list");
-const markers = document.querySelector("#map-markers");
+const mapElement = document.querySelector("#france-map");
 const visualFeed = document.querySelector("#visual-feed");
 const mapEmpty = document.querySelector("#map-empty");
 const emptyState = document.querySelector("#empty-state");
 const refreshButton = document.querySelector("#refresh-button");
+const map = window.L
+  ? L.map(mapElement, { scrollWheelZoom: false }).fitBounds([[41.2, -5.5], [51.3, 9.8]], { padding: [12, 12] })
+  : null;
+
+if (map) {
+  L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
+    maxZoom: 19,
+    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer">OpenStreetMap</a> contributors',
+    updateWhenIdle: true,
+  }).addTo(map);
+} else {
+  mapEmpty.hidden = false;
+  mapEmpty.textContent = "La carte n’a pas pu être chargée. Vérifie ta connexion puis actualise la page.";
+}
 
 function getVisibleArticles() {
   const now = Date.now();
@@ -71,8 +85,8 @@ function render() {
     groups.set(article.city, group);
     return groups;
   }, new Map()).values()];
-  markers.replaceChildren(...cityGroups.map(createMarker));
-  mapEmpty.hidden = mapped.length > 0;
+  renderMap(cityGroups);
+  mapEmpty.hidden = Boolean(map) && mapped.length > 0;
   const isEmpty = articles.length === 0;
   emptyState.hidden = !isEmpty;
   feed.hidden = isEmpty;
@@ -251,42 +265,46 @@ function createArticleCard(article) {
   return card;
 }
 
-function createMarker(articles, index) {
-  const article = articles[0];
-  const selected = articles.some((item) => state.selected === item.id);
-  const group = document.createElementNS("http://www.w3.org/2000/svg", "g");
-  group.classList.add("map-marker");
-  if (selected) group.classList.add("selected");
-  group.setAttribute("transform", `translate(${article.position[0]} ${article.position[1]})`);
-  group.setAttribute("tabindex", "0");
-  group.setAttribute("role", "button");
-  group.setAttribute("aria-label", `${article.city}, cité dans ${articles.length} titre${articles.length === 1 ? "" : "s"}`);
-  const title = document.createElementNS("http://www.w3.org/2000/svg", "title");
-  title.textContent = `${article.city} — ${articles.length} article${articles.length === 1 ? "" : "s"}`;
-  const halo = document.createElementNS("http://www.w3.org/2000/svg", "circle");
-  halo.setAttribute("r", "15");
-  halo.setAttribute("class", "marker-halo");
-  halo.style.animationDelay = `${index * -0.65}s`;
-  const ring = document.createElementNS("http://www.w3.org/2000/svg", "circle");
-  ring.setAttribute("r", "7");
-  ring.setAttribute("class", "marker-ring");
-  const core = document.createElementNS("http://www.w3.org/2000/svg", "circle");
-  core.setAttribute("r", "3.5");
-  core.setAttribute("class", "marker-core");
-  group.append(title, halo, ring, core);
-
-  const select = () => {
-    state.selected = articles.some((item) => item.id === state.selected) ? null : article.id;
-    render();
-  };
-  group.addEventListener("click", select);
-  group.addEventListener("keydown", (event) => {
-    if (event.key === "Enter" || event.key === " ") {
-      event.preventDefault();
-      select();
-    }
+function renderMap(cityGroups) {
+  if (!map) return;
+  map.eachLayer((layer) => {
+    if (layer instanceof L.CircleMarker) map.removeLayer(layer);
   });
-  return group;
+  cityGroups.forEach((articles) => {
+    const [latitude, longitude] = articles[0].position;
+    const selected = articles.some((article) => state.selected === article.id);
+    const marker = L.circleMarker([latitude, longitude], {
+      radius: Math.min(14, 7 + Math.log2(articles.length)),
+      color: selected ? "#f3c299" : "#d8a67d",
+      weight: 2,
+      fillColor: selected ? "#f3c299" : "#d8a67d",
+      fillOpacity: 0.78,
+    });
+    marker.bindPopup(createCityPopup(articles[0].city, articles));
+    marker.addTo(map);
+  });
+}
+
+function createCityPopup(city, articles) {
+  const popup = document.createElement("div");
+  popup.className = "map-popup";
+  const heading = document.createElement("strong");
+  heading.textContent = `${city} · repère approximatif`;
+  const note = document.createElement("p");
+  note.textContent = "Ville citée dans le titre ; l’emplacement de l’événement n’est pas vérifié.";
+  const list = document.createElement("ul");
+  articles.forEach((article) => {
+    const item = document.createElement("li");
+    const link = document.createElement("a");
+    link.href = article.link;
+    link.target = "_blank";
+    link.rel = "noopener noreferrer";
+    link.textContent = article.title;
+    item.append(link);
+    list.append(item);
+  });
+  popup.append(heading, note, list);
+  return popup;
 }
 
 function renderSources() {
@@ -357,7 +375,7 @@ async function loadArticles() {
     } else if (payload.warning) {
       updateStatus("partial", `${payload.warning} Actualisé ${formatClock(state.fetchedAt)}.`);
     } else {
-      updateStatus("ready", `7 médias · actualisé ${formatClock(state.fetchedAt)}.`);
+      updateStatus("ready", `${state.sources.length} médias · actualisé ${formatClock(state.fetchedAt)}.`);
     }
     render();
   } catch (error) {
@@ -419,6 +437,21 @@ document.querySelector("#reset-filters").addEventListener("click", () => {
 });
 
 refreshButton.addEventListener("click", loadArticles);
+
+const socialQuery = document.querySelector("#social-query");
+const socialSearchUrls = {
+  facebook: (query) => `https://www.facebook.com/search/top?q=${encodeURIComponent(query)}`,
+  tiktok: (query) => `https://www.tiktok.com/search?q=${encodeURIComponent(query)}`,
+  twitch: (query) => `https://www.twitch.tv/search?term=${encodeURIComponent(query)}`,
+};
+
+socialQuery.addEventListener("input", () => {
+  const query = socialQuery.value.trim();
+  document.querySelectorAll(".social-platform-card").forEach((card) => {
+    const createUrl = socialSearchUrls[card.dataset.platform];
+    if (createUrl) card.href = createUrl(query);
+  });
+});
 
 document.querySelectorAll(".load-stream").forEach((button) => {
   button.addEventListener("click", () => {

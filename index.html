@@ -15,6 +15,13 @@
       href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=DM+Sans:wght@400;500;600;700&family=Playfair+Display:wght@500;600;700&display=swap"
       rel="stylesheet"
     />
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.css"
+      integrity="sha512-Zcn6bjR/8RZbLEpLIeOwNtzREBAJnUKESxces60Mpoj+2okopSAcSUIUOseddDm0cxnGQzxIR7vJgsLZbdLE3w=="
+      crossorigin="anonymous"
+      referrerpolicy="no-referrer"
+    />
     <link rel="stylesheet" href="styles.css" />
   </head>
   <body>
@@ -109,6 +116,43 @@
           </div>
         </section>
 
+        <section class="social-board" aria-label="Recherches sur les réseaux sociaux">
+          <div class="visual-board-heading">
+            <div>
+              <span class="section-kicker">SOURCES SOCIALES</span>
+              <h2>Réseaux sociaux</h2>
+            </div>
+            <span class="visual-board-note">RECHERCHES PUBLIQUES · RÉSULTATS NON VÉRIFIÉS</span>
+          </div>
+          <label class="social-search">
+            <span>MOTS-CLÉS</span>
+            <input id="social-query" type="search" value="manifestation France" autocomplete="off" />
+          </label>
+          <p class="social-privacy-note">Les mots-clés préremplissent Facebook, TikTok et Twitch. Instagram s’ouvre séparément : lance la recherche par hashtag sur la plateforme. Aucun contenu social n’est récupéré ni vérifié dans Veille ; certaines recherches peuvent demander une connexion.</p>
+          <div class="social-platform-grid">
+            <a class="social-platform-card" data-platform="facebook" href="https://www.facebook.com/search/top?q=manifestation%20France" target="_blank" rel="noopener noreferrer" referrerpolicy="no-referrer">
+              <span class="social-platform-name">Facebook</span>
+              <span class="social-platform-detail">Publications et pages · accès selon la plateforme</span>
+              <span class="social-platform-action">Ouvrir la recherche ↗</span>
+            </a>
+            <a class="social-platform-card" data-platform="instagram" href="https://www.instagram.com/" target="_blank" rel="noopener noreferrer" referrerpolicy="no-referrer">
+              <span class="social-platform-name">Instagram</span>
+              <span class="social-platform-detail">Ouvrir Instagram, puis rechercher un hashtag</span>
+              <span class="social-platform-action">Ouvrir Instagram ↗</span>
+            </a>
+            <a class="social-platform-card" data-platform="tiktok" href="https://www.tiktok.com/search?q=manifestation%20France" target="_blank" rel="noopener noreferrer" referrerpolicy="no-referrer">
+              <span class="social-platform-name">TikTok</span>
+              <span class="social-platform-detail">Vidéos publiques correspondant aux mots-clés</span>
+              <span class="social-platform-action">Ouvrir la recherche ↗</span>
+            </a>
+            <a class="social-platform-card" data-platform="twitch" href="https://www.twitch.tv/search?term=manifestation%20France" target="_blank" rel="noopener noreferrer" referrerpolicy="no-referrer">
+              <span class="social-platform-name">Twitch</span>
+              <span class="social-platform-detail">Chaînes et directs correspondants</span>
+              <span class="social-platform-action">Ouvrir la recherche ↗</span>
+            </a>
+          </div>
+        </section>
+
         <section class="workspace" aria-label="Tableau de veille">
           <aside class="sidebar">
             <div class="sidebar-heading">
@@ -151,43 +195,20 @@
             </div>
           </aside>
 
-          <section class="map-panel" aria-label="Carte schématique de France">
+          <section class="map-panel" aria-label="Carte géographique interactive de France">
             <div class="map-topline">
               <div>
                 <span class="section-kicker">REPÈRES GÉOGRAPHIQUES</span>
                 <h2>France métropolitaine</h2>
               </div>
-              <span class="map-date"><span class="mini-dot"></span> VILLES CITÉES DANS LES TITRES</span>
+              <span class="map-date"><span class="mini-dot"></span> VILLES CITÉES · REPÈRES APPROXIMATIFS</span>
             </div>
             <div class="map-stage">
-              <div class="map-grid" aria-hidden="true"></div>
-              <svg class="france-map" viewBox="0 0 460 510" preserveAspectRatio="xMidYMid meet" role="img" aria-label="Carte schématique, repères approximatifs issus des titres d’articles">
-                <defs>
-                  <pattern id="mapHatch" width="9" height="9" patternTransform="rotate(45)" patternUnits="userSpaceOnUse">
-                    <line x1="0" y1="0" x2="0" y2="9" stroke="#25342f" stroke-width="1" />
-                  </pattern>
-                  <clipPath id="franceClip">
-                    <path d="M179 34 222 42 249 32 277 50 308 48 324 71 354 75 362 106 392 124 379 155 402 178 391 205 408 226 393 256 406 282 386 308 392 336 369 353 373 379 348 392 342 422 312 434 288 456 260 451 238 472 213 454 185 465 163 446 134 451 120 426 93 417 90 390 64 375 76 345 57 320 71 291 51 265 71 241 60 211 83 189 78 158 105 148 113 121 143 113 149 84 175 77 174 51Z" />
-                  </clipPath>
-                </defs>
-                <g class="map-contours" clip-path="url(#franceClip)">
-                  <path d="M25 150 Q150 85 275 122 T470 85 M15 210 Q125 180 240 212 T465 190 M20 276 Q130 242 250 277 T460 248 M30 335 Q150 310 265 336 T455 310 M60 395 Q165 365 290 402 T430 380" />
-                  <path d="M90 40 Q115 150 150 245 T170 480 M150 25 Q175 145 210 260 T240 485 M225 25 Q235 130 280 245 T305 470 M300 30 Q280 145 340 245 T365 420" />
-                </g>
-                <path class="map-outline" d="M179 34 222 42 249 32 277 50 308 48 324 71 354 75 362 106 392 124 379 155 402 178 391 205 408 226 393 256 406 282 386 308 392 336 369 353 373 379 348 392 342 422 312 434 288 456 260 451 238 472 213 454 185 465 163 446 134 451 120 426 93 417 90 390 64 375 76 345 57 320 71 291 51 265 71 241 60 211 83 189 78 158 105 148 113 121 143 113 149 84 175 77 174 51Z" />
-                <path class="corsica" d="m391 421 8 6-2 13-8 10-4-8 3-13z" />
-                <g class="map-markers" id="map-markers"></g>
-              </svg>
-              <div class="map-label label-paris">PARIS</div>
-              <div class="map-label label-lyon">LYON</div>
-              <div class="map-label label-marseille">MARSEILLE</div>
-              <div class="map-label label-bordeaux">BORDEAUX</div>
-              <div class="map-empty" id="map-empty" hidden>Aucune ville mentionnée dans les titres<br /><span>Les repères apparaissent lorsqu’un lieu est explicitement cité.</span></div>
-              <div class="map-scale"><span></span> FRANCE</div>
-              <div class="map-legend"><span class="legend-ring"></span> REPÈRE APPROXIMATIF</div>
+              <div id="france-map" class="geographic-map" role="application" aria-label="Carte interactive OpenStreetMap de la France avec des repères approximatifs par ville"></div>
+              <div class="map-empty" id="map-empty" hidden>Aucune ville connue citée dans les titres<br /><span>Les repères approximatifs apparaissent lorsqu’un titre nomme une ville suivie.</span></div>
             </div>
             <div class="map-footer">
-              <span>VILLE MENTIONNÉE DANS LE TITRE · PAS DE GÉOLOCALISATION</span>
+              <span>REPÈRE APPROXIMATIF · VILLE CITÉE DANS UN TITRE · PAS DE LOCALISATION DE L’ÉVÉNEMENT</span>
               <span id="map-result-count">0 REPÈRE</span>
             </div>
           </section>
@@ -233,6 +254,12 @@
       <div class="dialog-rule"></div>
       <span class="dialog-foot">INFORMER · SOURCER · CONTEXTUALISER</span>
     </dialog>
+    <script
+      src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"
+      integrity="sha512-puJW3E/qXDqYp9IfhAI54BJEaWIfloJ7JWs7OeD5i6ruC9JZL1gERT1wjtwXFlh7CjE7ZJ+/vcRZRkIYIb6p4g=="
+      crossorigin="anonymous"
+      referrerpolicy="no-referrer"
+    ></script>
     <script src="app.js"></script>
   </body>
 </html>

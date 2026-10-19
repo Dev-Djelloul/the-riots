@@ -16,22 +16,22 @@ const TERMS = [
 ];
 
 const CITIES = [
-  { name: "Paris", region: "Île-de-France", position: [223, 153] },
-  { name: "Lyon", region: "Auvergne-Rhône-Alpes", position: [287, 262] },
-  { name: "Marseille", region: "Provence-Alpes-Côte d’Azur", position: [266, 365] },
-  { name: "Bordeaux", region: "Nouvelle-Aquitaine", position: [163, 329] },
-  { name: "Lille", region: "Hauts-de-France", position: [250, 83] },
-  { name: "Nantes", region: "Pays de la Loire", position: [139, 230] },
-  { name: "Rennes", region: "Bretagne", position: [116, 187] },
-  { name: "Toulouse", region: "Occitanie", position: [194, 368] },
-  { name: "Strasbourg", region: "Grand Est", position: [352, 172] },
-  { name: "Nice", region: "Provence-Alpes-Côte d’Azur", position: [354, 325] },
-  { name: "Montpellier", region: "Occitanie", position: [251, 347] },
-  { name: "Grenoble", region: "Auvergne-Rhône-Alpes", position: [300, 293] },
-  { name: "Rouen", region: "Normandie", position: [171, 148] },
-  { name: "Dijon", region: "Bourgogne-Franche-Comté", position: [278, 205] },
-  { name: "Reims", region: "Grand Est", position: [273, 134] },
-  { name: "Saint-Denis", region: "Île-de-France", position: [228, 144] },
+  { name: "Paris", region: "Île-de-France", position: [48.8566, 2.3522] },
+  { name: "Lyon", region: "Auvergne-Rhône-Alpes", position: [45.764, 4.8357] },
+  { name: "Marseille", region: "Provence-Alpes-Côte d’Azur", position: [43.2965, 5.3698] },
+  { name: "Bordeaux", region: "Nouvelle-Aquitaine", position: [44.8378, -0.5792] },
+  { name: "Lille", region: "Hauts-de-France", position: [50.6292, 3.0573] },
+  { name: "Nantes", region: "Pays de la Loire", position: [47.2184, -1.5536] },
+  { name: "Rennes", region: "Bretagne", position: [48.1173, -1.6778] },
+  { name: "Toulouse", region: "Occitanie", position: [43.6047, 1.4442] },
+  { name: "Strasbourg", region: "Grand Est", position: [48.5734, 7.7521] },
+  { name: "Nice", region: "Provence-Alpes-Côte d’Azur", position: [43.7102, 7.262] },
+  { name: "Montpellier", region: "Occitanie", position: [43.6119, 3.8772] },
+  { name: "Grenoble", region: "Auvergne-Rhône-Alpes", position: [45.1885, 5.7245] },
+  { name: "Rouen", region: "Normandie", position: [49.4432, 1.0999] },
+  { name: "Dijon", region: "Bourgogne-Franche-Comté", position: [47.322, 5.0415] },
+  { name: "Reims", region: "Grand Est", position: [49.2583, 4.0317] },
+  { name: "Saint-Denis", region: "Île-de-France", position: [48.9362, 2.3574] },
 ];
 
 const MATCHERS = [
