@@ -25,6 +25,7 @@ const LIVE_CHANNELS = {
   },
   cnews: {
     name: "CNEWS",
+    id: "UCXKJrYczY2_fJEZgFPGY0HQ",
     liveUrl: "https://www.youtube.com/@CNEWSofficiel/live",
   },
 };
