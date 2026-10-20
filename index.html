@@ -141,27 +141,27 @@
             <span>MOTS-CLÉS / HASHTAG</span>
             <input id="social-query" type="search" value="manifestation France" autocomplete="off" />
           </label>
-          <p class="social-privacy-note">Les vignettes Twitch sont fournies par son API si elle est configurée. Colle un lien de publication, vidéo ou direct public pour afficher le lecteur officiel de Facebook, Instagram, TikTok ou Twitch. La recherche automatique sur les autres réseaux requiert des accès API actuellement indisponibles.</p>
+          <p class="social-privacy-note">Ouvre les recherches publiques par hashtag sur chaque plateforme ; les résultats et leur disponibilité dépendent du réseau. Twitch propose une recherche par mots-clés, pas par hashtag. Colle un lien public pour afficher le lecteur officiel quand il est disponible.</p>
           <div class="social-platform-grid">
             <article class="social-platform-card" data-platform="facebook">
               <span class="social-platform-name">Facebook</span>
-              <span class="social-platform-detail">Lecteur de publication disponible avec un lien public ; la recherche de pages exige une autorisation Meta.</span>
-              <a class="social-platform-action" href="https://developers.facebook.com/docs/pages-api" target="_blank" rel="noopener noreferrer">Conditions de l’API ↗</a>
+              <span class="social-platform-detail">Recherches de publications par hashtag</span>
+              <div class="social-hashtag-links" data-social-links="facebook"></div>
             </article>
             <article class="social-platform-card" data-platform="instagram">
               <span class="social-platform-name">Instagram</span>
-              <span class="social-platform-detail">Lecteur d’une publication publique et recherche hashtag externe ; l’API intégrée exige les autorisations Meta.</span>
-              <a class="social-platform-action" data-instagram-search href="https://www.instagram.com/explore/tags/manifestation/" target="_blank" rel="noopener noreferrer">Ouvrir #manifestation ↗</a>
-              <a class="social-platform-action" href="https://developers.facebook.com/docs/instagram-platform/instagram-graph-api/reference/ig-hashtag-search/" target="_blank" rel="noopener noreferrer">Conditions de l’API ↗</a>
+              <span class="social-platform-detail">Pages de hashtags publics</span>
+              <div class="social-hashtag-links" data-social-links="instagram"></div>
             </article>
             <article class="social-platform-card" data-platform="tiktok">
               <span class="social-platform-name">TikTok</span>
-              <span class="social-platform-detail">Lecteur d’une vidéo publique par lien ; la recherche intégrée relève de la Research API approuvée.</span>
-              <a class="social-platform-action" href="https://developers.tiktok.com/products/research-api/" target="_blank" rel="noopener noreferrer">Conditions de l’API ↗</a>
+              <span class="social-platform-detail">Recherches de vidéos par hashtag</span>
+              <div class="social-hashtag-links" data-social-links="tiktok"></div>
             </article>
             <article class="social-platform-card" data-platform="twitch">
               <span class="social-platform-name">Twitch</span>
               <span class="social-platform-status" data-social-status="twitch">Vérification de la source…</span>
+              <div class="social-hashtag-links" data-social-links="twitch"></div>
               <a class="social-platform-action" data-social-docs="twitch" href="https://dev.twitch.tv/docs/authentication/getting-tokens-oauth/#oauth-client-credentials-flow" target="_blank" rel="noopener noreferrer">Configuration API ↗</a>
             </article>
           </div>

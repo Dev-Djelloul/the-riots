@@ -534,18 +534,48 @@ document.querySelector("#reset-filters").addEventListener("click", () => {
 refreshButton.addEventListener("click", loadArticles);
 
 const socialQuery = document.querySelector("#social-query");
-const instagramSearch = document.querySelector("[data-instagram-search]");
+const socialHashtags = ["emeutes", "emeutesfrance", "violencesurbaines", "manifestation", "tensionsurbaines"];
+const socialSearchUrls = {
+  facebook: (tag) => `https://www.facebook.com/search/posts/?q=${encodeURIComponent(`#${tag}`)}`,
+  instagram: (tag) => `https://www.instagram.com/explore/tags/${encodeURIComponent(tag)}/`,
+  tiktok: (tag) => `https://www.tiktok.com/search?q=${encodeURIComponent(`#${tag}`)}`,
+  twitch: (tag) => `https://www.twitch.tv/search?term=${encodeURIComponent(tag)}`,
+};
+
+function updateSocialSearchLinks() {
+  document.querySelectorAll("[data-social-links]").forEach((container) => {
+    const platform = container.dataset.socialLinks;
+    const createLink = (label, url) => {
+      const link = document.createElement("a");
+      link.className = "social-platform-action";
+      link.href = url;
+      link.target = "_blank";
+      link.rel = "noopener noreferrer";
+      link.textContent = label;
+      return link;
+    };
+
+    container.replaceChildren(...socialHashtags.map((tag) => createLink(
+      `#${tag} ↗`,
+      socialSearchUrls[platform](tag),
+    )));
+
+    const query = socialQuery.value.trim();
+    if (query) {
+      const searchUrl = platform === "twitch"
+        ? `https://www.twitch.tv/search?term=${encodeURIComponent(query.replace(/^#+/, ""))}`
+        : platform === "instagram"
+          ? `https://www.instagram.com/explore/tags/${encodeURIComponent(query.replace(/^#+/, "").split(/\s+/)[0])}/`
+          : socialSearchUrls[platform](query.replace(/^#+/, ""));
+      container.append(createLink(`Recherche : ${query} ↗`, searchUrl));
+    }
+  });
+}
+
+updateSocialSearchLinks();
 let socialSearchTimer;
 socialQuery.addEventListener("input", () => {
-  const tag = socialQuery.value.trim().replace(/^#+/, "").split(/\s+/)[0]
-    .normalize("NFD").replace(/\p{Diacritic}/gu, "").replace(/[^\p{Letter}\p{Number}_]/gu, "");
-  if (tag) {
-    instagramSearch.href = `https://www.instagram.com/explore/tags/${encodeURIComponent(tag)}/`;
-    instagramSearch.textContent = `Ouvrir #${tag} ↗`;
-  } else {
-    instagramSearch.href = "https://www.instagram.com/";
-    instagramSearch.textContent = "Ouvrir Instagram ↗";
-  }
+  updateSocialSearchLinks();
   window.clearTimeout(socialSearchTimer);
   socialSearchTimer = window.setTimeout(() => {
     loadSocial(socialQuery.value.trim() || "manifestation France");
