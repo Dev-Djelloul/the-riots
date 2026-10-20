@@ -537,7 +537,7 @@ const socialQuery = document.querySelector("#social-query");
 const socialHashtags = ["emeutes", "emeutesfrance", "violencesurbaines", "manifestation", "tensionsurbaines"];
 const socialSearchUrls = {
   facebook: (tag) => `https://www.facebook.com/search/posts/?q=${encodeURIComponent(`#${tag}`)}`,
-  instagram: (tag) => `https://www.instagram.com/explore/tags/${encodeURIComponent(tag)}/`,
+  instagram: (tag) => `https://www.instagram.com/explore/search/keyword/?q=${encodeURIComponent(tag)}`,
   tiktok: (tag) => `https://www.tiktok.com/search?q=${encodeURIComponent(`#${tag}`)}`,
   twitch: (tag) => `https://www.twitch.tv/search?term=${encodeURIComponent(tag)}`,
 };
@@ -565,7 +565,7 @@ function updateSocialSearchLinks() {
       const searchUrl = platform === "twitch"
         ? `https://www.twitch.tv/search?term=${encodeURIComponent(query.replace(/^#+/, ""))}`
         : platform === "instagram"
-          ? `https://www.instagram.com/explore/tags/${encodeURIComponent(query.replace(/^#+/, "").split(/\s+/)[0])}/`
+          ? socialSearchUrls.instagram(query.replace(/^#+/, "").split(/\s+/)[0])
           : socialSearchUrls[platform](query.replace(/^#+/, ""));
       container.append(createLink(`Recherche : ${query} ↗`, searchUrl));
     }
