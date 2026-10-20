@@ -1,4 +1,4 @@
-import { createGeographyIndex, locateArticle } from "./geography.js";
+import { createGeographyIndex, createSpectrumPalette, locateArticle } from "./geography.js";
 
 const COLORS = {
   rassemblement: "dot-amber",
@@ -54,9 +54,9 @@ const L = window.L;
 const map = window.L
   ? L.map(mapElement, { scrollWheelZoom: false }).fitBounds([[41.2, -5.5], [51.3, 9.8]], { padding: [12, 12] })
   : null;
-const communeMarkerLayer = map ? L.layerGroup().addTo(map) : null;
 const departmentLayers = new Map();
 let departmentArticlesByCode = new Map();
+let departmentColors = new Map();
 let geographyIndex = null;
 let geographyPromise = Promise.resolve(null);
 
@@ -120,14 +120,15 @@ async function loadGeography() {
 
 function departmentStyle(feature) {
   const count = departmentArticlesByCode.get(feature.properties.code)?.articles.length || 0;
+  const color = departmentColors.get(feature.properties.code);
   const selected = state.articles.some((article) => article.id === state.selected
     && article.location?.places.some((place) => place.departmentCode === feature.properties.code));
   return {
-    color: selected ? "#ffc0a1" : count ? "#ff5865" : "#73766e",
-    weight: selected ? 2 : count ? 1.3 : 0.7,
-    opacity: count ? 0.95 : 0.65,
-    fillColor: count ? "#ed1c2e" : "#777a70",
-    fillOpacity: count ? Math.min(0.5, 0.2 + Math.log2(count + 1) * 0.08) : 0.025,
+    color: selected ? "#ffffff" : color || "#73766e",
+    weight: selected ? 2.2 : count ? 1.8 : 0.7,
+    opacity: count ? 1 : 0.65,
+    fillColor: color || "#777a70",
+    fillOpacity: count ? 0.32 : 0.025,
   };
 }
 
@@ -417,8 +418,7 @@ function createArticleCard(article) {
 }
 
 function renderMap(articles) {
-  if (!map || !communeMarkerLayer) return { communeCount: 0, departmentCount: 0 };
-  communeMarkerLayer.clearLayers();
+  if (!map) return { communeCount: 0, departmentCount: 0 };
   const communes = new Map();
   const departments = new Map();
   const addArticle = (groups, place, article) => {
@@ -440,6 +440,7 @@ function renderMap(articles) {
   }
 
   departmentArticlesByCode = departments;
+  departmentColors = createSpectrumPalette(departments.keys());
   for (const [code, layer] of departmentLayers) {
     const group = departments.get(code);
     layer.setStyle(departmentStyle({ properties: { code } }));
@@ -448,26 +449,6 @@ function renderMap(articles) {
       group ? [...group.articles.values()] : [],
       "department",
     ));
-  }
-
-  for (const group of communes.values()) {
-    const articlesForPlace = [...group.articles.values()];
-    const selected = articlesForPlace.some((article) => article.id === state.selected);
-    const marker = L.circleMarker(group.place.coordinates, {
-      radius: Math.min(14, 7 + Math.log2(articlesForPlace.length)),
-      color: selected ? "#ffc0a1" : "#ff2638",
-      weight: 2,
-      fillColor: "#ed1c2e",
-      fillOpacity: 0.92,
-    });
-    marker.bindPopup(createLocationPopup(group.place.name, articlesForPlace, "commune"), {
-      maxWidth: 360,
-      minWidth: 240,
-      autoPan: true,
-      autoPanPadding: [24, 24],
-      keepInView: true,
-    });
-    marker.addTo(communeMarkerLayer);
   }
 
   return { communeCount: communes.size, departmentCount: departments.size };
@@ -480,8 +461,8 @@ function createLocationPopup(name, articles, precision) {
   heading.textContent = `${name} · ${articles.length} article${articles.length === 1 ? "" : "s"}`;
   const note = document.createElement("p");
   note.textContent = precision === "commune"
-    ? "La commune est citée dans le titre ou l’extrait ; le point indique son centre géographique, pas le lieu exact d’un événement."
-    : "Le département est cité dans le titre ou l’extrait ; cette intensité représente la couverture médiatique, pas un décompte d’événements vérifiés.";
+    ? "La commune est citée dans le titre ou l’extrait ; sa limite et son emplacement exact ne sont pas représentés."
+    : "La couleur distingue ce département parmi ceux cités dans les articles ; elle ne représente ni une intensité ni un décompte d’événements vérifiés.";
   const list = document.createElement("ul");
   articles.forEach((article) => {
     const item = document.createElement("li");

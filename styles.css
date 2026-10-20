@@ -220,8 +220,7 @@ h1 em, .about-dialog h2 em { color: var(--accent); font-weight: 500; }
 .map-date { display: inline-flex; align-items: center; gap: 6px; margin-top: 4px; color: #777a70; font-size: 8px; }
 .map-key { display: grid; justify-items: end; gap: 7px; }
 .map-legend { display: inline-flex; align-items: center; gap: 5px; color: #a4a69e; font-size: 8px; }
-.map-legend i { display: inline-block; width: 8px; height: 8px; margin-left: 5px; border: 1px solid #ff5865; background: #ed1c2e99; }
-.map-legend .map-legend-commune { width: 7px; height: 7px; border-radius: 50%; border: 1px solid #ff2638; background: #ed1c2e; }
+.map-legend i { display: inline-block; width: 28px; height: 8px; margin-left: 5px; border: 1px solid #c2c5ba; background: linear-gradient(90deg, #39c6df, #4359ee, #c64de6, #ff5a72, #ffb449, #e2e84c, #4fdf91); }
 .mini-dot { width: 5px; height: 5px; border-radius: 50%; background: var(--accent); }
 .map-stage { position: relative; flex: 1; min-height: 0; overflow: hidden; margin-top: 5px; background: #070808; }
 .geographic-map { position: absolute; inset: 0; z-index: 0; width: 100%; height: 100%; background: #070808; }

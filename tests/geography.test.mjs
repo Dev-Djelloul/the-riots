@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { test } from "node:test";
-import { createGeographyIndex, locateArticle } from "../geography.js";
+import { createGeographyIndex, createSpectrumPalette, locateArticle } from "../geography.js";
 
 const communes = JSON.parse(readFileSync(new URL("../data/communes.json", import.meta.url), "utf8"));
 const departments = JSON.parse(readFileSync(new URL("../data/departements.geojson", import.meta.url), "utf8"));
@@ -66,4 +66,12 @@ test("évite de prendre le nom commun « vue » pour la commune de Vue", () => {
   const locality = locateArticle({ title: "Rassemblement à Vue", description: "" }, geography);
   assert.equal(locality.precision, "commune");
   assert.equal(locality.places[0].code, "44220");
+});
+
+test("attribue une teinte distincte du spectre à chaque département concerné", () => {
+  const palette = createSpectrumPalette(["75", "69", "13", "2A", "75"]);
+  assert.equal(palette.size, 4);
+  assert.equal(new Set(palette.values()).size, 4);
+  assert.deepEqual([...palette.keys()], ["2A", "13", "69", "75"]);
+  assert.ok([...palette.values()].every((color) => /^hsl\(\d+ 82% 64%\)$/.test(color)));
 });

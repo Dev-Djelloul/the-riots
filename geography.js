@@ -62,6 +62,15 @@ export function createGeographyIndex(communes, departments) {
   };
 }
 
+export function createSpectrumPalette(codes) {
+  const sortedCodes = [...new Set(codes)].sort((a, b) => a.localeCompare(b, "fr", { numeric: true }));
+  const hueOffset = 205;
+  return new Map(sortedCodes.map((code, index) => [
+    code,
+    `hsl(${Math.round((hueOffset + index * 360 / sortedCodes.length) % 360)} 82% 64%)`,
+  ]));
+}
+
 function hasLocationCue(tokens, start, isTitle, isDepartment) {
   if (isTitle && start === 0) return true;
   if (isDepartment && tokens[start - 1] === "en") return true;
