@@ -14,6 +14,9 @@ const SOURCES = [
   { id: "humanite", name: "L’Humanité", kind: "Presse nationale", feed: "https://www.humanite.fr/feed", url: "https://www.humanite.fr/" },
   { id: "la-depeche", name: "La Dépêche du Midi", kind: "Presse régionale", feed: "https://www.ladepeche.fr/rss.xml", url: "https://www.ladepeche.fr/" },
   { id: "le-parisien", name: "Le Parisien", kind: "Presse régionale", feed: "https://feeds.leparisien.fr/leparisien/rss", url: "https://www.leparisien.fr/" },
+  { id: "france-inter", name: "France Inter", kind: "Audiovisuel public", feed: "https://www.radiofrance.fr/franceinter/rss", url: "https://www.radiofrance.fr/franceinter/" },
+  { id: "lexpress", name: "L’Express", kind: "Presse nationale", feed: "https://www.lexpress.fr/rss/alaune.xml", url: "https://www.lexpress.fr/" },
+  { id: "challenges", name: "Challenges", kind: "Presse nationale", feed: "https://www.challenges.fr/rss.xml", url: "https://www.challenges.fr/" },
 ];
 
 const TERMS = [

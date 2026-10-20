@@ -9,7 +9,7 @@ afterEach(() => {
   globalThis.fetch = originalFetch;
 });
 
-test("agrège et attribue les articles récents des quinze flux", async () => {
+test("agrège et attribue les articles récents des dix-huit flux", async () => {
   globalThis.fetch = async () => new Response(
     `<rss><channel><item><title>Manifestation à Lyon : actualité &amp; contexte</title><link>https://media.example/article</link><pubDate>${now}</pubDate><description><![CDATA[<p>Rassemblement rapporté dans la ville.</p>]]></description><media:thumbnail url="https://media.example/image.jpg" /></item></channel></rss>`,
     { status: 200 },
@@ -19,11 +19,14 @@ test("agrège et attribue les articles récents des quinze flux", async () => {
   const payload = await response.json();
 
   assert.equal(response.status, 200);
-  assert.equal(payload.sources.length, 15);
-  assert.equal(payload.articles.length, 15);
+  assert.equal(payload.sources.length, 18);
+  assert.equal(payload.articles.length, 18);
   assert.ok(payload.sources.some((source) => source.id === "rfi"));
   assert.ok(payload.sources.some((source) => source.id === "le-figaro"));
   assert.ok(payload.sources.some((source) => source.id === "sud-ouest"));
+  assert.ok(payload.sources.some((source) => source.id === "france-inter"));
+  assert.ok(payload.sources.some((source) => source.id === "lexpress"));
+  assert.ok(payload.sources.some((source) => source.id === "challenges"));
   assert.equal(payload.articles[0].title, "Manifestation à Lyon : actualité & contexte");
   assert.equal(payload.articles[0].description, "Rassemblement rapporté dans la ville.");
   assert.equal(payload.articles[0].city, "Lyon");
@@ -50,7 +53,7 @@ test("conserve l’historique RSS disponible et ignore les articles hors sujet e
   const payload = await response.json();
 
   assert.equal(response.status, 200);
-  assert.equal(payload.articles.length, 24);
+  assert.equal(payload.articles.length, payload.sources.length * 2);
   assert.ok(payload.articles.some((article) => article.title === "Manifestation ancienne à Marseille"));
   assert.ok(payload.articles.every((article) => article.image === null));
 });
