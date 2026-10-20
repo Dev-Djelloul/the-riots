@@ -131,7 +131,7 @@ h1 em, .about-dialog h2 em { color: var(--accent); font-weight: 500; }
 .stream-caption > span { flex: 1; color: #777a70; font: 8px var(--mono); }
 .load-stream { padding: 7px 9px; border: 1px solid #4a473e; background: #1b1c18; color: #d5b18e; font-size: 9px; cursor: pointer; }
 .stream-open { flex: 0 0 auto; color: #d5b18e; font: 8px var(--mono); text-decoration: none; }
-.stream-site-link { padding: 7px 9px; border: 1px solid #4a473e; }
+.stream-site-link { padding: 7px 9px; border: 1px solid #4a473e; color: #d5b18e; font: 8px var(--mono); text-decoration: none; }
 .stream-open:hover { color: #f0c7a1; text-decoration: underline; }
 .load-stream:hover:not(:disabled) { border-color: var(--accent); color: #f0c7a1; }
 .load-stream:disabled { color: #808278; cursor: default; }
