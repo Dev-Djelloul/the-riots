@@ -25,9 +25,17 @@ const LIVE_CHANNELS = {
     id: "UCXwDLMDV86ldKoFVc_g8P0g",
     liveUrl: "https://www.youtube.com/@BFMTV/live",
   },
+  france24: {
+    name: "France 24",
+    embedUrl: "https://embed.france24.com/fr/live",
+    liveUrl: "https://f24.my/YTliveFR",
+    siteUrl: "https://www.france24.com/fr/direct",
+  },
   cnews: {
     name: "CNEWS",
-    liveUrl: "https://www.cnews.fr/le-direct",
+    id: "UCXKJrYczY2_fJEZgFPGY0HQ",
+    liveUrl: "https://www.youtube.com/@CNEWSofficiel/live",
+    siteUrl: "https://www.cnews.fr/le-direct",
   },
 };
 
@@ -701,12 +709,12 @@ document.querySelectorAll(".load-stream").forEach((button) => {
     const channel = LIVE_CHANNELS[button.dataset.channel];
     const card = button.closest(".live-stream-card");
     const poster = card.querySelector(".stream-poster");
-    if (!channel?.id || poster.querySelector("iframe")) return;
+    if ((!channel?.id && !channel?.embedUrl) || poster.querySelector("iframe")) return;
 
     const player = document.createElement("iframe");
     player.className = "stream-player";
-    player.title = `Direct ${channel.name} sur YouTube`;
-    player.src = `https://www.youtube.com/embed/live_stream?channel=${encodeURIComponent(channel.id)}&autoplay=1&mute=1`;
+    player.title = `Direct ${channel.name}`;
+    player.src = channel.embedUrl || `https://www.youtube.com/embed/live_stream?channel=${encodeURIComponent(channel.id)}&autoplay=1&mute=1`;
     player.allow = "autoplay; encrypted-media; picture-in-picture; web-share";
     player.allowFullscreen = true;
     player.loading = "lazy";
@@ -719,6 +727,10 @@ document.querySelectorAll(".load-stream").forEach((button) => {
 
 document.querySelectorAll(".stream-open").forEach((link) => {
   link.href = LIVE_CHANNELS[link.dataset.channel]?.liveUrl || "#";
+});
+
+document.querySelectorAll(".stream-site-link[data-channel]").forEach((link) => {
+  link.href = LIVE_CHANNELS[link.dataset.channel]?.siteUrl || link.href;
 });
 
 const socialEmbedInput = document.querySelector("#social-post-url");

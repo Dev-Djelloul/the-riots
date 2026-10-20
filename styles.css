@@ -115,10 +115,11 @@ h1 em, .about-dialog h2 em { color: var(--accent); font-weight: 500; }
 .visual-empty { grid-column: 1 / -1; display: grid; place-items: center; padding: 26px; border: 1px dashed #3b3e36; color: #8e9087; font-size: 11px; text-align: center; }
 .live-board { margin-top: 12px; padding: 17px; border: 1px solid var(--line); background: var(--panel); }
 .live-privacy-note { margin: 9px 0 13px; color: #888b82; font-size: 10px; line-height: 1.5; }
-.live-stream-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 9px; }
+.live-stream-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 9px; }
 .live-stream-card { min-width: 0; border: 1px solid #343730; background: #141512; }
 .stream-poster { position: relative; display: grid; place-items: center; overflow: hidden; aspect-ratio: 16 / 8.6; background: radial-gradient(ellipse at 50% 20%, #46534a 0, #252d27 38%, #151814 78%); }
 .live-stream-card[data-channel="bfmtv"] .stream-poster { background: radial-gradient(ellipse at 50% 20%, #51423a 0, #302a27 38%, #151814 78%); }
+.live-stream-card[data-channel="france24"] .stream-poster { background: radial-gradient(ellipse at 50% 20%, #3c4857 0, #262d37 38%, #151814 78%); }
 .live-stream-card[data-channel="cnews"] .stream-poster { background: radial-gradient(ellipse at 50% 20%, #4a3b43 0, #2c252b 38%, #151814 78%); }
 .stream-poster::after { position: absolute; inset: 0; background: linear-gradient(180deg, #0000 30%, #0b0d0cc7 100%); content: ""; pointer-events: none; }
 .stream-badge { position: absolute; z-index: 1; top: 12px; left: 13px; display: inline-flex; align-items: center; gap: 7px; color: #eee9df; font: 9px var(--mono); letter-spacing: .14em; }
@@ -137,6 +138,11 @@ h1 em, .about-dialog h2 em { color: var(--accent); font-weight: 500; }
 .stream-open:hover { color: #f0c7a1; text-decoration: underline; }
 .load-stream:hover:not(:disabled) { border-color: var(--accent); color: #f0c7a1; }
 .load-stream:disabled { color: #808278; cursor: default; }
+.live-catalog { margin-top: 12px; border-top: 1px solid #343730; color: #a4a69e; font-size: 9px; }
+.live-catalog summary { padding: 10px 0 2px; color: #d5b18e; font: 8px var(--mono); letter-spacing: .06em; cursor: pointer; }
+.live-catalog ul { display: grid; gap: 8px; margin: 10px 0 0; padding-left: 17px; line-height: 1.5; }
+.live-catalog a { color: #d5b18e; text-decoration: none; }
+.live-catalog a:hover { color: #f0c7a1; text-decoration: underline; }
 .social-board { margin-top: 12px; padding: 17px; border: 1px solid var(--line); background: var(--panel); }
 .social-search { display: flex; align-items: center; gap: 12px; max-width: 460px; padding: 9px 11px; border: 1px solid #343730; background: #141512; }
 .social-search span { flex: 0 0 auto; color: #777a70; font: 8px var(--mono); letter-spacing: .12em; }
