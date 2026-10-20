@@ -27,8 +27,7 @@ const LIVE_CHANNELS = {
   },
   cnews: {
     name: "CNEWS",
-    id: "UCXKJrYczY2_fJEZgFPGY0HQ",
-    liveUrl: "https://www.youtube.com/@CNEWSofficiel/live",
+    liveUrl: "https://www.cnews.fr/le-direct",
   },
 };
 
@@ -246,7 +245,7 @@ async function loadSocial(query = "manifestation France") {
 }
 
 function renderVisuals(articles) {
-  const selected = articles.slice(0, 3);
+  const selected = articles.filter((article) => isSafeImageUrl(article.image)).slice(0, 6);
   visualFeed.className = `visual-grid visual-count-${selected.length}`;
   if (selected.length === 0) {
     const empty = document.createElement("div");
