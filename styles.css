@@ -221,6 +221,9 @@ h1 em, .about-dialog h2 em { color: var(--accent); font-weight: 500; }
 .map-key { display: grid; justify-items: end; gap: 7px; }
 .map-legend { display: inline-flex; align-items: center; gap: 5px; color: #a4a69e; font-size: 8px; }
 .map-legend i { display: inline-block; width: 28px; height: 8px; margin-left: 5px; border: 1px solid #c2c5ba; background: linear-gradient(90deg, #39c6df, #4359ee, #c64de6, #ff5a72, #ffb449, #e2e84c, #4fdf91); }
+.map-commune-marker { border: 0; background: transparent; }
+.map-commune-marker span { display: block; width: 10px; height: 10px; margin: 3px; transform: rotate(45deg); border: 1.5px solid #fff; border-radius: 2px; background: var(--marker-color); box-shadow: 0 1px 5px #000b; }
+.map-commune-marker span.selected { width: 12px; height: 12px; margin: 2px; border-width: 2px; }
 .mini-dot { width: 5px; height: 5px; border-radius: 50%; background: var(--accent); }
 .map-stage { position: relative; flex: 1; min-height: 0; overflow: hidden; margin-top: 5px; background: #070808; }
 .geographic-map { position: absolute; inset: 0; z-index: 0; width: 100%; height: 100%; background: #070808; }

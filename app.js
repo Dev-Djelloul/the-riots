@@ -54,6 +54,7 @@ const L = window.L;
 const map = window.L
   ? L.map(mapElement, { scrollWheelZoom: false }).fitBounds([[41.2, -5.5], [51.3, 9.8]], { padding: [12, 12] })
   : null;
+const communeMarkerLayer = map ? L.layerGroup().addTo(map) : null;
 const departmentLayers = new Map();
 let departmentArticlesByCode = new Map();
 let departmentColors = new Map();
@@ -418,7 +419,8 @@ function createArticleCard(article) {
 }
 
 function renderMap(articles) {
-  if (!map) return { communeCount: 0, departmentCount: 0 };
+  if (!map || !communeMarkerLayer) return { communeCount: 0, departmentCount: 0 };
+  communeMarkerLayer.clearLayers();
   const communes = new Map();
   const departments = new Map();
   const addArticle = (groups, place, article) => {
@@ -449,6 +451,30 @@ function renderMap(articles) {
       group ? [...group.articles.values()] : [],
       "department",
     ));
+  }
+
+  for (const group of communes.values()) {
+    const articlesForPlace = [...group.articles.values()];
+    const selected = articlesForPlace.some((article) => article.id === state.selected);
+    const color = departmentColors.get(group.place.departmentCode) || "#c8c8be";
+    const marker = L.marker(group.place.coordinates, {
+      icon: L.divIcon({
+        className: "map-commune-marker",
+        html: `<span class="${selected ? "selected" : ""}" style="--marker-color:${color}"></span>`,
+        iconSize: [16, 16],
+        iconAnchor: [8, 8],
+      }),
+      title: `${group.place.name} · ${articlesForPlace.length} article${articlesForPlace.length === 1 ? "" : "s"}`,
+      alt: `Articles mentionnant ${group.place.name}`,
+    });
+    marker.bindPopup(createLocationPopup(group.place.name, articlesForPlace, "commune"), {
+      maxWidth: 360,
+      minWidth: 240,
+      autoPan: true,
+      autoPanPadding: [24, 24],
+      keepInView: true,
+    });
+    marker.addTo(communeMarkerLayer);
   }
 
   return { communeCount: communes.size, departmentCount: departments.size };
