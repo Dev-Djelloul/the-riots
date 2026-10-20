@@ -31,6 +31,24 @@ const LIVE_CHANNELS = {
     liveUrl: "https://f24.my/YTliveFR",
     siteUrl: "https://www.france24.com/fr/direct",
   },
+  lci: {
+    name: "LCI",
+    id: "UCewhc0fvja891XkpIPGRMxQ",
+    liveUrl: "https://www.youtube.com/@LCI/live",
+    siteUrl: "https://www.tf1info.fr/direct/",
+  },
+  euronews: {
+    name: "Euronews",
+    id: "UCW2QcKZiU8aUGg4yxCIditg",
+    liveUrl: "https://www.youtube.com/@euronewsfr/live",
+    siteUrl: "https://fr.euronews.com/live",
+  },
+  tv5monde: {
+    name: "TV5MONDE Info",
+    id: "UCzKH70qfN_yuXq3s91fdwmg",
+    liveUrl: "https://www.youtube.com/@TV5MONDEInfo/live",
+    siteUrl: "https://europe.tv5monde.com/fr/direct",
+  },
   cnews: {
     name: "CNEWS",
     id: "UCXKJrYczY2_fJEZgFPGY0HQ",

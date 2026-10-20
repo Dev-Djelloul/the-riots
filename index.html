@@ -85,9 +85,9 @@
               <span class="section-kicker">LES RÉDACTIONS EN CONTINU</span>
               <h2>Chaînes en direct</h2>
             </div>
-            <span class="visual-board-note">LECTEURS OFFICIELS · YOUTUBE + FRANCE 24</span>
+            <span class="visual-board-note">LECTEURS DES CHAÎNES OFFICIELLES · DISPONIBILITÉ SELON LES DIRECTS</span>
           </div>
-          <p class="live-privacy-note">Les lecteurs se chargent uniquement à la demande. France 24 utilise son lecteur officiel ; les directs YouTube de franceinfo, BFMTV et CNEWS peuvent varier selon leur disponibilité. Les liens ouvrent les sites ou chaînes officiels.</p>
+          <p class="live-privacy-note">Les lecteurs se chargent au clic. LCI diffuse ses directs sur YouTube ponctuellement ; Euronews et TV5MONDE Info proposent des chaînes d’actualité en continu. Les directs et leur intégration peuvent varier ; les liens officiels restent disponibles en secours.</p>
           <div class="live-stream-grid">
             <article class="live-stream-card" data-channel="franceinfo">
               <div class="stream-poster">
@@ -130,6 +130,48 @@
                 <a class="stream-site-link" data-channel="france24" href="https://www.france24.com/fr/direct" target="_blank" rel="noopener noreferrer">Site France 24 ↗</a>
               </div>
             </article>
+            <article class="live-stream-card" data-channel="lci">
+              <div class="stream-poster">
+                <span class="stream-badge"><span></span> LCI</span>
+                <span class="stream-play" aria-hidden="true">▶</span>
+                <span class="stream-poster-hint">DIRECT YOUTUBE · SELON DISPONIBILITÉ</span>
+              </div>
+              <div class="stream-caption">
+                <strong>LCI</strong>
+                <span>Chaîne officielle · YouTube</span>
+                <button class="load-stream" type="button" data-channel="lci">Charger le direct</button>
+                <a class="stream-open" data-channel="lci" href="https://www.youtube.com/@LCI/live" target="_blank" rel="noopener noreferrer">Ouvrir sur YouTube ↗</a>
+                <a class="stream-site-link" data-channel="lci" href="https://www.tf1info.fr/direct/" target="_blank" rel="noopener noreferrer">Direct LCI ↗</a>
+              </div>
+            </article>
+            <article class="live-stream-card" data-channel="euronews">
+              <div class="stream-poster">
+                <span class="stream-badge"><span></span> EURONEWS</span>
+                <span class="stream-play" aria-hidden="true">▶</span>
+                <span class="stream-poster-hint">EURONEWS EN FRANÇAIS · EN CONTINU</span>
+              </div>
+              <div class="stream-caption">
+                <strong>Euronews</strong>
+                <span>Chaîne officielle · YouTube</span>
+                <button class="load-stream" type="button" data-channel="euronews">Charger le direct</button>
+                <a class="stream-open" data-channel="euronews" href="https://www.youtube.com/@euronewsfr/live" target="_blank" rel="noopener noreferrer">Ouvrir sur YouTube ↗</a>
+                <a class="stream-site-link" data-channel="euronews" href="https://fr.euronews.com/live" target="_blank" rel="noopener noreferrer">Site Euronews ↗</a>
+              </div>
+            </article>
+            <article class="live-stream-card" data-channel="tv5monde">
+              <div class="stream-poster">
+                <span class="stream-badge"><span></span> TV5MONDE INFO</span>
+                <span class="stream-play" aria-hidden="true">▶</span>
+                <span class="stream-poster-hint">INFO EN CONTINU · YOUTUBE</span>
+              </div>
+              <div class="stream-caption">
+                <strong>TV5MONDE Info</strong>
+                <span>Chaîne officielle · YouTube</span>
+                <button class="load-stream" type="button" data-channel="tv5monde">Charger le direct</button>
+                <a class="stream-open" data-channel="tv5monde" href="https://www.youtube.com/@TV5MONDEInfo/live" target="_blank" rel="noopener noreferrer">Ouvrir sur YouTube ↗</a>
+                <a class="stream-site-link" data-channel="tv5monde" href="https://europe.tv5monde.com/fr/direct" target="_blank" rel="noopener noreferrer">Site TV5MONDE ↗</a>
+              </div>
+            </article>
             <article class="live-stream-card" data-channel="cnews">
               <div class="stream-poster">
                 <span class="stream-badge"><span></span> CNEWS</span>
@@ -146,11 +188,11 @@
             </article>
           </div>
           <details class="live-catalog">
-            <summary>Autres directs examinés · intégration non confirmée</summary>
+            <summary>À savoir sur ces directs</summary>
             <ul>
-              <li><a href="https://www.tf1info.fr/direct/" target="_blank" rel="noopener noreferrer">LCI / TF1 Info ↗</a> — direct officiel consultable sur le site ; aucun code public d’intégration du flux live n’a été confirmé.</li>
-              <li><a href="https://www.euronews.com/live" target="_blank" rel="noopener noreferrer">Euronews ↗</a> — la documentation officielle fournit un widget d’actualités et l’intégration de vidéos choisies, pas un lecteur public documenté pour un direct permanent.</li>
-              <li><a href="https://europe.tv5monde.com/en/live" target="_blank" rel="noopener noreferrer">TV5MONDE ↗</a> — direct officiel accessible sur son site ; pas de code public d’intégration vidéo live confirmé.</li>
+              <li>LCI ne diffuse pas de flux YouTube continu : le lecteur ne fonctionnera que lorsqu’un direct officiel est en cours. Le site LCI reste le recours permanent.</li>
+              <li>TV5MONDE Info est la chaîne d’actualité intégrée ; le direct TV5MONDE général peut varier selon les pays et les droits.</li>
+              <li>Si une chaîne YouTube n’a pas de direct intégrable à l’instant, ouvre son lien officiel depuis la carte.</li>
             </ul>
           </details>
         </section>
