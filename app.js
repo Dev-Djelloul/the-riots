@@ -20,11 +20,13 @@ const LIVE_CHANNELS = {
   },
   bfmtv: {
     name: "BFMTV",
-    liveUrl: "https://www.bfmtv.com/en-direct/",
+    id: "UCXwDLMDV86ldKoFVc_g8P0g",
+    liveUrl: "https://www.youtube.com/@BFMTV/live",
   },
   cnews: {
     name: "CNEWS",
-    liveUrl: "https://www.cnews.fr/le-direct",
+    id: "UCXKJrYczY2_fJEZgFPGY0HQ",
+    liveUrl: "https://www.youtube.com/@CNEWSofficiel/live",
   },
 };
 
@@ -587,7 +589,7 @@ document.querySelectorAll(".load-stream").forEach((button) => {
     const channel = LIVE_CHANNELS[button.dataset.channel];
     const card = button.closest(".live-stream-card");
     const poster = card.querySelector(".stream-poster");
-    if (!channel || poster.querySelector("iframe")) return;
+    if (!channel?.id || poster.querySelector("iframe")) return;
 
     const player = document.createElement("iframe");
     player.className = "stream-player";
