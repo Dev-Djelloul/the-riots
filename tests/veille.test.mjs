@@ -9,7 +9,7 @@ afterEach(() => {
   globalThis.fetch = originalFetch;
 });
 
-test("agrège et attribue les articles récents des sept flux", async () => {
+test("agrège et attribue les articles récents des douze flux", async () => {
   globalThis.fetch = async () => new Response(
     `<rss><channel><item><title>Manifestation à Lyon : actualité &amp; contexte</title><link>https://media.example/article</link><pubDate>${now}</pubDate><description><![CDATA[<p>Rassemblement rapporté dans la ville.</p>]]></description><media:thumbnail url="https://media.example/image.jpg" /></item></channel></rss>`,
     { status: 200 },
@@ -19,8 +19,8 @@ test("agrège et attribue les articles récents des sept flux", async () => {
   const payload = await response.json();
 
   assert.equal(response.status, 200);
-  assert.equal(payload.sources.length, 7);
-  assert.equal(payload.articles.length, 7);
+  assert.equal(payload.sources.length, 12);
+  assert.equal(payload.articles.length, 12);
   assert.equal(payload.articles[0].title, "Manifestation à Lyon : actualité & contexte");
   assert.equal(payload.articles[0].description, "Rassemblement rapporté dans la ville.");
   assert.equal(payload.articles[0].city, "Lyon");
@@ -47,9 +47,32 @@ test("conserve l’historique RSS disponible et ignore les articles hors sujet e
   const payload = await response.json();
 
   assert.equal(response.status, 200);
-  assert.equal(payload.articles.length, 14);
+  assert.equal(payload.articles.length, 24);
   assert.ok(payload.articles.some((article) => article.title === "Manifestation ancienne à Marseille"));
   assert.ok(payload.articles.every((article) => article.image === null));
+});
+
+test("utilise la date du permalien du Parisien et la marque comme estimée", async () => {
+  const date = new Date();
+  const day = String(date.getUTCDate()).padStart(2, "0");
+  const month = String(date.getUTCMonth() + 1).padStart(2, "0");
+  const year = date.getUTCFullYear();
+  const articleLink = `https://www.leparisien.fr/france/manifestation-a-paris-${day}-${month}-${year}-ABCDEFGHIJKLMN.php`;
+  globalThis.fetch = async (input) => {
+    if (String(input).includes("feeds.leparisien.fr")) {
+      return new Response(`<rss><channel><item><title>Manifestation à Paris</title><link>${articleLink}</link></item></channel></rss>`, { status: 200 });
+    }
+    return new Response("<rss><channel></channel></rss>", { status: 200 });
+  };
+
+  const response = await onRequestGet();
+  const payload = await response.json();
+  const article = payload.articles.find((item) => item.sourceId === "le-parisien");
+
+  assert.equal(response.status, 200);
+  assert.ok(article);
+  assert.equal(article.datePrecision, "day");
+  assert.equal(article.publishedAt, new Date(Date.UTC(year, date.getUTCMonth(), date.getUTCDate(), 12)).toISOString());
 });
 
 test("signale une indisponibilité explicite quand tous les flux échouent", async () => {

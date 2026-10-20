@@ -1,10 +1,10 @@
 # Veille
 
-Veille agrège les flux RSS publics de franceinfo, BFMTV, CNEWS, Le Monde, France 24, Libération et Ouest-France. La fonction `functions/api/veille.js` récupère les articles encore exposés par ces flux et correspondant aux mots-clés suivis, puis renvoie leur média, date, extrait, vignette éventuelle et lien original. Le tableau de bord propose une régie visuelle des trois derniers articles, les lecteurs de chaînes, une carte interactive OpenStreetMap et un fil de cartes attribuées aux éditeurs. Le fil de presse fonctionne sans identifiant ; la recherche Twitch est optionnelle et demande des secrets API configurés côté serveur.
+Veille agrège douze flux RSS publics : franceinfo, BFMTV, CNEWS, Le Monde, France 24, Libération, Ouest-France, 20 Minutes, La Croix, L’Humanité, La Dépêche du Midi et Le Parisien. La sélection combine audiovisuel, presse nationale et presse régionale. La fonction `functions/api/veille.js` récupère les articles encore exposés par ces flux et correspondant aux mots-clés suivis, puis renvoie leur média, date, extrait, vignette éventuelle et lien original. Pour Le Parisien, dont le flux omet la date de publication, la date est estimée depuis le permalien et identifiée comme telle dans l’interface. Le tableau de bord propose une régie visuelle des trois derniers articles, les lecteurs de chaînes, une carte interactive OpenStreetMap et un fil de cartes attribuées aux éditeurs. Le fil de presse fonctionne sans identifiant ; la recherche Twitch est optionnelle et demande des secrets API configurés côté serveur.
 
 ## Développement et publication
 
-Le site est servi à la racine du projet, avec les Pages Functions dans `functions/`. La carte utilise les tuiles OpenStreetMap sans clé, assombries dans l’interface ; les lecteurs sociaux acceptent les liens publics compatibles collés par l’utilisateur. Le direct franceinfo est intégré depuis YouTube ; les liens BFMTV et CNEWS ouvrent leurs lecteurs officiels.
+Le site est servi à la racine du projet, avec les Pages Functions dans `functions/`. La carte utilise les tuiles OpenStreetMap sans clé, assombries dans l’interface ; les lecteurs sociaux acceptent les liens publics compatibles collés par l’utilisateur. Les directs franceinfo et BFMTV utilisent les lecteurs YouTube des chaînes officielles. CNEWS utilise également son lecteur de chaîne YouTube ; il n’affichera un direct que lorsqu’un flux est effectivement en cours.
 
 ```sh
 npx wrangler pages dev .
@@ -17,7 +17,7 @@ La seconde commande publie la version sur le projet Cloudflare Pages indiqué. N
 
 - La veille est rafraîchie à l’ouverture et toutes les cinq minutes. Le bouton d’actualisation permet aussi une mise à jour manuelle.
 - Les mots-clés classent uniquement les articles trouvés dans les flux consultés ; les catégories ne sont ni des constats ni des vérifications indépendantes.
-- Les flux RSS et la recherche par mots-clés ne constituent pas une couverture exhaustive de l’actualité.
+- La sélection actuelle couvre douze flux éditoriaux, pas l’ensemble de la presse ni des sources primaires. Les médias sans flux RSS public, les réseaux sociaux et certains événements ne sont pas couverts ; les flux peuvent omettre des articles ou limiter leur historique.
 - Le filtre « Historique disponible » affiche les articles conservés dans les flux RSS au moment de la collecte (jusqu’à 50 articles pertinents par source). La durée de rétention dépend de chaque média ; il n’existe pas d’archive exhaustive ni de garantie de couvrir le début des événements.
 - « Aujourd’hui » utilise la journée locale de l’appareil ; « 7 derniers jours » couvre une fenêtre glissante de sept fois 24 heures.
 - Un repère sur la carte n’apparaît que si le titre nomme une ville connue. Il indique une mention dans un titre, jamais une localisation précise d’un événement.

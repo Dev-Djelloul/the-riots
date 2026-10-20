@@ -236,7 +236,7 @@ function createVisualCard(article, index) {
   caption.className = "visual-caption";
   const meta = document.createElement("span");
   meta.className = "visual-meta";
-  meta.textContent = `${article.sourceName} · ${formatDate(article.publishedAt)}`;
+  meta.textContent = `${article.sourceName} · ${formatDate(article.publishedAt, article.datePrecision)}`;
   const title = document.createElement("span");
   title.className = "visual-title";
   title.textContent = article.title;
@@ -277,7 +277,10 @@ function createArticleCard(article) {
   const time = document.createElement("time");
   time.className = "event-time";
   time.dateTime = article.publishedAt;
-  time.textContent = formatDate(article.publishedAt);
+  time.textContent = formatDate(article.publishedAt, article.datePrecision);
+  if (article.datePrecision === "day") {
+    time.title = "Date estimée depuis l’URL de l’article ; le flux RSS ne fournit pas d’heure.";
+  }
   meta.append(type, time);
 
   const title = document.createElement("h3");
@@ -425,9 +428,12 @@ function renderSources() {
   document.querySelector("#source-count").textContent = `${state.sources.length} MÉDIAS`;
 }
 
-function formatDate(dateString) {
+function formatDate(dateString, precision = "minute") {
   const date = new Date(dateString);
   if (Number.isNaN(date.getTime())) return "Date indisponible";
+  if (precision === "day") {
+    return `${new Intl.DateTimeFormat("fr-FR", { day: "2-digit", month: "short" }).format(date)} · date estimée`;
+  }
   const age = Date.now() - date.getTime();
   if (age >= 0 && age < 24 * 60 * 60 * 1000) {
     return new Intl.DateTimeFormat("fr-FR", { hour: "2-digit", minute: "2-digit" }).format(date);

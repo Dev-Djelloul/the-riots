@@ -6,6 +6,11 @@ const SOURCES = [
   { id: "france-24", name: "France 24", kind: "Média international", feed: "https://www.france24.com/fr/rss", url: "https://www.france24.com/fr/" },
   { id: "liberation", name: "Libération", kind: "Presse nationale", feed: "https://www.liberation.fr/arc/outboundfeeds/rss-all/?outputType=xml", url: "https://www.liberation.fr/" },
   { id: "ouest-france", name: "Ouest-France", kind: "Presse régionale", feed: "https://www.ouest-france.fr/rss-en-continu.xml", url: "https://www.ouest-france.fr/" },
+  { id: "20-minutes", name: "20 Minutes", kind: "Presse nationale", feed: "https://www.20minutes.fr/feeds/rss-une.xml", url: "https://www.20minutes.fr/" },
+  { id: "la-croix", name: "La Croix", kind: "Presse nationale", feed: "https://www.la-croix.com/feeds/rss/site.xml", url: "https://www.la-croix.com/" },
+  { id: "humanite", name: "L’Humanité", kind: "Presse nationale", feed: "https://www.humanite.fr/feed", url: "https://www.humanite.fr/" },
+  { id: "la-depeche", name: "La Dépêche du Midi", kind: "Presse régionale", feed: "https://www.ladepeche.fr/rss.xml", url: "https://www.ladepeche.fr/" },
+  { id: "le-parisien", name: "Le Parisien", kind: "Presse régionale", feed: "https://feeds.leparisien.fr/leparisien/rss", url: "https://www.leparisien.fr/" },
 ];
 
 const TERMS = [
@@ -125,8 +130,10 @@ function parseFeed(xml, source) {
     const descriptionMarkup = readTag(item, "description") || readTag(item, "content:encoded");
     const description = cleanText(descriptionMarkup).slice(0, 320);
     const dateValue = cleanText(readTag(item, "pubDate") || readTag(item, "date"));
-    const timestamp = Date.parse(dateValue);
     const link = safeArticleUrl(cleanText(readTag(item, "link")), source.feed);
+    const parsedDate = Date.parse(dateValue);
+    const timestamp = Number.isFinite(parsedDate) ? parsedDate : source.id === "le-parisien" ? dateFromLeParisienUrl(link) : Number.NaN;
+    const datePrecision = Number.isFinite(parsedDate) ? "minute" : Number.isFinite(timestamp) ? "day" : null;
     if (!title || !link || !Number.isFinite(timestamp) || timestamp > now + 60 * 60 * 1000) continue;
 
     const normalized = normalize(`${title} ${description}`);
@@ -141,6 +148,7 @@ function parseFeed(xml, source) {
       description,
       link,
       publishedAt: new Date(timestamp).toISOString(),
+      datePrecision,
       sourceId: source.id,
       sourceName: source.name,
       type: classify(normalized),
@@ -153,6 +161,20 @@ function parseFeed(xml, source) {
     if (articles.length >= MAX_ARTICLES_PER_SOURCE) break;
   }
   return articles;
+}
+
+function dateFromLeParisienUrl(link) {
+  if (!link) return Number.NaN;
+  const match = new URL(link).pathname.match(/-(\d{2})-(\d{2})-(\d{4})-[A-Z0-9]+\.php$/i);
+  if (!match) return Number.NaN;
+  const [, day, month, year] = match;
+  const timestamp = Date.UTC(Number(year), Number(month) - 1, Number(day), 12);
+  const date = new Date(timestamp);
+  return date.getUTCDate() === Number(day)
+    && date.getUTCMonth() === Number(month) - 1
+    && date.getUTCFullYear() === Number(year)
+    ? timestamp
+    : Number.NaN;
 }
 
 function extractImage(item, baseUrl) {
