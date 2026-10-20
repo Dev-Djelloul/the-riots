@@ -1,4 +1,5 @@
 const LOCATION_CUES = new Set(["a", "au", "aux", "chez", "dans", "de", "des", "du", "vers", "sur"]);
+const COMMON_WORD_COMMUNES = new Set(["vue", "nice", "orange", "sens", "romans", "gap", "bar", "vie", "belle", "salles", "celles", "marche", "arc", "vire", "long", "chat", "mars"]);
 
 function normalizeName(value) {
   return value.toLocaleLowerCase("fr")
@@ -18,6 +19,14 @@ function nameVariants(name) {
     normalized.replace(/\bsainte\b/g, "ste"),
     normalized.replace(/^(?:l|le|la|les) /, ""),
   ]);
+}
+
+function hasClearCommonNameCapitalization(text, name) {
+  if (!COMMON_WORD_COMMUNES.has(normalizeName(name))) return true;
+  const pattern = name.split(/[\s'’`-]+/)
+    .map((part) => part.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"))
+    .join("[\\s'’`-]+");
+  return new RegExp(`(^|[^\\p{L}])${pattern}(?=$|[^\\p{L}])`, "u").test(text);
 }
 
 function createNameIndex(entries) {
@@ -69,7 +78,9 @@ function findMentions(text, nameIndex, isTitle, isDepartment = false) {
       const name = tokens.slice(start, start + length).join(" ");
       const entries = nameIndex.index.get(name);
       if (!entries || !hasLocationCue(tokens, start, isTitle, isDepartment)) continue;
-      candidates.push({ entries, start, end: start + length - 1, length });
+      const clearEntries = entries.filter((entry) => hasClearCommonNameCapitalization(text, entry.name));
+      if (!clearEntries.length) continue;
+      candidates.push({ entries: clearEntries, start, end: start + length - 1, length });
       break;
     }
   }

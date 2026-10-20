@@ -58,3 +58,12 @@ test("ne cartographie pas un article sans lieu identifié", () => {
   assert.equal(location.precision, "unknown");
   assert.deepEqual(location.places, []);
 });
+
+test("évite de prendre le nom commun « vue » pour la commune de Vue", () => {
+  const expression = locateArticle({ title: "Violences: gardes à vue", description: "" }, geography);
+  assert.equal(expression.precision, "unknown");
+
+  const locality = locateArticle({ title: "Rassemblement à Vue", description: "" }, geography);
+  assert.equal(locality.precision, "commune");
+  assert.equal(locality.places[0].code, "44220");
+});
