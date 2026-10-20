@@ -229,15 +229,20 @@
                 <span class="section-kicker">REPÈRES GÉOGRAPHIQUES</span>
                 <h2>France métropolitaine</h2>
               </div>
-              <span class="map-date"><span class="mini-dot"></span> ZONES ROUGES · VILLES CITÉES</span>
+              <div class="map-key">
+                <span class="map-date">96 DÉPARTEMENTS · MENTIONS D’ARTICLES</span>
+                <span class="map-legend"><i class="map-legend-department"></i> Couverture départementale <i class="map-legend-commune"></i> Commune citée</span>
+              </div>
             </div>
             <div class="map-stage">
-              <div id="france-map" class="geographic-map" role="application" aria-label="Carte géographique interactive de la France avec des zones rouges approximatives autour des villes citées"></div>
+              <div id="france-map" class="geographic-map" role="application" aria-label="Carte interactive des départements métropolitains et des communes citées dans les articles"></div>
               <div class="map-tile-warning" id="map-tile-warning" hidden>Fond sombre indisponible · nouvelle tentative en cours</div>
-              <div class="map-empty" id="map-empty" hidden>Aucune ville connue citée dans les titres<br /><span>Les repères approximatifs apparaissent lorsqu’un titre nomme une ville suivie.</span></div>
+              <div class="map-tile-warning map-data-warning" id="map-data-warning" hidden>Données administratives indisponibles</div>
+              <div class="map-empty" id="map-empty" hidden>Aucun lieu suffisamment précis cité dans les titres ou extraits.<br /><span>Les zones colorées représentent des mentions d’articles, pas des événements vérifiés.</span></div>
             </div>
             <div class="map-footer">
-              <span>ZONE ROUGE APPROXIMATIVE · VILLE CITÉE · PAS DE GÉOLOCALISATION D’ÉVÉNEMENT</span>
+              <span>COUVERTURE MÉDIATIQUE · PAS UN DÉCOMPTE D’ÉVÉNEMENTS · CENTRE COMMUNAL, PAS LIEU EXACT</span>
+              <a href="https://www.data.gouv.fr/datasets/contours-administratifs/" target="_blank" rel="noopener noreferrer">Contours IGN · data.gouv.fr · Etalab 2.0 ↗</a>
               <span id="map-result-count">0 REPÈRE</span>
             </div>
           </section>
@@ -279,7 +284,7 @@
       <span class="section-kicker">À PROPOS DE VEILLE</span>
       <h2>L’information mérite<br /><em>du contexte.</em></h2>
       <p>Veille interroge 12 flux RSS publics : franceinfo, BFMTV, CNEWS, Le Monde, France 24, Libération, Ouest-France, 20 Minutes, La Croix, L’Humanité, La Dépêche du Midi et Le Parisien. Cela élargit la couverture entre médias audiovisuels, presse nationale et presse régionale. Chaque article reste attribué à son éditeur et renvoie à sa page d’origine.</p>
-      <p>Cette sélection de flux ne peut pas être exhaustive : des médias, publications sans RSS, contenus sociaux et événements peuvent manquer, et la durée d’archivage dépend de chaque éditeur. Le flux du Parisien n’inclut pas l’heure de publication ; sa date est estimée d’après l’URL et signalée comme telle. Les articles sont repérés par mots-clés, sans vérification indépendante. Les repères cartographiques ne sont affichés que lorsqu’une ville figure dans le titre et restent approximatifs. Un rassemblement ou une manifestation n’est pas, en soi, une émeute.</p>
+      <p>Cette sélection de flux ne peut pas être exhaustive : des médias, publications sans RSS, contenus sociaux et événements peuvent manquer, et la durée d’archivage dépend de chaque éditeur. Le flux du Parisien n’inclut pas l’heure de publication ; sa date est estimée d’après l’URL et signalée comme telle. Les articles sont repérés par mots-clés, sans vérification indépendante. La carte couvre les 96 départements métropolitains ; elle repère les communes et départements cités dans les titres et extraits, signale les mentions ambiguës et mesure uniquement la couverture médiatique, jamais des incidents confirmés ni leur lieu exact. Un rassemblement ou une manifestation n’est pas, en soi, une émeute.</p>
       <div class="dialog-rule"></div>
       <span class="dialog-foot">INFORMER · SOURCER · CONTEXTUALISER</span>
     </dialog>
@@ -289,6 +294,6 @@
       crossorigin="anonymous"
       referrerpolicy="no-referrer"
     ></script>
-    <script src="app.js"></script>
+    <script type="module" src="app.js"></script>
   </body>
 </html>

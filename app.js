@@ -1,3 +1,5 @@
+import { createGeographyIndex, locateArticle } from "./geography.js";
+
 const COLORS = {
   rassemblement: "dot-amber",
   tensions: "dot-coral",
@@ -45,11 +47,18 @@ const feed = document.querySelector("#feed-list");
 const mapElement = document.querySelector("#france-map");
 const visualFeed = document.querySelector("#visual-feed");
 const mapEmpty = document.querySelector("#map-empty");
+const mapDataWarning = document.querySelector("#map-data-warning");
 const emptyState = document.querySelector("#empty-state");
 const refreshButton = document.querySelector("#refresh-button");
+const L = window.L;
 const map = window.L
   ? L.map(mapElement, { scrollWheelZoom: false }).fitBounds([[41.2, -5.5], [51.3, 9.8]], { padding: [12, 12] })
   : null;
+const communeMarkerLayer = map ? L.layerGroup().addTo(map) : null;
+const departmentLayers = new Map();
+let departmentArticlesByCode = new Map();
+let geographyIndex = null;
+let geographyPromise = Promise.resolve(null);
 
 if (map) {
   L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
@@ -63,9 +72,63 @@ if (map) {
   map.on("tileload", () => {
     document.querySelector("#map-tile-warning").hidden = true;
   });
+  geographyPromise = loadGeography();
 } else {
   mapEmpty.hidden = false;
   mapEmpty.textContent = "La carte n’a pas pu être chargée. Vérifie ta connexion puis actualise la page.";
+}
+
+async function loadGeography() {
+  try {
+    const [communesResponse, departmentsResponse] = await Promise.all([
+      fetch("/data/communes.json"),
+      fetch("/data/departements.geojson"),
+    ]);
+    if (!communesResponse.ok || !departmentsResponse.ok) {
+      throw new Error(`Données géographiques indisponibles (${communesResponse.status}/${departmentsResponse.status})`);
+    }
+    const [communes, departments] = await Promise.all([
+      communesResponse.json(),
+      departmentsResponse.json(),
+    ]);
+    if (!Array.isArray(communes) || departments.features?.length !== 96) {
+      throw new Error("Le jeu de données ne contient pas les 96 départements métropolitains attendus.");
+    }
+    geographyIndex = createGeographyIndex(communes, departments);
+    L.geoJSON(departments, {
+      style: departmentStyle,
+      onEachFeature(feature, layer) {
+        const { code, nom } = feature.properties;
+        departmentLayers.set(code, layer);
+        layer.bindPopup(createLocationPopup(nom, [], "department"));
+        layer.on("click", () => {
+          const group = departmentArticlesByCode.get(code);
+          layer.setPopupContent(createLocationPopup(nom, group?.articles || [], "department"));
+        });
+      },
+    }).addTo(map);
+    map.fitBounds(departmentLayers.size ? L.featureGroup([...departmentLayers.values()]).getBounds().pad(0.04) : [[41.2, -5.5], [51.3, 9.8]]);
+    render();
+    return geographyIndex;
+  } catch (error) {
+    console.error("Impossible de charger les données géographiques.", error);
+    mapDataWarning.hidden = false;
+    mapDataWarning.textContent = "Limites administratives indisponibles · réessaie après actualisation";
+    return null;
+  }
+}
+
+function departmentStyle(feature) {
+  const count = departmentArticlesByCode.get(feature.properties.code)?.articles.length || 0;
+  const selected = state.articles.some((article) => article.id === state.selected
+    && article.location?.places.some((place) => place.departmentCode === feature.properties.code));
+  return {
+    color: selected ? "#ffc0a1" : count ? "#ff5865" : "#73766e",
+    weight: selected ? 2 : count ? 1.3 : 0.7,
+    opacity: count ? 0.95 : 0.65,
+    fillColor: count ? "#ed1c2e" : "#777a70",
+    fillOpacity: count ? Math.min(0.5, 0.2 + Math.log2(count + 1) * 0.08) : 0.025,
+  };
 }
 
 function getVisibleArticles() {
@@ -83,7 +146,8 @@ function getVisibleArticles() {
     })
     .filter((article) => state.type === "all" || article.type === state.type)
     .filter((article) => {
-      const searchable = `${article.title} ${article.description} ${article.city || ""} ${article.region || ""} ${article.sourceName} ${article.matchedTerms.join(" ")}`.toLocaleLowerCase("fr");
+      const placeNames = article.location?.places.map((place) => place.name).join(" ") || article.location?.label || "";
+      const searchable = `${article.title} ${article.description} ${placeNames} ${article.sourceName} ${article.matchedTerms.join(" ")}`.toLocaleLowerCase("fr");
       return searchable.includes(state.query);
     })
     .sort((a, b) => {
@@ -96,15 +160,12 @@ function render() {
   const articles = getVisibleArticles();
   feed.replaceChildren(...articles.map(createArticleCard));
   renderVisuals(articles);
-  const mapped = articles.filter((article) => article.position);
-  const cityGroups = [...mapped.reduce((groups, article) => {
-    const group = groups.get(article.city) || [];
-    group.push(article);
-    groups.set(article.city, group);
-    return groups;
-  }, new Map()).values()];
-  renderMap(cityGroups);
+  const mapped = articles.filter((article) => article.location?.places.length);
+  const mapStats = renderMap(articles);
   mapEmpty.hidden = Boolean(map) && mapped.length > 0;
+  mapEmpty.innerHTML = geographyIndex
+    ? "Aucun lieu suffisamment précis cité dans les titres ou extraits.<br /><span>Les limites des 96 départements restent visibles ; les zones colorées reflètent les mentions d’articles, pas des événements vérifiés.</span>"
+    : "Données géographiques indisponibles.<br /><span>Les articles restent consultables ; réessaie après actualisation.</span>";
   const isEmpty = articles.length === 0;
   emptyState.hidden = !isEmpty;
   feed.hidden = isEmpty;
@@ -114,7 +175,7 @@ function render() {
     : "Essaie une autre recherche ou modifie les filtres.";
   document.querySelector("#reset-filters").hidden = state.articles.length === 0;
   document.querySelector("#feed-count").textContent = String(articles.length).padStart(2, "0");
-  document.querySelector("#map-result-count").textContent = `${cityGroups.length} ZONE${cityGroups.length === 1 ? "" : "S"} APPROX. · ${mapped.length} ARTICLE${mapped.length === 1 ? "" : "S"}`;
+  document.querySelector("#map-result-count").textContent = `${mapStats.communeCount} COMMUNE${mapStats.communeCount === 1 ? "" : "S"} · ${mapStats.departmentCount} DÉPARTEMENT${mapStats.departmentCount === 1 ? "" : "S"} · ${mapped.length} ARTICLE${mapped.length === 1 ? "" : "S"} LOCALISÉ${mapped.length === 1 ? "" : "S"}`;
   document.querySelector("#count-all").textContent = String(state.articles.length).padStart(2, "0");
   renderSources();
 }
@@ -299,9 +360,15 @@ function createArticleCard(article) {
   circle.setAttribute("r", "1.6");
   placeIcon.append(path, circle);
   const placeText = document.createElement("span");
-  placeText.textContent = article.city
-    ? `${article.city} · repère approximatif`
-    : "France · lieu non précisé dans le titre";
+  const location = article.location || { precision: "unknown", places: [] };
+  const placeNames = location.places.map((place) => place.name).join(", ");
+  placeText.textContent = location.precision === "commune"
+    ? `Commune citée : ${placeNames}`
+    : location.precision === "department"
+      ? `Département cité : ${placeNames}`
+      : location.precision === "ambiguous"
+        ? `Lieu ambigu, non cartographié : ${location.label}`
+        : "Lieu non identifié dans le titre ou l’extrait";
   place.append(placeIcon, placeText);
   toggle.append(meta, title, place);
   card.append(toggle);
@@ -349,48 +416,72 @@ function createArticleCard(article) {
   return card;
 }
 
-function renderMap(cityGroups) {
-  if (!map) return;
-  map.eachLayer((layer) => {
-    if (layer instanceof L.CircleMarker) map.removeLayer(layer);
-  });
-  cityGroups.forEach((articles) => {
-    const [latitude, longitude] = articles[0].position;
-    const selected = articles.some((article) => state.selected === article.id);
-    L.circle([latitude, longitude], {
-      radius: 32000 + Math.min(36000, articles.length * 2500),
-      color: "#ff2638",
-      weight: 1,
-      opacity: 0.8,
-      fillColor: "#ed1c2e",
-      fillOpacity: 0.18,
-      interactive: false,
-    }).addTo(map);
-    const marker = L.circleMarker([latitude, longitude], {
-      radius: Math.min(14, 7 + Math.log2(articles.length)),
-      color: selected ? "#ff8a93" : "#ff2638",
+function renderMap(articles) {
+  if (!map || !communeMarkerLayer) return { communeCount: 0, departmentCount: 0 };
+  communeMarkerLayer.clearLayers();
+  const communes = new Map();
+  const departments = new Map();
+  const addArticle = (groups, place, article) => {
+    const group = groups.get(place.code) || { place, articles: new Map() };
+    group.articles.set(article.id, article);
+    groups.set(place.code, group);
+  };
+
+  for (const article of articles) {
+    for (const place of article.location?.places || []) {
+      const department = geographyIndex?.departmentByCode.get(place.departmentCode);
+      const departmentName = place.precision === "department" ? place.name : department?.name;
+      if (departmentName) {
+        const departmentPlace = { code: place.departmentCode, name: departmentName };
+        addArticle(departments, departmentPlace, article);
+      }
+      if (place.precision === "commune") addArticle(communes, place, article);
+    }
+  }
+
+  departmentArticlesByCode = departments;
+  for (const [code, layer] of departmentLayers) {
+    const group = departments.get(code);
+    layer.setStyle(departmentStyle({ properties: { code } }));
+    layer.setPopupContent(createLocationPopup(
+      group?.place.name || layer.feature.properties.nom,
+      group ? [...group.articles.values()] : [],
+      "department",
+    ));
+  }
+
+  for (const group of communes.values()) {
+    const articlesForPlace = [...group.articles.values()];
+    const selected = articlesForPlace.some((article) => article.id === state.selected);
+    const marker = L.circleMarker(group.place.coordinates, {
+      radius: Math.min(14, 7 + Math.log2(articlesForPlace.length)),
+      color: selected ? "#ffc0a1" : "#ff2638",
       weight: 2,
       fillColor: "#ed1c2e",
       fillOpacity: 0.92,
     });
-    marker.bindPopup(createCityPopup(articles[0].city, articles), {
+    marker.bindPopup(createLocationPopup(group.place.name, articlesForPlace, "commune"), {
       maxWidth: 360,
       minWidth: 240,
       autoPan: true,
       autoPanPadding: [24, 24],
       keepInView: true,
     });
-    marker.addTo(map);
-  });
+    marker.addTo(communeMarkerLayer);
+  }
+
+  return { communeCount: communes.size, departmentCount: departments.size };
 }
 
-function createCityPopup(city, articles) {
+function createLocationPopup(name, articles, precision) {
   const popup = document.createElement("div");
   popup.className = "map-popup";
   const heading = document.createElement("strong");
-  heading.textContent = `${city} · ${articles.length} article${articles.length === 1 ? "" : "s"}`;
+  heading.textContent = `${name} · ${articles.length} article${articles.length === 1 ? "" : "s"}`;
   const note = document.createElement("p");
-  note.textContent = "Zone approximative centrée sur la ville citée ; les événements ne sont pas géolocalisés. Faites défiler la liste pour tout voir.";
+  note.textContent = precision === "commune"
+    ? "La commune est citée dans le titre ou l’extrait ; le point indique son centre géographique, pas le lieu exact d’un événement."
+    : "Le département est cité dans le titre ou l’extrait ; cette intensité représente la couverture médiatique, pas un décompte d’événements vérifiés.";
   const list = document.createElement("ul");
   articles.forEach((article) => {
     const item = document.createElement("li");
@@ -402,7 +493,8 @@ function createCityPopup(city, articles) {
     item.append(link);
     list.append(item);
   });
-  popup.append(heading, note, list);
+  popup.append(heading, note);
+  if (articles.length) popup.append(list);
   return popup;
 }
 
@@ -466,10 +558,18 @@ async function loadArticles() {
   }
 
   try {
-    const response = await fetch("/api/veille", { headers: { Accept: "application/json" } });
+    const [response, geography] = await Promise.all([
+      fetch("/api/veille", { headers: { Accept: "application/json" } }),
+      geographyPromise,
+    ]);
     const payload = await response.json();
     if (!response.ok && response.status !== 503) throw new Error(`Réponse inattendue (${response.status})`);
-    state.articles = Array.isArray(payload.articles) ? payload.articles : [];
+    state.articles = Array.isArray(payload.articles)
+      ? payload.articles.map((article) => ({
+        ...article,
+        location: geography ? locateArticle(article, geography) : { precision: "unknown", places: [] },
+      }))
+      : [];
     state.sources = Array.isArray(payload.sources) ? payload.sources : [];
     state.fetchedAt = payload.fetchedAt || null;
     if (response.status === 503) {
