@@ -64,6 +64,10 @@ Les cartes conservent des liens de repli officiels pour chaque média. Ne pas re
 - `tests/` contient les tests de l’analyse RSS, des fonctionnalités sociales, de la géographie et du mode PWA hors connexion.
 - Les styles et la bibliothèque Leaflet sont chargés depuis des CDN ; ils ne sont pas disponibles hors connexion. Les données cartographiques locales sont mises en cache.
 
+### Icônes et logos
+
+Les icônes Facebook, Instagram, TikTok, Twitch et YouTube dans `icons/` ont été fournies dans le projet. Les logos des chaînes d’information sont des ressources Wikimedia Commons : [franceinfo](https://commons.wikimedia.org/wiki/File:Franceinfo.svg), [France 24](https://commons.wikimedia.org/wiki/File:France_24_logo_(2013).svg), [BFMTV](https://commons.wikimedia.org/wiki/File:BFMTV_2025.svg), [Euronews](https://commons.wikimedia.org/wiki/File:Euronews_Logo_2025.svg), [LCI / TF1 Info](https://commons.wikimedia.org/wiki/File:Tf1_info_lci.png), [TV5MONDE](https://commons.wikimedia.org/wiki/File:Logo_TV5_Monde_-_2021.svg) et [CNEWS](https://commons.wikimedia.org/wiki/File:Canal_News_logo.svg). Les noms et marques restent la propriété de leurs ayants droit ; les logos servent uniquement à identifier les liens et lecteurs officiels.
+
 La carte utilise les tuiles [OpenStreetMap](https://www.openstreetmap.org/copyright). Les limites départementales généralisées à 1 000 m viennent du jeu [Contours administratifs](https://www.data.gouv.fr/datasets/contours-administratifs/), notamment basé sur Admin Express de l’IGN, sous Licence Ouverte Etalab 2.0. Le référentiel des communes vient de l’API Découpage Administratif (`geo.api.gouv.fr`). Les couleurs correspondent aux mentions dans les articles ; elles n’expriment pas l’intensité d’incidents.
 
 ## Développement local

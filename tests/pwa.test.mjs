@@ -17,6 +17,18 @@ test("PWA manifest points to an existing scalable app icon", async () => {
   await readFile(new URL(manifest.icons[0].src.slice(1), root), "utf8");
 });
 
+test("social and channel logos referenced by the page exist and are pre-cached", async () => {
+  const html = await readFile(new URL("index.html", root), "utf8");
+  const serviceWorker = await readFile(new URL("service-worker.js", root), "utf8");
+  const iconPaths = [...html.matchAll(/src="(\/icons\/[^"]+)"/g)].map((match) => match[1]);
+
+  assert.ok(iconPaths.length > 0);
+  for (const iconPath of new Set(iconPaths)) {
+    await readFile(new URL(iconPath.slice(1), root));
+    assert.ok(serviceWorker.includes(`"${iconPath}"`), `${iconPath} should be precached`);
+  }
+});
+
 test("service worker serves the last successful news response offline", async () => {
   const handlers = new Map();
   const store = new Map();
