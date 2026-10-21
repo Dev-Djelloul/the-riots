@@ -118,8 +118,16 @@ h1 em, .about-dialog h2 em { color: var(--accent); font-weight: 500; }
 .visual-empty { grid-column: 1 / -1; display: grid; place-items: center; padding: 26px; border: 1px dashed #3b3e36; color: #8e9087; font-size: 11px; text-align: center; }
 .live-board { margin-top: 12px; padding: 17px; border: 1px solid var(--line); background: var(--panel); }
 .live-privacy-note { margin: 9px 0 13px; color: #888b82; font-size: 10px; line-height: 1.5; }
-.live-stream-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 280px), 1fr)); gap: 9px; }
+.live-stream-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 9px; }
 .live-stream-card { min-width: 0; border: 1px solid #343730; background: #141512; }
+.stream-featured { border-color: #66513d; box-shadow: inset 0 2px #d5b18e; }
+.stream-link-card { grid-column: span 2; display: grid; align-content: center; min-height: 96px; }
+.stream-link-card .stream-poster, .stream-link-card .load-stream { display: none; }
+.stream-link-card .stream-caption { grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: center; }
+.stream-link-card .stream-caption > strong, .stream-link-card .stream-caption > span { grid-column: 1 / -1; }
+.stream-link-card .stream-caption > span { display: none; }
+.stream-link-card .stream-open, .stream-link-card .stream-site-link { min-height: 32px; display: grid; place-items: center; padding: 7px 8px; border: 1px solid #4a473e; }
+.stream-link-card .stream-open { font: 8px var(--mono); }
 .stream-poster { position: relative; display: grid; place-items: center; overflow: hidden; aspect-ratio: 16 / 8.6; background: radial-gradient(ellipse at 50% 20%, #46534a 0, #252d27 38%, #151814 78%); }
 .live-stream-card[data-channel="bfmtv"] .stream-poster { background: radial-gradient(ellipse at 50% 20%, #51423a 0, #302a27 38%, #151814 78%); }
 .live-stream-card[data-channel="france24"] .stream-poster { background: radial-gradient(ellipse at 50% 20%, #3c4857 0, #262d37 38%, #151814 78%); }
@@ -317,6 +325,7 @@ h1 em, .about-dialog h2 em { color: var(--accent); font-weight: 500; }
   .sidebar { padding-right: 13px; padding-left: 13px; }
   .map-panel { padding-right: 17px; padding-left: 17px; }
   .live-stream-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .stream-link-card { grid-column: span 1; }
 }
 @media (max-width: 850px) {
   .app-shell { padding: 0 20px; }
@@ -357,6 +366,7 @@ h1 em, .about-dialog h2 em { color: var(--accent); font-weight: 500; }
   .visual-empty { min-height: 160px; }
   .live-board { padding: 12px; }
   .live-stream-grid { grid-template-columns: 1fr; }
+  .stream-link-card { grid-column: auto; }
   .stream-poster { aspect-ratio: 16 / 9; }
   .social-board { padding: 12px; }
   .social-platform-grid { grid-template-columns: 1fr; }
