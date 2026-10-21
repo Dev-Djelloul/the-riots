@@ -64,6 +64,8 @@ Les lecteurs des chaînes suivantes ne sont créés qu’après un clic :
 
 Les cartes conservent des liens de repli officiels pour chaque média. Ne pas remplacer ces lecteurs par des flux HLS tiers ou des sources qui ne sont pas fournies par les chaînes.
 
+La section **Directs européens** ajoute les lecteurs YouTube officiels de DW News (anglais) et RTVE Noticias (espagnol), chargés uniquement après un clic. Des liens mènent aussi aux pages vidéo officielles de RTBF Info, VRT NWS, Rai News 24 et tagesschau24. Les chaînes ne diffusent pas toutes en continu sur YouTube ; les lecteurs officiels peuvent être soumis à des restrictions géographiques ou de droits.
+
 ## Technologies et organisation
 
 - Application statique HTML, CSS et JavaScript natifs, sans étape de compilation.

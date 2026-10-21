@@ -159,6 +159,12 @@ h1 em, .about-dialog h2 em { color: var(--accent); font-weight: 500; }
 .stream-open:hover { color: #f0c7a1; text-decoration: underline; }
 .load-stream:hover:not(:disabled) { border-color: var(--accent); color: #f0c7a1; }
 .load-stream:disabled { color: #808278; cursor: default; }
+.europe-live-grid .stream-featured { grid-column: span 6; }
+.europe-live-grid .stream-link-card { grid-column: span 3; }
+.europe-live-grid .stream-link-card .stream-caption > strong { grid-column: 1 / -1; }
+.europe-live-grid .stream-link-card .stream-caption { grid-template-columns: 1fr; }
+.live-stream-card[data-channel="dwnews"] .stream-poster { background: radial-gradient(ellipse at 50% 20%, #3a4859 0, #252d37 38%, #151814 78%); }
+.live-stream-card[data-channel="rtve"] .stream-poster { background: radial-gradient(ellipse at 50% 20%, #674842 0, #352a2b 38%, #151814 78%); }
 .live-catalog { margin-top: 12px; border-top: 1px solid #343730; color: #a4a69e; font-size: 9px; }
 .live-catalog summary { padding: 10px 0 2px; color: #d5b18e; font: 8px var(--mono); letter-spacing: .06em; cursor: pointer; }
 .live-catalog ul { display: grid; gap: 8px; margin: 10px 0 0; padding-left: 17px; line-height: 1.5; }
@@ -343,6 +349,7 @@ h1 em, .about-dialog h2 em { color: var(--accent); font-weight: 500; }
   .map-panel { padding-right: 17px; padding-left: 17px; }
   .live-stream-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .stream-featured, .stream-link-card { grid-column: span 1; }
+  .europe-live-grid .stream-featured, .europe-live-grid .stream-link-card { grid-column: span 1; }
 }
 @media (max-width: 850px) {
   .app-shell { padding: 0 20px; }
@@ -353,6 +360,7 @@ h1 em, .about-dialog h2 em { color: var(--accent); font-weight: 500; }
   .feed-heading { margin-bottom: 10px; }
   .feed-footer { margin-top: 0; }
   .visual-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); grid-template-rows: repeat(3, minmax(0, 1fr)); height: 500px; }
+  .europe-live-grid .stream-featured, .europe-live-grid .stream-link-card { grid-column: span 1; }
   .visual-grid.visual-count-3 { grid-template-rows: repeat(2, minmax(0, 1fr)); height: 340px; }
   .social-platform-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .social-embed-feed { grid-template-columns: repeat(2, minmax(0, 1fr)); }

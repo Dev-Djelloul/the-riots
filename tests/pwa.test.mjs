@@ -30,6 +30,24 @@ test("social and channel logos referenced by the page exist and are pre-cached",
   }
 });
 
+test("European live video cards point to official players and broadcasters", async () => {
+  const html = await readFile(new URL("index.html", root), "utf8");
+  const app = await readFile(new URL("app.js", root), "utf8");
+  const serviceWorker = await readFile(new URL("service-worker.js", root), "utf8");
+
+  assert.match(html, /Directs européens/);
+  for (const channel of ["dwnews", "rtve", "rtbf", "vrt", "rainews", "tagesschau24"]) {
+    assert.match(html, new RegExp(`data-channel="${channel}"`));
+  }
+  assert.match(app, /id: "UCknLrEdhRCp1aegoMqRaCZg"/);
+  assert.match(app, /id: "UCrL1bh5AfgTjGfO_cF95tkA"/);
+  assert.match(html, /https:\/\/www\.rtbf\.be\/auvio\//);
+  assert.match(html, /https:\/\/www\.vrt\.be\/vrtnws\/nl\/kijk\//);
+  assert.match(html, /https:\/\/www\.raiplay\.it\/dirette\/rainews24/);
+  assert.match(html, /https:\/\/www\.tagesschau\.de\/multimedia\/livestreams\//);
+  assert.match(serviceWorker, /veille-shell-v3/);
+});
+
 test("service worker serves the last successful news response offline", async () => {
   const handlers = new Map();
   const store = new Map();
