@@ -49,10 +49,13 @@ button:focus-visible, input:focus-visible, a:focus-visible {
 .brand-mark { width: 29px; height: 29px; display: grid; place-items: center; border: 1px solid #a16c4f; color: var(--accent); font: 600 15px var(--serif); }
 .brand-name { letter-spacing: .19em; font-size: 12px; font-weight: 700; }
 .brand-dot { color: var(--accent); }
+.topbar-actions { display: flex; align-items: center; gap: 15px; }
 .topbar-center { display: flex; gap: 16px; align-items: center; color: var(--muted); font: 10px var(--mono); letter-spacing: .11em; }
 .topbar-divider { width: 1px; height: 15px; background: var(--line); }
 .today-label { color: #c0c1b8; }
 .about-button { display: flex; align-items: center; gap: 9px; padding: 8px 0 8px 8px; border: 0; background: none; color: #c0c1b8; cursor: pointer; font-size: 12px; }
+.install-button { padding: 8px 11px; border: 1px solid #4a473e; background: #1b1c18; color: #d5b18e; cursor: pointer; font-size: 10px; }
+.install-button:hover { border-color: var(--accent); color: #f0c7a1; }
 .about-icon { display: grid; place-items: center; width: 17px; height: 17px; border: 1px solid #666a61; border-radius: 50%; color: #b7b8b0; font: 11px var(--serif); }
 
 .intro { display: flex; justify-content: space-between; align-items: end; padding: 51px 0 34px; }
@@ -335,6 +338,8 @@ h1 em, .about-dialog h2 em { color: var(--accent); font-weight: 500; }
   .app-shell { padding: 0 14px; }
   .topbar { height: 62px; }
   .topbar-center { display: none; }
+  .topbar-actions { gap: 8px; }
+  .install-button { padding: 7px 8px; font-size: 9px; }
   .intro { align-items: start; flex-direction: column; gap: 18px; padding: 35px 0 23px; }
   h1 { font-size: 39px; }
   .intro-description { max-width: 280px; line-height: 1.6; }

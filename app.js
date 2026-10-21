@@ -604,7 +604,9 @@ async function loadArticles() {
       : [];
     state.sources = Array.isArray(payload.sources) ? payload.sources : [];
     state.fetchedAt = payload.fetchedAt || null;
-    if (response.status === 503) {
+    if (response.headers.get("X-PWA-Offline") === "true") {
+      updateStatus("partial", `Hors connexion · dernières données du ${formatClock(state.fetchedAt)}.`);
+    } else if (response.status === 503) {
       updateStatus("error", "Aucun flux disponible — réessaie dans quelques minutes.");
     } else if (payload.warning) {
       updateStatus("partial", `${payload.warning} Actualisé ${formatClock(state.fetchedAt)}.`);

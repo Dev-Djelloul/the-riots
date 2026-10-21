@@ -1,46 +1,136 @@
 # Veille
 
-Veille agrège dix-huit flux RSS publics : franceinfo, BFMTV, CNEWS, Le Monde, France 24, RFI, Le Figaro, Libération, Ouest-France, Sud Ouest, 20 Minutes, La Croix, L’Humanité, La Dépêche du Midi, Le Parisien, France Inter, L’Express et Challenges. La sélection combine audiovisuel, médias internationaux, presse nationale et presse régionale. La fonction `functions/api/veille.js` récupère les articles encore exposés par ces flux et correspondant aux mots-clés suivis, puis renvoie leur média, date, extrait, vignette éventuelle et lien original. Pour Le Parisien, dont le flux omet la date de publication, la date est estimée depuis le permalien et identifiée comme telle dans l’interface. Le tableau de bord propose une régie visuelle des trois derniers articles, les lecteurs de chaînes, une carte interactive OpenStreetMap et un fil de cartes attribuées aux éditeurs. La carte comprend les 96 départements métropolitains et un référentiel de 34 746 communes. Elle détecte les lieux cités dans les titres et extraits ; les départements concernés sont remplis chacun d’une couleur distincte du spectre, sans encodage d’intensité. Les lieux ambigus ou non identifiés ne sont pas positionnés. Les couleurs indiquent la couverture éditoriale, pas des incidents vérifiés. Le référentiel des communes vient de l’API Découpage Administratif (geo.api.gouv.fr) ; les contours départementaux généralisés à 1 000 m proviennent du jeu de données [Contours administratifs](https://www.data.gouv.fr/datasets/contours-administratifs/), constitué notamment depuis Admin Express de l’IGN, sous Licence Ouverte Etalab 2.0. Le fil de presse fonctionne sans identifiant ; la recherche Twitch est optionnelle et demande des secrets API configurés côté serveur.
+Veille est une application web française de veille éditoriale. Elle agrège des articles provenant de flux RSS, relie les mentions géographiques aux départements et communes de France métropolitaine, et propose des liens et lecteurs officiels de chaînes d’information.
 
-## Développement et publication
+> Veille ne vérifie pas les faits. Un article isolé ne confirme pas un événement ; les mentions sur la carte reflètent la couverture des médias, pas des incidents confirmés. Manifestations et émeutes ne sont pas synonymes.
 
-Le site est servi à la racine du projet, avec les Pages Functions dans `functions/`. La carte utilise les tuiles OpenStreetMap sans clé, assombries dans l’interface ; les lecteurs sociaux acceptent les liens publics compatibles collés par l’utilisateur. Les directs franceinfo et BFMTV utilisent les lecteurs YouTube des chaînes officielles. CNEWS utilise également son lecteur de chaîne YouTube ; il n’affichera un direct que lorsqu’un flux est effectivement en cours.
+## Fonctionnalités
+
+- Agrégation de 18 flux RSS publics, actualisée à l’ouverture et automatiquement toutes les cinq minutes.
+- Recherche, filtres par période et sujet, et tri chronologique des articles.
+- Carte Leaflet interactive couvrant les 96 départements métropolitains et le référentiel de 34 746 communes.
+- Remplissage spectral des départements mentionnés et repères communaux cliquables qui présentent les articles associés.
+- Fil visuel de jusqu’à six articles illustrés par une image fournie dans leur flux RSS.
+- Lecteurs vidéo officiels chargés au clic et liens de secours vers les chaînes ou sites des médias.
+- Recherches publiques par hashtag ou mot-clé sur les réseaux sociaux, statut de disponibilité des API officielles, et lecteur des publications publiques compatibles.
+- PWA installable avec mise en cache de l’interface et des dernières données de veille pour un accès hors connexion.
+
+### Médias suivis
+
+| Source | Flux |
+| --- | --- |
+| franceinfo | `https://www.franceinfo.fr/titres.rss` |
+| BFMTV | `https://www.bfmtv.com/rss/news-24-7/` |
+| CNEWS | `https://www.cnews.fr/rss.xml` |
+| Le Monde | `https://www.lemonde.fr/rss/une.xml` |
+| France 24 | `https://www.france24.com/fr/rss` |
+| RFI | `https://www.rfi.fr/fr/rss` |
+| Le Figaro | `https://www.lefigaro.fr/rss/figaro_actualites.xml` |
+| Libération | `https://www.liberation.fr/arc/outboundfeeds/rss-all/?outputType=xml` |
+| Ouest-France | `https://www.ouest-france.fr/rss-en-continu.xml` |
+| Sud Ouest | `https://www.sudouest.fr/rss.xml` |
+| 20 Minutes | `https://www.20minutes.fr/feeds/rss-une.xml` |
+| La Croix | `https://www.la-croix.com/feeds/rss/site.xml` |
+| L’Humanité | `https://www.humanite.fr/feed` |
+| La Dépêche du Midi | `https://www.ladepeche.fr/rss.xml` |
+| Le Parisien | `https://feeds.leparisien.fr/leparisien/rss` |
+| France Inter | `https://www.radiofrance.fr/franceinter/rss` |
+| L’Express | `https://www.lexpress.fr/rss/alaune.xml` |
+| Challenges | `https://www.challenges.fr/rss.xml` |
+
+Les flux sont filtrés par mots-clés liés aux manifestations, rassemblements, violences et dégradations. Le Parisien n’inclut pas systématiquement l’heure de publication ; sa date est estimée depuis le permalien et signalée dans l’interface. La durée de rétention dépend des éditeurs et ne forme pas une archive exhaustive.
+
+### Vidéos en direct
+
+Les lecteurs des chaînes suivantes ne sont créés qu’après un clic :
+
+- franceinfo, BFMTV, CNEWS et Euronews français utilisent les lecteurs YouTube officiels ; les directs peuvent varier selon la programmation et les droits.
+- France 24 utilise son lecteur officiel `embed.france24.com`.
+- LCI propose sur sa chaîne YouTube des directs ponctuels, pas nécessairement une diffusion continue.
+- TV5MONDE Info propose une chaîne YouTube d’actualité ; la disponibilité du lecteur et des programmes TV5MONDE peut varier selon le pays.
+
+Les cartes conservent des liens de repli officiels pour chaque média. Ne pas remplacer ces lecteurs par des flux HLS tiers ou des sources qui ne sont pas fournies par les chaînes.
+
+## Technologies et organisation
+
+- Application statique HTML, CSS et JavaScript natifs, sans étape de compilation.
+- Cloudflare Pages Functions fournit les routes API.
+- `functions/api/veille.js` récupère et analyse les flux RSS côté serveur.
+- `functions/api/social.js` expose les statuts des plateformes et, si configuré, les recherches de chaînes Twitch en direct.
+- `app.js` gère l’interface, les articles, la carte et les lecteurs.
+- `geography.js` rapproche les articles des données géographiques.
+- `service-worker.js`, `manifest.webmanifest` et les icônes `icons/` fournissent les fonctions PWA.
+- `data/communes.json` et `data/departements.geojson` fournissent les référentiels cartographiques.
+- `tests/` contient les tests de l’analyse RSS, des fonctionnalités sociales, de la géographie et du mode PWA hors connexion.
+- Les styles et la bibliothèque Leaflet sont chargés depuis des CDN ; ils ne sont pas disponibles hors connexion. Les données cartographiques locales sont mises en cache.
+
+La carte utilise les tuiles [OpenStreetMap](https://www.openstreetmap.org/copyright). Les limites départementales généralisées à 1 000 m viennent du jeu [Contours administratifs](https://www.data.gouv.fr/datasets/contours-administratifs/), notamment basé sur Admin Express de l’IGN, sous Licence Ouverte Etalab 2.0. Le référentiel des communes vient de l’API Découpage Administratif (`geo.api.gouv.fr`). Les couleurs correspondent aux mentions dans les articles ; elles n’expriment pas l’intensité d’incidents.
+
+## Développement local
+
+Prérequis : Node.js 22 ou ultérieur et npm.
 
 ```sh
-npx wrangler pages dev .
-npx wrangler pages deploy . --project-name <nom-du-projet>
+npm ci
+./node_modules/.bin/wrangler pages dev .
 ```
 
-La seconde commande publie la version sur le projet Cloudflare Pages indiqué. Ne la lancer qu’après avoir confirmé que le nom du projet et la cible de publication sont corrects.
+Wrangler affiche l’adresse locale à ouvrir. Pages Functions et routes `/api/*` sont ainsi disponibles pendant le développement. Le service worker n’est activé que dans un contexte sécurisé (HTTPS ou `localhost`).
 
-## Portée et limites
-
-- La veille est rafraîchie à l’ouverture et toutes les cinq minutes. Le bouton d’actualisation permet aussi une mise à jour manuelle.
-- Les mots-clés classent uniquement les articles trouvés dans les flux consultés ; les catégories ne sont ni des constats ni des vérifications indépendantes.
-- La sélection actuelle couvre dix-huit flux éditoriaux, pas l’ensemble de la presse ni des sources primaires. Les médias sans flux RSS public, les réseaux sociaux et certains événements ne sont pas couverts ; les flux peuvent omettre des articles ou limiter leur historique. Le classement par mots-clés n’est pas une vérification éditoriale et ne confirme pas qu’un événement a eu lieu.
-- Le filtre « Historique disponible » affiche les articles conservés dans les flux RSS au moment de la collecte (jusqu’à 50 articles pertinents par source). La durée de rétention dépend de chaque média ; il n’existe pas d’archive exhaustive ni de garantie de couvrir le début des événements.
-- « Aujourd’hui » utilise la journée locale de l’appareil ; « 7 derniers jours » couvre une fenêtre glissante de sept fois 24 heures.
-- La carte confronte titres et extraits à un référentiel de communes et aux noms des départements. Les variantes courantes « Saint » / « St » sont reconnues ; les homonymes sans département permettant de lever le doute sont explicitement laissés ambigus. Une mention géographique n’établit ni la tenue d’un événement ni son emplacement précis.
-- La carte utilise Leaflet, les tuiles OpenStreetMap (attribution visible) et les contours départementaux officiels généralisés à 1 000 m. Un département cité est rempli d’une couleur distincte du spectre ; les couleurs distinguent les zones et ne classent pas leur intensité. Elles ne sont ni des limites d’événements ni un décompte de faits confirmés.
-- Les articles et extraits restent attribués à leur média d’origine et renvoient vers la publication source.
-- Les images ne sont montrées que si elles sont fournies dans le flux RSS ; sinon, la carte l’indique. L’application n’héberge ni ne recopie les images ou vidéos.
-- Le lecteur franceinfo ne s’active qu’après un clic et peut être indisponible lorsque la chaîne n’émet pas de direct intégrable. BFMTV et CNEWS s’ouvrent sur leur site officiel, qui ne permet pas l’intégration de leur player dans cette page. Le chargement du lecteur franceinfo contacte YouTube.
-- Les API sociales officielles n’offrent pas une recherche générale anonyme pour Facebook, Instagram ou TikTok : Facebook demande l’autorisation Meta Page Public Content Access pour lire les pages non gérées ; Instagram exige un compte professionnel lié et des permissions d’accès aux hashtags publics ; TikTok réserve la recherche de vidéos publiques par mots-clés à la Research API approuvée. L’application n’utilise pas de scraping ni de service d’agrégation tiers. L’interface ouvre le hashtag Instagram correspondant au premier mot de recherche et peut intégrer un aperçu officiel à partir d’un lien public collé par l’utilisateur (Facebook, Instagram, TikTok, Twitch).
-- Les directs Twitch sont réellement recherchés via Helix Search Channels quand `TWITCH_CLIENT_ID` et `TWITCH_CLIENT_SECRET` sont configurés comme secrets Cloudflare Pages ; leurs vignettes renvoient vers la chaîne. Ces identifiants restent côté serveur. Sans eux, Veille indique que la source n’est pas configurée. Les lecteurs YouTube des chaînes officielles disposent aussi d’un lien de repli vers la chaîne si aucun direct n’est intégrable.
-- Le panneau d’articles récents a une hauteur plafonnée sur grand écran et défile indépendamment ; la liste complète n’allonge plus toute la page.
-
-## Tests
+Vérifications rapides :
 
 ```sh
-node --test tests/veille.test.mjs
-node --test tests/social.test.mjs
+node --check app.js
+node --check pwa.js
+node --check service-worker.js
+node --test tests/*.test.mjs
+git diff --check
 ```
 
-Pour activer la recherche de directs Twitch sur Cloudflare Pages, saisir les deux commandes (Wrangler demandera chaque valeur de façon interactive) :
+## PWA et mode hors connexion
+
+Le navigateur propose **Installer l’app** quand il prend en charge l’installation. Sur iOS/iPadOS, ouvrir le menu de partage de Safari puis choisir **Sur l’écran d’accueil**.
+
+Après une première visite connectée :
+
+- l’application, ses scripts, ses styles, son icône et les données géographiques locales sont mis en cache ;
+- la dernière réponse réussie de `/api/veille` est conservée et affichée avec une indication de données hors connexion si le réseau est absent ;
+- les routes `/api/social`, les flux RSS, les polices et scripts tiers, les tuiles cartographiques et les lecteurs vidéo nécessitent toujours une connexion.
+
+Les résultats de veille affichés hors connexion sont ceux de la dernière actualisation réussie. Les actions de recherche ou de rafraîchissement peuvent nécessiter un accès réseau.
+
+Pour publier une nouvelle version du service worker, incrémenter les identifiants de cache dans `service-worker.js`. Le navigateur installe le nouveau cache et supprime ensuite les anciennes versions `veille-*`.
+
+## Configuration des plateformes sociales
+
+Sans identifiants API, Facebook, Instagram et TikTok affichent les limites d’accès officielles. Les résultats Twitch nécessitent les secrets suivants dans les paramètres Cloudflare Pages du projet :
+
+- `TWITCH_CLIENT_ID`
+- `TWITCH_CLIENT_SECRET`
+
+Ne jamais ajouter de secret au dépôt ni le transmettre dans une commande ou un journal. Après modification d’un secret Cloudflare, vérifier le déploiement associé.
+
+En développement local, mettre les identifiants dans `.dev.vars` (fichier local ignoré par Git), puis lancer Pages avec Wrangler. L’API Meta requiert l’accès Page Public Content Access pour les pages non gérées ; la recherche Instagram par hashtag demande un compte professionnel lié et des permissions appropriées ; la Research API TikTok est réservée aux projets de recherche approuvés. Veille n’effectue aucun scraping de ces plateformes.
+
+## Déploiement Cloudflare Pages
+
+Le projet Pages s’appelle `the-riots` et le compte utilisé pour ses déploiements est celui configuré dans Wrangler.
 
 ```sh
-npx wrangler pages secret put TWITCH_CLIENT_ID --project-name <nom-du-projet>
-npx wrangler pages secret put TWITCH_CLIENT_SECRET --project-name <nom-du-projet>
+./node_modules/.bin/wrangler pages deploy . \
+  --project-name the-riots \
+  --branch main \
+  --commit-message "Description du déploiement"
 ```
 
-En local, placer ces valeurs dans `.dev.vars` (fichier ignoré par Git) pour `wrangler pages dev`. Ne jamais enregistrer les identifiants dans le code, un fichier suivi par Git ou le navigateur. L’accès Facebook, Instagram ou TikTok nécessite les permissions et approbations propres à chaque plateforme décrites ci-dessus.
+Après le déploiement, vérifier la page de production, les routes `/api/veille` et `/api/social`, puis l’installation du service worker dans les outils de développement du navigateur.
+
+## Domaine personnalisé
+
+Le domaine choisi pour Veille est `the-riots.digitalblueskye.com`, associé au projet Pages `the-riots` dans **Workers & Pages → `the-riots` → Custom domains**. Cloudflare a ajouté le domaine et indique qu'il est en cours d'initialisation. L'enregistrement prévu est un CNAME `the-riots` vers `the-riots.pages.dev` ; la propagation DNS peut prendre jusqu'à 48 heures. L'URL prévue est [https://the-riots.digitalblueskye.com](https://the-riots.digitalblueskye.com). Vérifier le statut du domaine et l'émission du certificat TLS dans Cloudflare avant de considérer la mise en service terminée.
+
+Ne pas créer uniquement un enregistrement CNAME à la main : Cloudflare précise que le domaine doit d'abord être associé au projet Pages. Référence : [Domaines personnalisés Cloudflare Pages](https://developers.cloudflare.com/pages/configuration/custom-domains/).
+
+## Données cartographiques
+
+Les données locales sont dans `data/communes.json` et `data/departements.geojson`. Les limites administratives sont attribuées selon les indications de leur source et affichées pour contextualiser les mentions d’articles, pas pour représenter des événements vérifiés.
