@@ -1,8 +1,8 @@
 {
   "id": "/",
-  "name": "Veille — événements en France",
+  "name": "Veille — événements en France et en Europe",
   "short_name": "Veille",
-  "description": "Veille éditoriale des événements signalés en France, avec sources et état de vérification clairement indiqués.",
+  "description": "Veille éditoriale des événements évoqués dans les médias en France et en Europe, avec sources et limites clairement indiquées.",
   "lang": "fr-FR",
   "start_url": "/",
   "scope": "/",

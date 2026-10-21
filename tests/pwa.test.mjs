@@ -8,7 +8,7 @@ const root = new URL("../", import.meta.url);
 test("PWA manifest points to an existing scalable app icon", async () => {
   const manifest = JSON.parse(await readFile(new URL("manifest.webmanifest", root), "utf8"));
 
-  assert.equal(manifest.name, "Veille — événements en France");
+  assert.equal(manifest.name, "Veille — événements en France et en Europe");
   assert.equal(manifest.start_url, "/");
   assert.equal(manifest.scope, "/");
   assert.equal(manifest.display, "standalone");
@@ -20,6 +20,7 @@ test("PWA manifest points to an existing scalable app icon", async () => {
 test("social and channel logos referenced by the page exist and are pre-cached", async () => {
   const html = await readFile(new URL("index.html", root), "utf8");
   const serviceWorker = await readFile(new URL("service-worker.js", root), "utf8");
+  assert.ok(serviceWorker.includes('"/data/europe-countries.geojson"'));
   const iconPaths = [...html.matchAll(/src="(\/icons\/[^"]+)"/g)].map((match) => match[1]);
 
   assert.ok(iconPaths.length > 0);

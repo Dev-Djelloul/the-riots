@@ -17,6 +17,14 @@ const SOURCES = [
   { id: "france-inter", name: "France Inter", kind: "Audiovisuel public", feed: "https://www.radiofrance.fr/franceinter/rss", url: "https://www.radiofrance.fr/franceinter/" },
   { id: "lexpress", name: "L’Express", kind: "Presse nationale", feed: "https://www.lexpress.fr/rss/alaune.xml", url: "https://www.lexpress.fr/" },
   { id: "challenges", name: "Challenges", kind: "Presse nationale", feed: "https://www.challenges.fr/rss.xml", url: "https://www.challenges.fr/" },
+  { id: "vrt", name: "VRT NWS", kind: "Média public belge", feed: "https://www.vrt.be/vrtnws/nl.rss.articles.xml", url: "https://www.vrt.be/vrtnws/fr/" },
+  { id: "rtbf", name: "RTBF Info", kind: "Média public belge", feed: "https://rss.rtbf.be/article/rss/highlight_rtbfinfo_info-belgique.xml?source=internal", url: "https://www.rtbf.be/info/" },
+  { id: "elpais", name: "El País", kind: "Presse espagnole", feed: "https://feeds.elpais.com/mrss-s/pages/ep/site/elpais.com/portada", url: "https://elpais.com/" },
+  { id: "eldiario", name: "elDiario.es", kind: "Presse espagnole", feed: "https://www.eldiario.es/rss/", url: "https://www.eldiario.es/" },
+  { id: "rainews", name: "Rai News", kind: "Audiovisuel public italien", feed: "https://www.rainews.it/rss/tutti", url: "https://www.rainews.it/" },
+  { id: "repubblica", name: "la Repubblica", kind: "Presse italienne", feed: "https://www.repubblica.it/rss/cronaca/rss2.0.xml", url: "https://www.repubblica.it/" },
+  { id: "tagesschau", name: "tagesschau", kind: "Audiovisuel public allemand", feed: "https://www.tagesschau.de/infoservices/alle-meldungen-100~rss2.xml", url: "https://www.tagesschau.de/" },
+  { id: "dw-de", name: "Deutsche Welle", kind: "Média international allemand", feed: "https://rss.dw.com/xml/rss-de-all", url: "https://www.dw.com/de/" },
 ];
 
 const TERMS = [
@@ -24,6 +32,11 @@ const TERMS = [
   "rassemblements", "défilé", "mobilisation", "émeute", "émeutes", "émeutier",
   "violences urbaines", "affrontement", "affrontements", "heurts", "tensions",
   "dégradation", "dégradations", "vandalisme", "incendie", "cortège", "blocage",
+  "demonstration", "demonstrationen", "demonstrant", "demonstranten", "protest", "proteste",
+  "streik", "streiks", "ausschreitungen", "krawalle", "gewalt", "randale",
+  "betoging", "betogingen", "demonstratie", "demonstraties", "staking", "stakingen", "rellen",
+  "manifestacion", "manifestaciones", "manifestante", "protesta", "protestas", "huelga", "disturbios", "enfrentamientos",
+  "manifestazione", "manifestazioni", "manifestanti", "protesta", "proteste", "sciopero", "scioperi", "scontri", "disordini",
 ];
 
 const CITIES = [
@@ -42,13 +55,38 @@ const CITIES = [
   { name: "Rouen", region: "Normandie", position: [49.4432, 1.0999] },
   { name: "Dijon", region: "Bourgogne-Franche-Comté", position: [47.322, 5.0415] },
   { name: "Reims", region: "Grand Est", position: [49.2583, 4.0317] },
-  { name: "Saint-Denis", region: "Île-de-France", position: [48.9362, 2.3574] },
+  { name: "Saint-Denis", region: "Île-de-France", position: [48.9362, 2.3574], countryCode: "FR" },
+  { name: "Bruxelles", countryCode: "BE", position: [50.8503, 4.3517], aliases: ["Brussels", "Brussel"] },
+  { name: "Anvers", countryCode: "BE", position: [51.2194, 4.4025], aliases: ["Antwerpen", "Antwerp"] },
+  { name: "Gand", countryCode: "BE", position: [51.0543, 3.7174], aliases: ["Gent"] },
+  { name: "Liège", countryCode: "BE", position: [50.6326, 5.5797], aliases: ["Liege"] },
+  { name: "Charleroi", countryCode: "BE", position: [50.4108, 4.4446] },
+  { name: "Namur", countryCode: "BE", position: [50.4674, 4.872] },
+  { name: "Madrid", countryCode: "ES", position: [40.4168, -3.7038] },
+  { name: "Barcelona", countryCode: "ES", position: [41.3874, 2.1686] },
+  { name: "Valence", countryCode: "ES", position: [39.4699, -0.3763], aliases: ["Valencia"] },
+  { name: "Séville", countryCode: "ES", position: [37.3891, -5.9845], aliases: ["Sevilla"] },
+  { name: "Bilbao", countryCode: "ES", position: [43.263, -2.935] },
+  { name: "Saragosse", countryCode: "ES", position: [41.6488, -0.8891], aliases: ["Zaragoza"] },
+  { name: "Rome", countryCode: "IT", position: [41.9028, 12.4964], aliases: ["Roma"] },
+  { name: "Milan", countryCode: "IT", position: [45.4642, 9.19], aliases: ["Milano"] },
+  { name: "Naples", countryCode: "IT", position: [40.8518, 14.2681], aliases: ["Napoli"] },
+  { name: "Turin", countryCode: "IT", position: [45.0703, 7.6869], aliases: ["Torino"] },
+  { name: "Bologne", countryCode: "IT", position: [44.4949, 11.3426], aliases: ["Bologna"] },
+  { name: "Florence", countryCode: "IT", position: [43.7696, 11.2558], aliases: ["Firenze"] },
+  { name: "Berlin", countryCode: "DE", position: [52.52, 13.405] },
+  { name: "Hambourg", countryCode: "DE", position: [53.5511, 9.9937], aliases: ["Hamburg"] },
+  { name: "Munich", countryCode: "DE", position: [48.1351, 11.582], aliases: ["München", "Munchen"] },
+  { name: "Cologne", countryCode: "DE", position: [50.9375, 6.9603], aliases: ["Köln", "Koln"] },
+  { name: "Francfort", countryCode: "DE", position: [50.1109, 8.6821], aliases: ["Frankfurt"] },
+  { name: "Stuttgart", countryCode: "DE", position: [48.7758, 9.1829] },
+  { name: "Leipzig", countryCode: "DE", position: [51.3397, 12.3731] },
 ];
 
 const MATCHERS = [
-  { type: "degradations", terms: ["dégradation", "dégradations", "vandalisme", "incendie", "émeute", "émeutes", "violences urbaines"] },
-  { type: "tensions", terms: ["affrontement", "affrontements", "heurts", "tension", "tensions", "violence", "violences"] },
-  { type: "rassemblement", terms: ["manifestation", "manifestations", "manifestant", "manifestants", "rassemblement", "rassemblements", "défilé", "mobilisation", "cortège"] },
+  { type: "degradations", terms: ["dégradation", "dégradations", "vandalisme", "incendie", "émeute", "émeutes", "violences urbaines", "ausschreitungen", "krawalle", "randale", "disturbios", "disordini", "rellen"] },
+  { type: "tensions", terms: ["affrontement", "affrontements", "heurts", "tension", "tensions", "violence", "violences", "gewalt", "enfrentamientos", "scontri"] },
+  { type: "rassemblement", terms: ["manifestation", "manifestations", "manifestant", "manifestants", "rassemblement", "rassemblements", "défilé", "mobilisation", "cortège", "demonstration", "demonstrationen", "demonstrant", "demonstranten", "protest", "proteste", "streik", "betoging", "demonstratie", "staking", "manifestacion", "manifestaciones", "manifestante", "protesta", "protestas", "huelga", "manifestazione", "manifestazioni", "manifestanti", "sciopero", "scioperi"] },
 ];
 
 const MAX_FEED_BYTES = 1_000_000;
@@ -126,17 +164,20 @@ async function readLimitedText(response, maxBytes) {
 }
 
 function parseFeed(xml, source) {
-  const items = xml.match(/<item(?:\s[^>]*)?>[\s\S]*?<\/item>/gi) || [];
+  const items = xml.match(/<(?:item|entry)(?:\s[^>]*)?>[\s\S]*?<\/(?:item|entry)\s*>/gi) || [];
   const now = Date.now();
   const articles = [];
   const seen = new Set();
 
   for (const item of items) {
     const title = cleanText(readTag(item, "title"));
-    const descriptionMarkup = readTag(item, "description") || readTag(item, "content:encoded");
+    const descriptionMarkup = readTag(item, "description")
+      || readTag(item, "content:encoded")
+      || readTag(item, "summary")
+      || readTag(item, "content");
     const description = cleanText(descriptionMarkup).slice(0, 320);
-    const dateValue = cleanText(readTag(item, "pubDate") || readTag(item, "date"));
-    const link = safeArticleUrl(cleanText(readTag(item, "link")), source.feed);
+    const dateValue = cleanText(readTag(item, "pubDate") || readTag(item, "published") || readTag(item, "updated") || readTag(item, "date"));
+    const link = safeArticleUrl(readItemLink(item) || cleanText(readTag(item, "link")), source.feed);
     const parsedDate = Date.parse(dateValue);
     const timestamp = Number.isFinite(parsedDate) ? parsedDate : source.id === "le-parisien" ? dateFromLeParisienUrl(link) : Number.NaN;
     const datePrecision = Number.isFinite(parsedDate) ? "minute" : Number.isFinite(timestamp) ? "day" : null;
@@ -147,7 +188,7 @@ function parseFeed(xml, source) {
     if (matchedTerms.length === 0 || seen.has(link)) continue;
     seen.add(link);
 
-    const matchedCity = CITIES.find((city) => containsWord(normalize(title), normalize(city.name)));
+    const matchedCity = findMatchedCity(title, description);
     articles.push({
       id: `${source.id}:${link}`,
       title,
@@ -163,10 +204,58 @@ function parseFeed(xml, source) {
       city: matchedCity?.name || null,
       region: matchedCity?.region || null,
       position: matchedCity?.position || null,
+      countryCode: matchedCity?.countryCode || (matchedCity ? "FR" : findCountryCode(`${title} ${description}`)),
     });
     if (articles.length >= MAX_ARTICLES_PER_SOURCE) break;
   }
   return articles;
+}
+
+function readItemLink(item) {
+  const links = [...item.matchAll(/<link\b([^>]*)\/?\s*>/gi)];
+  for (const match of links) {
+    const attributes = Object.fromEntries(
+      [...match[1].matchAll(/([\w:-]+)\s*=\s*(?:"([^"]*)"|'([^']*)')/g)]
+        .map((attribute) => [attribute[1].toLowerCase(), decodeEntities(attribute[2] ?? attribute[3] ?? "")]),
+    );
+    if (attributes.href && (!attributes.rel || attributes.rel === "alternate")) return attributes.href;
+  }
+  return "";
+}
+
+function findMatchedCity(title, description) {
+  const entries = CITIES.flatMap((city) => [city.name, ...(city.aliases || [])]
+    .map((name) => ({ city, name, normalizedName: normalize(name) })))
+    .sort((a, b) => b.normalizedName.length - a.normalizedName.length);
+  for (const [text, isTitle] of [[title, true], [description, false]]) {
+    const normalized = normalize(text);
+    for (const entry of entries) {
+      if (!containsWord(normalized, entry.normalizedName)) continue;
+      const index = normalized.indexOf(entry.normalizedName);
+      const prefix = normalized.slice(0, index).trim().split(/\s+/);
+      const lastWord = prefix.at(-1);
+      if (isTitle && index === 0) return entry.city;
+      if (["a", "à", "au", "aux", "en", "in", "near", "bei", "naar"].includes(lastWord)
+        || ["in der", "in den", "in het"].some((cue) => normalized.slice(0, index).trim().endsWith(cue))) {
+        return entry.city;
+      }
+      if (["bruxelles", "brussels", "berlin", "madrid", "barcelona", "roma", "rome"].includes(entry.normalizedName)
+        && isTitle && index < 32) return entry.city;
+    }
+  }
+  return null;
+}
+
+function findCountryCode(text) {
+  const normalized = normalize(text);
+  const countries = [
+    ["BE", ["belgique", "belgium", "belgie", "belgië"]],
+    ["ES", ["espagne", "espana", "spain", "españa"]],
+    ["IT", ["italie", "italia", "italy"]],
+    ["DE", ["allemagne", "deutschland", "germany"]],
+    ["FR", ["france"]],
+  ];
+  return countries.find(([, names]) => names.some((name) => containsWord(normalized, normalize(name))))?.[0] || null;
 }
 
 function dateFromLeParisienUrl(link) {

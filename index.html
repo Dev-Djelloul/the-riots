@@ -9,9 +9,9 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <meta
       name="description"
-      content="Une veille éditoriale sur les événements en France, avec sources et état de vérification clairement indiqués."
+      content="Une veille éditoriale sur les événements évoqués dans les médias en France et en Europe, avec sources et limites clairement indiquées."
     />
-    <title>Veille — événements en France</title>
+    <title>Veille — France et Europe</title>
     <link rel="manifest" href="/manifest.webmanifest" />
     <link rel="icon" href="/icons/veille.svg" type="image/svg+xml" />
     <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png" />
@@ -57,7 +57,7 @@
             <p class="eyebrow"><span class="eyebrow-line"></span> L’ACTUALITÉ, MISE EN PERSPECTIVE</p>
             <h1>Comprendre ce qui<br /><em>se passe sur le terrain.</em></h1>
             <p class="intro-description">
-              Une veille des événements signalés en France, contextualisés et reliés à leurs sources.
+              Une veille des événements évoqués dans les médias en France et dans quatre pays européens pilotes.
             </p>
           </div>
           <div class="live-status" aria-live="polite">
@@ -262,7 +262,7 @@
             </div>
             <label class="search-field">
               <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6.5"></circle><path d="m16 16 4 4"></path></svg>
-              <input id="search-input" type="search" placeholder="Ville, région…" autocomplete="off" />
+              <input id="search-input" type="search" placeholder="Ville, pays…" autocomplete="off" />
               <kbd>⌘ K</kbd>
             </label>
 
@@ -297,15 +297,30 @@
             </div>
           </aside>
 
-          <section class="map-panel" aria-label="Carte géographique interactive de France">
+          <section class="map-panel" aria-label="Carte géographique interactive">
             <div class="map-topline">
               <div>
                 <span class="section-kicker">REPÈRES GÉOGRAPHIQUES</span>
-                <h2>France métropolitaine</h2>
+                <h2 id="map-title">France métropolitaine</h2>
+                <div class="map-mode-controls" id="map-mode-controls" role="group" aria-label="Zone géographique" hidden>
+                  <button class="map-mode-button active" type="button" data-map-mode="france" aria-pressed="true">France</button>
+                  <button class="map-mode-button" type="button" data-map-mode="europe" aria-pressed="false">Europe</button>
+                </div>
               </div>
               <div class="map-key">
-                <span class="map-date">96 DÉPARTEMENTS · MENTIONS D’ARTICLES</span>
-                <span class="map-legend"><i class="map-legend-spectrum"></i> Départements colorés · repères communaux cliquables</span>
+                <span class="map-date" id="map-date">96 DÉPARTEMENTS · MENTIONS D’ARTICLES</span>
+                <label class="map-country-filter" id="map-filter-controls" hidden>
+                  <span class="filter-label">PAYS</span>
+                  <select id="country-filter">
+                    <option value="all">Tous les pays</option>
+                    <option value="FR">France</option>
+                    <option value="BE">Belgique</option>
+                    <option value="ES">Espagne</option>
+                    <option value="IT">Italie</option>
+                    <option value="DE">Allemagne</option>
+                  </select>
+                </label>
+                <span class="map-legend"><i class="map-legend-spectrum" id="map-legend-spectrum"></i><span id="map-legend">Départements colorés · repères communaux cliquables</span></span>
               </div>
             </div>
             <div class="map-stage">
@@ -315,8 +330,8 @@
               <div class="map-empty" id="map-empty" hidden>Aucun lieu suffisamment précis cité dans les titres ou extraits.<br /><span>Les zones colorées représentent des mentions d’articles, pas des événements vérifiés.</span></div>
             </div>
             <div class="map-footer">
-              <span>COUVERTURE MÉDIATIQUE · COULEURS DISTINCTES, SANS CLASSEMENT D’INTENSITÉ · PAS UN DÉCOMPTE D’ÉVÉNEMENTS</span>
-              <a href="https://www.data.gouv.fr/datasets/contours-administratifs/" target="_blank" rel="noopener noreferrer">Contours IGN · data.gouv.fr · Etalab 2.0 ↗</a>
+              <span id="map-footer-note">COUVERTURE MÉDIATIQUE · COULEURS DISTINCTES, SANS CLASSEMENT D’INTENSITÉ · PAS UN DÉCOMPTE D’ÉVÉNEMENTS</span>
+              <a id="map-data-credit" href="https://www.data.gouv.fr/datasets/contours-administratifs/" target="_blank" rel="noopener noreferrer">Contours IGN · data.gouv.fr · Etalab 2.0 ↗</a>
               <span id="map-result-count">0 REPÈRE</span>
             </div>
           </section>
@@ -324,13 +339,14 @@
           <section class="feed-panel" aria-label="Articles de presse">
             <div class="feed-heading">
               <div>
-                <span class="section-kicker">LE FIL</span>
-                <h2>Articles récents <span class="feed-count" id="feed-count">—</span></h2>
+                <span class="section-kicker" id="feed-heading-label">LE FIL</span>
+                <h2><span id="feed-heading-title">Articles récents</span> <span class="feed-count" id="feed-count">—</span></h2>
               </div>
               <button id="sort-button" class="sort-button" type="button" aria-label="Changer l’ordre de tri" title="Changer l’ordre de tri">
                 <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M4 5h12M6 10h8m-6 5h4"></path></svg>
               </button>
             </div>
+            <p class="timeline-note" id="timeline-note" hidden>Regroupement éditorial par date, pays, ville citée et mots-clés. Les titres et extraits restent dans la langue du média ; plusieurs articles ne constituent pas une vérification indépendante.</p>
             <div class="feed-list" id="feed-list" aria-live="polite"></div>
             <div class="empty-state" id="empty-state" hidden>
               <span aria-hidden="true">⌕</span>
@@ -357,8 +373,8 @@
       <button class="dialog-close" type="button" id="dialog-close" aria-label="Fermer">×</button>
       <span class="section-kicker">À PROPOS DE VEILLE</span>
       <h2>L’information mérite<br /><em>du contexte.</em></h2>
-      <p>Veille interroge 18 flux RSS publics : franceinfo, BFMTV, CNEWS, Le Monde, France 24, RFI, Le Figaro, Libération, Ouest-France, Sud Ouest, 20 Minutes, La Croix, L’Humanité, La Dépêche du Midi, Le Parisien, France Inter, L’Express et Challenges. Cette sélection réunit audiovisuel, médias internationaux, presse nationale et presse régionale ; elle ne représente pas toute la presse. Chaque article reste attribué à son éditeur et renvoie à sa page d’origine.</p>
-      <p>Cette sélection de flux ne peut pas être exhaustive : des médias, publications sans RSS, contenus sociaux et événements peuvent manquer, et la durée d’archivage dépend de chaque éditeur. Le flux du Parisien n’inclut pas l’heure de publication ; sa date est estimée d’après l’URL et signalée comme telle. Les articles sont repérés par mots-clés, sans vérification indépendante. La carte couvre les 96 départements métropolitains ; elle repère les communes et départements cités dans les titres et extraits, signale les mentions ambiguës et mesure uniquement la couverture médiatique, jamais des incidents confirmés ni leur lieu exact. Un rassemblement ou une manifestation n’est pas, en soi, une émeute.</p>
+      <p>Veille interroge 26 flux RSS et Atom publics : 18 sources françaises, ainsi que VRT NWS et RTBF Info (Belgique), El País et elDiario.es (Espagne), Rai News et la Repubblica (Italie), tagesschau et Deutsche Welle (Allemagne). La sélection n’est ni exhaustive ni représentative de toute la presse. Chaque article reste attribué à son éditeur et renvoie à sa page d’origine ; les titres et extraits sont conservés dans la langue du média.</p>
+      <p>Cette sélection de flux ne peut pas être exhaustive : des médias, publications sans RSS, contenus sociaux et événements peuvent manquer, et la durée d’archivage dépend de chaque éditeur. Le flux du Parisien n’inclut pas l’heure de publication ; sa date est estimée d’après l’URL et signalée comme telle. Les articles sont repérés par mots-clés, sans vérification indépendante. La carte France couvre les 96 départements métropolitains ; la vue Europe présente des contours généralisés pour la France, la Belgique, l’Espagne, l’Italie et l’Allemagne. Les lieux cités servent à contextualiser la couverture ; ils ne prouvent ni incident, ni lieu exact, ni intensité. Les regroupements européens sont des convergences éditoriales, pas des confirmations indépendantes. Manifestations et émeutes ne sont pas synonymes.</p>
       <div class="dialog-rule"></div>
       <span class="dialog-foot">INFORMER · SOURCER · CONTEXTUALISER</span>
     </dialog>

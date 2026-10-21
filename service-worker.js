@@ -1,5 +1,5 @@
-const SHELL_CACHE = "veille-shell-v1";
-const FEED_CACHE = "veille-feed-v1";
+const SHELL_CACHE = "veille-shell-v2";
+const FEED_CACHE = "veille-feed-v2";
 const SHELL_FILES = [
   "/",
   "/index.html",
@@ -26,6 +26,7 @@ const SHELL_FILES = [
   "/icons/channel-cnews.svg",
   "/data/communes.json",
   "/data/departements.geojson",
+  "/data/europe-countries.geojson",
 ];
 
 self.addEventListener("install", (event) => {

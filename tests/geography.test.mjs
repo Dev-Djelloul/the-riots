@@ -5,6 +5,7 @@ import { createGeographyIndex, createSpectrumPalette, locateArticle } from "../g
 
 const communes = JSON.parse(readFileSync(new URL("../data/communes.json", import.meta.url), "utf8"));
 const departments = JSON.parse(readFileSync(new URL("../data/departements.geojson", import.meta.url), "utf8"));
+const europe = JSON.parse(readFileSync(new URL("../data/europe-countries.geojson", import.meta.url), "utf8"));
 const geography = createGeographyIndex(communes, departments);
 
 test("couvre les 96 départements et le référentiel des communes métropolitaines", () => {
@@ -13,6 +14,12 @@ test("couvre les 96 départements et le référentiel des communes métropolitai
   assert.ok(departments.features.some((feature) => feature.properties.code === "2A"));
   assert.ok(departments.features.some((feature) => feature.properties.code === "2B"));
   assert.ok(!departments.features.some((feature) => feature.properties.code === "971"));
+});
+
+test("fournit les contours des cinq pays de la vue pilote européenne", () => {
+  const codes = europe.features.map((feature) => feature.properties.countryCode).sort();
+  assert.deepEqual(codes, ["BE", "DE", "ES", "FR", "IT"]);
+  assert.ok(europe.features.every((feature) => ["Polygon", "MultiPolygon"].includes(feature.geometry.type)));
 });
 
 test("repère une commune citée dans le titre et une commune dans l’extrait", () => {
