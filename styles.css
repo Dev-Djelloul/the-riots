@@ -22,11 +22,12 @@
 
 body {
   margin: 0;
-  min-width: 320px;
+  min-width: 256px;
   background: var(--bg);
   color: var(--text);
   font-family: var(--sans);
   font-size: 13px;
+  zoom: 1.25;
   -webkit-font-smoothing: antialiased;
 }
 

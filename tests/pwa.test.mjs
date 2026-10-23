@@ -17,6 +17,13 @@ test("PWA manifest points to an existing scalable app icon", async () => {
   await readFile(new URL(manifest.icons[0].src.slice(1), root), "utf8");
 });
 
+test("site-wide zoom is set to 125 percent", async () => {
+  const stylesheet = await readFile(new URL("styles.css", root), "utf8");
+
+  assert.match(stylesheet, /body\s*\{[^}]*zoom:\s*1\.25;/s);
+  assert.match(stylesheet, /body\s*\{[^}]*min-width:\s*256px;/s);
+});
+
 test("social and channel logos referenced by the page exist and are pre-cached", async () => {
   const html = await readFile(new URL("index.html", root), "utf8");
   const serviceWorker = await readFile(new URL("service-worker.js", root), "utf8");
