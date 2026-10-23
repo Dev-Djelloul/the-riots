@@ -25,6 +25,25 @@ test("site-wide zoom is reset to 100 percent and French live streams use two col
   assert.match(stylesheet, /\.live-board:not\(\.europe-live-board\) \.live-stream-card\s*\{\s*grid-column:\s*span 6;/);
 });
 
+test("personal alerts, saved articles and European coverage comparison are wired", async () => {
+  const html = await readFile(new URL("index.html", root), "utf8");
+  const app = await readFile(new URL("app.js", root), "utf8");
+  const serviceWorker = await readFile(new URL("service-worker.js", root), "utf8");
+  const readme = await readFile(new URL("README.md", root), "utf8");
+
+  for (const id of ["alert-form", "alert-query", "alert-country", "alert-rules", "notification-permission", "saved-filter", "coverage-compare-list"]) {
+    assert.match(html, new RegExp(`id="${id}"`), `${id} should be present in the interface`);
+  }
+  assert.match(app, /processNewArticles\(state\.articles\)/);
+  assert.match(app, /Notification\.requestPermission\(\)/);
+  assert.match(app, /toggleSavedArticle\(article\)/);
+  assert.match(app, /getVisibleArticles\(\{ ignoreCountry: true \}\)/);
+  assert.match(serviceWorker, /veille-shell-v6/);
+  assert.match(readme, /À lire plus tard/);
+  assert.match(readme, /alertes personnalisées/i);
+  assert.match(readme, /Comparateur de couverture/);
+});
+
 test("social and channel logos referenced by the page exist and are pre-cached", async () => {
   const html = await readFile(new URL("index.html", root), "utf8");
   const serviceWorker = await readFile(new URL("service-worker.js", root), "utf8");
@@ -62,7 +81,7 @@ test("European live video cards point to official players and broadcasters", asy
   assert.match(html, /https:\/\/www\.vrt\.be\/vrtnws\/nl\/kijk\//);
   assert.match(html, /https:\/\/www\.raiplay\.it\/dirette\/rainews24/);
   assert.match(html, /https:\/\/www\.tagesschau\.de\/multimedia\/livestreams\//);
-  assert.match(serviceWorker, /veille-shell-v5/);
+  assert.match(serviceWorker, /veille-shell-v6/);
 });
 
 test("service worker serves the last successful news response offline", async () => {

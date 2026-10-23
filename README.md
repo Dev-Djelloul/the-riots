@@ -12,6 +12,9 @@ Veille est une application web française de veille éditoriale. Elle agrège de
 - Remplissage spectral des départements mentionnés et repères communaux cliquables qui présentent les articles associés.
 - Bascule France / Europe et filtre par pays pour la France, la Belgique, l’Espagne, l’Italie et l’Allemagne.
 - Chronologie éditoriale regroupant les articles européens par date, ville citée et sujet détecté, avec le nombre de médias distincts.
+- Comparateur de couverture par pays pilote, comptant les articles et médias distincts reçus dans les flux ; les lignes filtrent la chronologie. Ce n’est pas un décompte d’événements.
+- Liste « À lire plus tard » persistante dans le navigateur, conservée localement même après la disparition d’un article des flux.
+- Alertes personnalisées par ville/mot-clé et pays facultatif, avec notifications navigateur sur action explicite. Les alertes se déclenchent lorsque Veille est ouverte et récupère de nouveaux articles ; elles ne fonctionnent pas en arrière-plan.
 - Analyse des mots-clés français, néerlandais, espagnols, italiens et allemands ; titres et extraits affichés dans leur langue d’origine, sans traduction automatique.
 - Fil visuel de jusqu’à six articles illustrés par une image fournie dans leur flux RSS.
 - Lecteurs vidéo officiels chargés au clic et liens de secours vers les chaînes ou sites des médias.
@@ -114,6 +117,7 @@ Après une première visite connectée :
 
 - l’application, ses scripts, ses styles, son icône et les données géographiques locales sont mis en cache ;
 - la dernière réponse réussie de `/api/veille` est conservée et affichée avec une indication de données hors connexion si le réseau est absent ;
+- la liste de lecture, les alertes et l’historique des articles déjà vus sont stockés dans le navigateur et ne sont pas synchronisés entre appareils ;
 - les routes `/api/social`, les flux RSS, les polices et scripts tiers, les tuiles cartographiques et les lecteurs vidéo nécessitent toujours une connexion.
 
 Les résultats de veille affichés hors connexion sont ceux de la dernière actualisation réussie. Les actions de recherche ou de rafraîchissement peuvent nécessiter un accès réseau.

@@ -15,6 +15,62 @@ const TYPE_LABELS = {
 };
 
 const COUNTRY_NAMES = { BE: "Belgique", DE: "Allemagne", ES: "Espagne", FR: "France", IT: "Italie" };
+const COUNTRY_CODES = Object.keys(COUNTRY_NAMES);
+const STORAGE_KEYS = {
+  savedArticles: "veille-saved-articles-v1",
+  alertRules: "veille-alert-rules-v1",
+  seenArticles: "veille-seen-articles-v1",
+};
+
+function readStoredValue(key, fallback) {
+  try {
+    const value = window.localStorage.getItem(key);
+    return value === null ? fallback : JSON.parse(value);
+  } catch (error) {
+    console.warn(`Impossible de lire la préférence locale « ${key} ».`, error);
+    return fallback;
+  }
+}
+
+function writeStoredValue(key, value) {
+  try {
+    window.localStorage.setItem(key, JSON.stringify(value));
+    return true;
+  } catch (error) {
+    console.warn(`Impossible d’enregistrer la préférence locale « ${key} ».`, error);
+    return false;
+  }
+}
+
+function isValidSavedArticle(article) {
+  if (!article || typeof article !== "object"
+    || typeof article.id !== "string"
+    || typeof article.title !== "string"
+    || typeof article.publishedAt !== "string"
+    || typeof article.sourceName !== "string"
+    || !Array.isArray(article.matchedTerms)
+    || !Array.isArray(article.location?.places || [])) return false;
+  try {
+    return new URL(article.link).protocol === "https:";
+  } catch {
+    return false;
+  }
+}
+
+const storedSavedArticles = readStoredValue(STORAGE_KEYS.savedArticles, []);
+const savedArticles = new Map(
+  (Array.isArray(storedSavedArticles) ? storedSavedArticles : [])
+    .filter(isValidSavedArticle)
+    .map((article) => [article.id, article]),
+);
+const storedAlertRules = readStoredValue(STORAGE_KEYS.alertRules, []);
+const alertRules = Array.isArray(storedAlertRules)
+  ? storedAlertRules.filter((rule) => rule && typeof rule.id === "string"
+    && typeof rule.query === "string" && typeof rule.countryCode === "string"
+    && (rule.query.trim() || COUNTRY_CODES.includes(rule.countryCode))
+    && (!rule.countryCode || COUNTRY_CODES.includes(rule.countryCode)))
+  : [];
+const storedSeenArticles = readStoredValue(STORAGE_KEYS.seenArticles, null);
 
 const LIVE_CHANNELS = {
   dwnews: {
@@ -81,6 +137,11 @@ const state = {
   fetchedAt: null,
   mapMode: "france",
   country: "all",
+  showSaved: false,
+  seenArticleIds: new Set(Array.isArray(storedSeenArticles)
+    ? storedSeenArticles.filter((id) => typeof id === "string")
+    : []),
+  seenArticlesInitialized: Array.isArray(storedSeenArticles),
 };
 
 const feed = document.querySelector("#feed-list");
@@ -216,12 +277,14 @@ function countryStyle(feature) {
   };
 }
 
-function getVisibleArticles() {
+function getVisibleArticles({ ignoreCountry = false, fromSaved = false } = {}) {
   const now = new Date();
   const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
   const startOfTomorrow = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1).getTime();
-  return state.articles
+  const sourceArticles = fromSaved ? [...savedArticles.values()] : state.articles;
+  return sourceArticles
     .filter((article) => {
+      if (fromSaved) return true;
       if (state.period === "all") return true;
       const publishedAt = Date.parse(article.publishedAt);
       if (!Number.isFinite(publishedAt) || publishedAt > now.getTime()) return false;
@@ -229,11 +292,13 @@ function getVisibleArticles() {
       if (state.period === "week") return publishedAt >= now.getTime() - 7 * 24 * 60 * 60 * 1000;
       return false;
     })
-    .filter((article) => state.type === "all" || article.type === state.type)
-    .filter((article) => state.mapMode !== "europe" || (article.countryCode && (state.country === "all" || article.countryCode === state.country)))
+    .filter((article) => fromSaved || state.type === "all" || article.type === state.type)
+    .filter((article) => fromSaved || ignoreCountry || state.mapMode !== "europe"
+      || (article.countryCode && (state.country === "all" || article.countryCode === state.country)))
     .filter((article) => {
+      if (fromSaved) return true;
       const placeNames = article.location?.places.map((place) => place.name).join(" ") || article.location?.label || "";
-      const searchable = `${article.title} ${article.description} ${placeNames} ${article.sourceName} ${article.matchedTerms.join(" ")}`.toLocaleLowerCase("fr");
+      const searchable = `${article.title} ${article.description} ${placeNames} ${article.sourceName} ${(article.matchedTerms || []).join(" ")}`.toLocaleLowerCase("fr");
       return searchable.includes(state.query);
     })
     .sort((a, b) => {
@@ -244,9 +309,11 @@ function getVisibleArticles() {
 
 function render() {
   const articles = getVisibleArticles();
-  if (state.mapMode === "europe") renderEuropeanTimeline(articles);
-  else feed.replaceChildren(...articles.map(createArticleCard));
+  const feedArticles = state.showSaved ? getVisibleArticles({ fromSaved: true }) : articles;
+  if (state.mapMode === "europe") renderEuropeanTimeline(feedArticles);
+  else feed.replaceChildren(...feedArticles.map(createArticleCard));
   renderVisuals(articles);
+  renderCoverageComparison(getVisibleArticles({ ignoreCountry: true }));
   const mapped = articles.filter((article) => article.countryCode && (state.mapMode === "france"
     ? article.countryCode === "FR" && article.location?.places.length
     : true));
@@ -257,15 +324,23 @@ function render() {
     : geographyIndex
       ? "Aucun lieu suffisamment précis cité dans les titres ou extraits.<br /><span>Les limites des 96 départements restent visibles ; les zones colorées reflètent les mentions d’articles, pas des événements vérifiés.</span>"
       : "Données géographiques indisponibles.<br /><span>Les articles restent consultables ; réessaie après actualisation.</span>";
-  const isEmpty = articles.length === 0;
+  const isEmpty = feedArticles.length === 0;
   emptyState.hidden = !isEmpty;
   feed.hidden = isEmpty;
-  document.querySelector("#empty-title").textContent = state.articles.length === 0 ? "Aucun article disponible" : "Aucun résultat";
-  document.querySelector("#empty-message").textContent = state.articles.length === 0
-    ? "Les flux n’ont retourné aucun article correspondant. Vérifie les sources ou réessaie plus tard."
-    : "Essaie une autre recherche ou modifie les filtres.";
-  document.querySelector("#reset-filters").hidden = state.articles.length === 0;
-  document.querySelector("#feed-count").textContent = String(articles.length).padStart(2, "0");
+  document.querySelector("#empty-title").textContent = state.showSaved
+    ? "Aucun article enregistré"
+    : state.articles.length === 0 ? "Aucun article disponible" : "Aucun résultat";
+  document.querySelector("#empty-message").textContent = state.showSaved
+    ? "Enregistre un article avec le bouton « À lire plus tard » pour le retrouver ici."
+    : state.articles.length === 0
+      ? "Les flux n’ont retourné aucun article correspondant. Vérifie les sources ou réessaie plus tard."
+      : "Essaie une autre recherche ou modifie les filtres.";
+  document.querySelector("#reset-filters").hidden = state.articles.length === 0 || state.showSaved;
+  document.querySelector("#feed-count").textContent = String(feedArticles.length).padStart(2, "0");
+  const savedFilter = document.querySelector("#saved-filter");
+  savedFilter.classList.toggle("active", state.showSaved);
+  savedFilter.setAttribute("aria-pressed", String(state.showSaved));
+  document.querySelector("#saved-count").textContent = String(savedArticles.size);
   document.querySelector("#map-result-count").textContent = state.mapMode === "europe"
     ? `${mapStats.countryCount} PAYS · ${mapStats.cityCount} VILLE${mapStats.cityCount === 1 ? "" : "S"} · ${mapped.length} ARTICLE${mapped.length === 1 ? "" : "S"} LOCALISÉ${mapped.length === 1 ? "" : "S"}`
     : `${mapStats.communeCount} COMMUNE${mapStats.communeCount === 1 ? "" : "S"} · ${mapStats.departmentCount} DÉPARTEMENT${mapStats.departmentCount === 1 ? "" : "S"} · ${mapped.length} ARTICLE${mapped.length === 1 ? "" : "S"} LOCALISÉ${mapped.length === 1 ? "" : "S"}`;
@@ -327,6 +402,125 @@ function renderEuropeanTimeline(articles) {
     section.append(heading, note, ...group.articles.map(createArticleCard));
     return section;
   }));
+}
+
+function renderCoverageComparison(articles) {
+  const panel = document.querySelector("#coverage-compare");
+  panel.hidden = state.mapMode !== "europe" || state.showSaved;
+  if (panel.hidden) return;
+
+  const totals = new Map(COUNTRY_CODES.map((code) => [code, { articles: 0, outlets: new Set() }]));
+  for (const article of articles) {
+    if (!article.countryCode || !totals.has(article.countryCode)) continue;
+    const total = totals.get(article.countryCode);
+    total.articles += 1;
+    total.outlets.add(article.sourceId || article.sourceName);
+  }
+  const maxArticles = Math.max(1, ...[...totals.values()].map((total) => total.articles));
+  const list = document.querySelector("#coverage-compare-list");
+  list.replaceChildren(...COUNTRY_CODES.map((code) => {
+    const total = totals.get(code);
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = `coverage-country${state.country === code ? " active" : ""}`;
+    button.dataset.country = code;
+    button.setAttribute("aria-pressed", String(state.country === code));
+    const name = document.createElement("span");
+    name.className = "coverage-country-name";
+    name.textContent = COUNTRY_NAMES[code];
+    const bar = document.createElement("span");
+    bar.className = "coverage-bar";
+    const fill = document.createElement("span");
+    fill.style.width = `${Math.round(total.articles / maxArticles * 100)}%`;
+    bar.append(fill);
+    const count = document.createElement("span");
+    count.className = "coverage-count";
+    count.textContent = `${total.articles} art. · ${total.outlets.size} médias`;
+    button.append(name, bar, count);
+    return button;
+  }));
+}
+
+function renderAlertRules() {
+  const list = document.querySelector("#alert-rules");
+  list.replaceChildren(...alertRules.map((rule) => {
+    const item = document.createElement("li");
+    const label = document.createElement("span");
+    label.textContent = [rule.query, rule.countryCode && COUNTRY_NAMES[rule.countryCode]]
+      .filter(Boolean)
+      .join(" · ");
+    const remove = document.createElement("button");
+    remove.type = "button";
+    remove.textContent = "Supprimer";
+    remove.setAttribute("aria-label", `Supprimer l’alerte ${label.textContent}`);
+    remove.addEventListener("click", () => {
+      const index = alertRules.findIndex((candidate) => candidate.id === rule.id);
+      if (index < 0) return;
+      const [removed] = alertRules.splice(index, 1);
+      if (!writeStoredValue(STORAGE_KEYS.alertRules, alertRules)) {
+        alertRules.splice(index, 0, removed);
+        return;
+      }
+      document.querySelector("#alert-status").textContent = "Alerte supprimée.";
+      renderAlertRules();
+    });
+    item.append(label, remove);
+    return item;
+  }));
+}
+
+function toggleSavedArticle(article) {
+  const wasSaved = savedArticles.has(article.id);
+  if (wasSaved) savedArticles.delete(article.id);
+  else savedArticles.set(article.id, article);
+  if (!writeStoredValue(STORAGE_KEYS.savedArticles, [...savedArticles.values()])) {
+    if (wasSaved) savedArticles.set(article.id, article);
+    else savedArticles.delete(article.id);
+    document.querySelector("#alert-status").textContent = "Stockage local indisponible : l’article n’a pas été modifié.";
+    return;
+  }
+  document.querySelector("#alert-status").textContent = wasSaved
+    ? "Article retiré de la liste « À lire plus tard »."
+    : "Article enregistré dans « À lire plus tard ».";
+  render();
+}
+
+function articleMatchesAlert(article, rule) {
+  if (rule.countryCode && article.countryCode !== rule.countryCode) return false;
+  if (!rule.query.trim()) return true;
+  const placeNames = (article.location?.places || []).map((place) => place.name).join(" ");
+  const searchable = normalizePlace([
+    article.title,
+    article.description,
+    placeNames,
+    article.sourceName,
+    ...(article.matchedTerms || []),
+  ].join(" "));
+  return searchable.includes(normalizePlace(rule.query.trim()));
+}
+
+function processNewArticles(articles) {
+  const newArticles = articles.filter((article) => !state.seenArticleIds.has(article.id));
+  if (state.seenArticlesInitialized && document.visibilityState === "visible") {
+    for (const rule of alertRules) {
+      const matches = newArticles.filter((article) => articleMatchesAlert(article, rule));
+      if (!matches.length) continue;
+      const first = matches[0];
+      const message = matches.length === 1
+        ? `${first.title} · ${first.sourceName}`
+        : `${matches.length} nouveaux articles, dont « ${first.title} ».`;
+      document.querySelector("#alert-status").textContent = `Alerte : ${message}`;
+      if ("Notification" in window && window.Notification.permission === "granted") {
+        new window.Notification(`Veille · ${rule.query || COUNTRY_NAMES[rule.countryCode]}`, { body: message });
+      }
+    }
+  }
+  for (const article of articles) state.seenArticleIds.add(article.id);
+  while (state.seenArticleIds.size > 1000) {
+    state.seenArticleIds.delete(state.seenArticleIds.values().next().value);
+  }
+  state.seenArticlesInitialized = true;
+  writeStoredValue(STORAGE_KEYS.seenArticles, [...state.seenArticleIds]);
 }
 
 function normalizePlace(value) {
@@ -546,7 +740,14 @@ function createArticleCard(article) {
   source.target = "_blank";
   source.rel = "noopener noreferrer";
   source.textContent = "Lire l’article complet ↗";
-  attribution.append(publisher, source);
+  const saveButton = document.createElement("button");
+  const isSaved = savedArticles.has(article.id);
+  saveButton.type = "button";
+  saveButton.className = `save-article${isSaved ? " saved" : ""}`;
+  saveButton.setAttribute("aria-pressed", String(isSaved));
+  saveButton.textContent = isSaved ? "Enregistré ✓" : "À lire plus tard";
+  saveButton.addEventListener("click", () => toggleSavedArticle(article));
+  attribution.append(publisher, saveButton, source);
   card.append(attribution);
 
   if (state.selected === article.id) {
@@ -799,6 +1000,9 @@ async function loadArticles() {
         };
       })
       : [];
+    if (response.ok && response.headers.get("X-PWA-Offline") !== "true") {
+      processNewArticles(state.articles);
+    }
     state.sources = Array.isArray(payload.sources) ? payload.sources : [];
     state.fetchedAt = payload.fetchedAt || null;
     if (response.headers.get("X-PWA-Offline") === "true") {
@@ -863,6 +1067,14 @@ document.querySelector("#country-filter").addEventListener("change", (event) => 
   render();
 });
 
+document.querySelector("#coverage-compare-list").addEventListener("click", (event) => {
+  const button = event.target instanceof Element ? event.target.closest("[data-country]") : null;
+  if (!button) return;
+  state.country = state.country === button.dataset.country ? "all" : button.dataset.country;
+  document.querySelector("#country-filter").value = state.country;
+  render();
+});
+
 document.querySelector("#type-filters").addEventListener("click", (event) => {
   const button = event.target.closest("[data-type]");
   if (!button) return;
@@ -879,6 +1091,57 @@ document.querySelector("#search-input").addEventListener("input", (event) => {
 document.querySelector("#sort-button").addEventListener("click", () => {
   state.newestFirst = !state.newestFirst;
   render();
+});
+
+document.querySelector("#saved-filter").addEventListener("click", () => {
+  state.showSaved = !state.showSaved;
+  render();
+});
+
+document.querySelector("#alert-form").addEventListener("submit", (event) => {
+  event.preventDefault();
+  const query = document.querySelector("#alert-query").value.trim();
+  const countryCode = document.querySelector("#alert-country").value;
+  const status = document.querySelector("#alert-status");
+  if (!query && !countryCode) {
+    status.textContent = "Saisis une ville ou un mot-clé, ou choisis un pays.";
+    return;
+  }
+  if (alertRules.some((rule) => normalizePlace(rule.query) === normalizePlace(query)
+    && rule.countryCode === countryCode)) {
+    status.textContent = "Cette alerte existe déjà.";
+    return;
+  }
+  const rule = { id: crypto.randomUUID(), query, countryCode };
+  alertRules.push(rule);
+  if (!writeStoredValue(STORAGE_KEYS.alertRules, alertRules)) {
+    alertRules.pop();
+    status.textContent = "Stockage local indisponible : l’alerte n’a pas été créée.";
+    return;
+  }
+  document.querySelector("#alert-query").value = "";
+  document.querySelector("#alert-country").value = "";
+  status.textContent = "Alerte créée. Elle se déclenchera sur les prochains articles reçus.";
+  renderAlertRules();
+});
+
+document.querySelector("#notification-permission").addEventListener("click", async () => {
+  const status = document.querySelector("#alert-status");
+  if (!("Notification" in window)) {
+    status.textContent = "Les notifications navigateur ne sont pas prises en charge.";
+    return;
+  }
+  try {
+    const permission = await window.Notification.requestPermission();
+    status.textContent = permission === "granted"
+      ? "Notifications activées pour les nouveaux articles correspondants."
+      : permission === "denied"
+        ? "Notifications refusées dans le navigateur. Tu peux modifier ce choix dans ses réglages."
+        : "Autorisation non accordée.";
+  } catch (error) {
+    console.error("Impossible de demander l’autorisation des notifications.", error);
+    status.textContent = "Impossible d’activer les notifications dans ce navigateur.";
+  }
 });
 
 document.querySelector("#reset-filters").addEventListener("click", () => {
@@ -1055,6 +1318,7 @@ document.addEventListener("keydown", (event) => {
 });
 
 loadArticles();
+renderAlertRules();
 window.setInterval(() => {
   if (document.visibilityState === "visible") loadArticles();
 }, 5 * 60 * 1000);

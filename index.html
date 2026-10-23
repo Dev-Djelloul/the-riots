@@ -358,6 +358,32 @@
               </div>
             </div>
 
+            <section class="personal-alerts" aria-labelledby="alerts-heading">
+              <h3 class="filter-label" id="alerts-heading">MES ALERTES</h3>
+              <p class="filter-note">Alertes locales sur les nouveaux articles reçus quand Veille est ouverte.</p>
+              <form id="alert-form" class="alert-form">
+                <label class="alert-field">
+                  <span>VILLE / MOT-CLÉ</span>
+                  <input id="alert-query" type="text" maxlength="80" placeholder="Ex. Lyon, transports" />
+                </label>
+                <label class="alert-field">
+                  <span>PAYS (FACULTATIF)</span>
+                  <select id="alert-country">
+                    <option value="">Tous les pays</option>
+                    <option value="FR">France</option>
+                    <option value="BE">Belgique</option>
+                    <option value="ES">Espagne</option>
+                    <option value="IT">Italie</option>
+                    <option value="DE">Allemagne</option>
+                  </select>
+                </label>
+                <button class="personal-action" type="submit">Créer une alerte</button>
+              </form>
+              <button class="personal-action notification-permission" id="notification-permission" type="button">Activer les notifications navigateur</button>
+              <p class="personal-status" id="alert-status" aria-live="polite"></p>
+              <ul class="alert-rules" id="alert-rules" aria-label="Alertes enregistrées"></ul>
+            </section>
+
             <details class="sources-section" open>
               <summary class="filter-label">SOURCES SUIVIES <span id="source-count">—</span></summary>
               <ul class="source-list" id="source-list" aria-live="polite"></ul>
@@ -414,11 +440,19 @@
                 <span class="section-kicker" id="feed-heading-label">LE FIL</span>
                 <h2><span id="feed-heading-title">Articles récents</span> <span class="feed-count" id="feed-count">—</span></h2>
               </div>
-              <button id="sort-button" class="sort-button" type="button" aria-label="Changer l’ordre de tri" title="Changer l’ordre de tri">
-                <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M4 5h12M6 10h8m-6 5h4"></path></svg>
-              </button>
+              <div class="feed-actions">
+                <button id="saved-filter" class="saved-filter" type="button" aria-pressed="false">À lire plus tard <span id="saved-count">0</span></button>
+                <button id="sort-button" class="sort-button" type="button" aria-label="Changer l’ordre de tri" title="Changer l’ordre de tri">
+                  <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M4 5h12M6 10h8m-6 5h4"></path></svg>
+                </button>
+              </div>
             </div>
             <p class="timeline-note" id="timeline-note" hidden>Regroupement éditorial par date, pays, ville citée et mots-clés. Les titres et extraits restent dans la langue du média ; plusieurs articles ne constituent pas une vérification indépendante.</p>
+            <section class="coverage-compare" id="coverage-compare" aria-label="Comparaison de la couverture par pays" hidden>
+              <h3>Couverture par pays</h3>
+              <p>Articles et médias distincts dans les flux reçus · pas un décompte d’événements.</p>
+              <div class="coverage-compare-list" id="coverage-compare-list"></div>
+            </section>
             <div class="feed-list" id="feed-list" aria-live="polite"></div>
             <div class="empty-state" id="empty-state" hidden>
               <span aria-hidden="true">⌕</span>
