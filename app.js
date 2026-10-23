@@ -511,7 +511,11 @@ function processNewArticles(articles) {
         : `${matches.length} nouveaux articles, dont « ${first.title} ».`;
       document.querySelector("#alert-status").textContent = `Alerte : ${message}`;
       if ("Notification" in window && window.Notification.permission === "granted") {
-        new window.Notification(`Veille · ${rule.query || COUNTRY_NAMES[rule.countryCode]}`, { body: message });
+        showBrowserNotification(`Veille · ${rule.query || COUNTRY_NAMES[rule.countryCode]}`, message)
+          .catch((error) => {
+            console.error("Impossible d’afficher la notification de veille.", error);
+            document.querySelector("#alert-status").textContent = "Autorisation accordée, mais le navigateur n’a pas affiché la notification.";
+          });
       }
     }
   }
@@ -521,6 +525,42 @@ function processNewArticles(articles) {
   }
   state.seenArticlesInitialized = true;
   writeStoredValue(STORAGE_KEYS.seenArticles, [...state.seenArticleIds]);
+}
+
+async function showBrowserNotification(title, body) {
+  if ("serviceWorker" in navigator) {
+    const registration = await navigator.serviceWorker.ready;
+    if (typeof registration.showNotification === "function") {
+      await registration.showNotification(title, { body, icon: "/icons/veille-192.png" });
+      return;
+    }
+  }
+  new window.Notification(title, { body, icon: "/icons/veille-192.png" });
+}
+
+function isIOSWithoutInstalledApp() {
+  const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent)
+    || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+  return isIOS
+    && !navigator.standalone
+    && !window.matchMedia("(display-mode: standalone)").matches;
+}
+
+function updateNotificationButton() {
+  const button = document.querySelector("#notification-permission");
+  if (!window.isSecureContext) {
+    button.textContent = "Notifications : connexion HTTPS requise";
+  } else if (isIOSWithoutInstalledApp()) {
+    button.textContent = "Installer Veille pour activer les notifications";
+  } else if (!("Notification" in window)) {
+    button.textContent = "Notifications non prises en charge";
+  } else if (window.Notification.permission === "granted") {
+    button.textContent = "Notifications navigateur activées ✓";
+  } else if (window.Notification.permission === "denied") {
+    button.textContent = "Autorisation à modifier dans les réglages";
+  } else {
+    button.textContent = "Activer les notifications navigateur";
+  }
 }
 
 function normalizePlace(value) {
@@ -1127,20 +1167,43 @@ document.querySelector("#alert-form").addEventListener("submit", (event) => {
 
 document.querySelector("#notification-permission").addEventListener("click", async () => {
   const status = document.querySelector("#alert-status");
+  if (!window.isSecureContext) {
+    status.textContent = "Les notifications exigent une connexion sécurisée HTTPS.";
+    return;
+  }
+  if (isIOSWithoutInstalledApp()) {
+    status.textContent = "Sur iPhone ou iPad, ajoute Veille à l’écran d’accueil puis ouvre l’application depuis son icône pour activer les notifications.";
+    return;
+  }
   if (!("Notification" in window)) {
     status.textContent = "Les notifications navigateur ne sont pas prises en charge.";
+    return;
+  }
+  if (window.Notification.permission === "granted") {
+    status.textContent = "Les notifications sont déjà autorisées pour Veille.";
+    updateNotificationButton();
+    return;
+  }
+  if (window.Notification.permission === "denied") {
+    status.textContent = "L’autorisation a déjà été refusée. Modifie-la dans les réglages de notifications du navigateur pour ce site.";
+    updateNotificationButton();
+    return;
+  }
+  if (typeof window.Notification.requestPermission !== "function") {
+    status.textContent = "Ce navigateur ne permet pas de demander l’autorisation des notifications.";
     return;
   }
   try {
     const permission = await window.Notification.requestPermission();
     status.textContent = permission === "granted"
-      ? "Notifications activées pour les nouveaux articles correspondants."
+      ? "Notifications activées. Elles apparaîtront lors de la réception de nouveaux articles correspondants."
       : permission === "denied"
         ? "Notifications refusées dans le navigateur. Tu peux modifier ce choix dans ses réglages."
         : "Autorisation non accordée.";
+    updateNotificationButton();
   } catch (error) {
     console.error("Impossible de demander l’autorisation des notifications.", error);
-    status.textContent = "Impossible d’activer les notifications dans ce navigateur.";
+    status.textContent = "Impossible d’activer les notifications. Vérifie les réglages du navigateur et, sur iPhone/iPad, ouvre Veille depuis l’écran d’accueil.";
   }
 });
 
@@ -1319,6 +1382,7 @@ document.addEventListener("keydown", (event) => {
 
 loadArticles();
 renderAlertRules();
+updateNotificationButton();
 window.setInterval(() => {
   if (document.visibilityState === "visible") loadArticles();
 }, 5 * 60 * 1000);

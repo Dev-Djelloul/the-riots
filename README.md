@@ -14,7 +14,7 @@ Veille est une application web française de veille éditoriale. Elle agrège de
 - Chronologie éditoriale regroupant les articles européens par date, ville citée et sujet détecté, avec le nombre de médias distincts.
 - Comparateur de couverture par pays pilote, comptant les articles et médias distincts reçus dans les flux ; les lignes filtrent la chronologie. Ce n’est pas un décompte d’événements.
 - Liste « À lire plus tard » persistante dans le navigateur, conservée localement même après la disparition d’un article des flux.
-- Alertes personnalisées par ville/mot-clé et pays facultatif, avec notifications navigateur sur action explicite. Les alertes se déclenchent lorsque Veille est ouverte et récupère de nouveaux articles ; elles ne fonctionnent pas en arrière-plan.
+- Alertes personnalisées par ville/mot-clé et pays facultatif, avec notifications navigateur sur action explicite. Les alertes se déclenchent lorsque Veille est ouverte et récupère de nouveaux articles ; elles ne fonctionnent pas en arrière-plan. Sur iPhone/iPad, les notifications web nécessitent d’ajouter Veille à l’écran d’accueil et de l’ouvrir depuis son icône.
 - Analyse des mots-clés français, néerlandais, espagnols, italiens et allemands ; titres et extraits affichés dans leur langue d’origine, sans traduction automatique.
 - Fil visuel de jusqu’à six articles illustrés par une image fournie dans leur flux RSS.
 - Lecteurs vidéo officiels chargés au clic et liens de secours vers les chaînes ou sites des médias.

@@ -36,9 +36,12 @@ test("personal alerts, saved articles and European coverage comparison are wired
   }
   assert.match(app, /processNewArticles\(state\.articles\)/);
   assert.match(app, /Notification\.requestPermission\(\)/);
+  assert.match(app, /registration\.showNotification/);
+  assert.match(app, /window\.isSecureContext/);
+  assert.match(app, /isIOSWithoutInstalledApp/);
   assert.match(app, /toggleSavedArticle\(article\)/);
   assert.match(app, /getVisibleArticles\(\{ ignoreCountry: true \}\)/);
-  assert.match(serviceWorker, /veille-shell-v6/);
+  assert.match(serviceWorker, /veille-shell-v7/);
   assert.match(readme, /À lire plus tard/);
   assert.match(readme, /alertes personnalisées/i);
   assert.match(readme, /Comparateur de couverture/);
@@ -81,7 +84,7 @@ test("European live video cards point to official players and broadcasters", asy
   assert.match(html, /https:\/\/www\.vrt\.be\/vrtnws\/nl\/kijk\//);
   assert.match(html, /https:\/\/www\.raiplay\.it\/dirette\/rainews24/);
   assert.match(html, /https:\/\/www\.tagesschau\.de\/multimedia\/livestreams\//);
-  assert.match(serviceWorker, /veille-shell-v6/);
+  assert.match(serviceWorker, /veille-shell-v7/);
 });
 
 test("service worker serves the last successful news response offline", async () => {
