@@ -40,8 +40,14 @@ test("European live video cards point to official players and broadcasters", asy
     assert.match(html, new RegExp(`data-channel="${channel}"`));
   }
   assert.match(app, /id: "UCknLrEdhRCp1aegoMqRaCZg"/);
-  assert.match(app, /id: "UCrL1bh5AfgTjGfO_cF95tkA"/);
-  assert.match(html, /https:\/\/www\.rtbf\.be\/auvio\//);
+  assert.match(app, /liveUrl: "https:\/\/www\.youtube\.com\/@dwnews\/live"/);
+  assert.match(app, /siteUrl: "https:\/\/www\.rtve\.es\/play\/videos\/directo\/24h\/"/);
+  assert.match(html, /https:\/\/www\.rtve\.es\/play\/videos\/directo\/24h\//);
+  assert.match(html, /https:\/\/auvio\.rtbf\.be\/direct\/info/);
+  const rtveCard = html.match(/<article class="live-stream-card stream-featured" data-channel="rtve">([\s\S]*?)<\/article>/)?.[1];
+  assert.ok(rtveCard);
+  assert.match(rtveCard, /Accéder au direct 24h/);
+  assert.doesNotMatch(rtveCard, /youtube\.com|load-stream/);
   assert.match(html, /https:\/\/www\.vrt\.be\/vrtnws\/nl\/kijk\//);
   assert.match(html, /https:\/\/www\.raiplay\.it\/dirette\/rainews24/);
   assert.match(html, /https:\/\/www\.tagesschau\.de\/multimedia\/livestreams\//);

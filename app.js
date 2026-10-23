@@ -21,7 +21,6 @@ const LIVE_CHANNELS = {
     id: "UCknLrEdhRCp1aegoMqRaCZg",
     name: "DW News",
     liveUrl: "https://www.youtube.com/@dwnews/live",
-    siteUrl: "https://www.dw.com/en/live-tv/channel-2",
   },
   franceinfo: {
     id: "UCO6K_kkdP-lnSCiO3tPx7WA",
@@ -64,10 +63,8 @@ const LIVE_CHANNELS = {
     siteUrl: "https://www.cnews.fr/le-direct",
   },
   rtve: {
-    id: "UCrL1bh5AfgTjGfO_cF95tkA",
     name: "RTVE Noticias · Canal 24h",
-    liveUrl: "https://www.youtube.com/@rtvenoticias/live",
-    siteUrl: "https://www.rtve.es/play/videos/directo/24h/4/",
+    siteUrl: "https://www.rtve.es/play/videos/directo/24h/",
   },
 };
 
