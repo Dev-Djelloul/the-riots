@@ -17,11 +17,11 @@ test("PWA manifest points to an existing scalable app icon", async () => {
   await readFile(new URL(manifest.icons[0].src.slice(1), root), "utf8");
 });
 
-test("site-wide zoom is set to 125 percent", async () => {
+test("site-wide zoom is set to 150 percent", async () => {
   const stylesheet = await readFile(new URL("styles.css", root), "utf8");
 
-  assert.match(stylesheet, /body\s*\{[^}]*zoom:\s*1\.25;/s);
-  assert.match(stylesheet, /body\s*\{[^}]*min-width:\s*256px;/s);
+  assert.match(stylesheet, /body\s*\{[^}]*zoom:\s*1\.5;/s);
+  assert.match(stylesheet, /body\s*\{[^}]*min-width:\s*214px;/s);
 });
 
 test("social and channel logos referenced by the page exist and are pre-cached", async () => {
@@ -48,17 +48,20 @@ test("European live video cards point to official players and broadcasters", asy
   }
   assert.match(app, /id: "UCknLrEdhRCp1aegoMqRaCZg"/);
   assert.match(app, /liveUrl: "https:\/\/www\.youtube\.com\/@dwnews\/live"/);
+  assert.match(app, /id: "UC7QZIf0dta-XPXsp9Hv4dTw"/);
+  assert.match(app, /liveUrl: "https:\/\/www\.youtube\.com\/@rtvenoticias\/live"/);
   assert.match(app, /siteUrl: "https:\/\/www\.rtve\.es\/play\/videos\/directo\/24h\/"/);
+  assert.match(html, /https:\/\/www\.youtube\.com\/@rtvenoticias\/live/);
   assert.match(html, /https:\/\/www\.rtve\.es\/play\/videos\/directo\/24h\//);
   assert.match(html, /https:\/\/auvio\.rtbf\.be\/direct\/info/);
   const rtveCard = html.match(/<article class="live-stream-card stream-featured" data-channel="rtve">([\s\S]*?)<\/article>/)?.[1];
   assert.ok(rtveCard);
-  assert.match(rtveCard, /Accéder au direct 24h/);
-  assert.doesNotMatch(rtveCard, /youtube\.com|load-stream/);
+  assert.match(rtveCard, /load-stream/);
+  assert.match(rtveCard, /Ouvrir sur YouTube/);
   assert.match(html, /https:\/\/www\.vrt\.be\/vrtnws\/nl\/kijk\//);
   assert.match(html, /https:\/\/www\.raiplay\.it\/dirette\/rainews24/);
   assert.match(html, /https:\/\/www\.tagesschau\.de\/multimedia\/livestreams\//);
-  assert.match(serviceWorker, /veille-shell-v3/);
+  assert.match(serviceWorker, /veille-shell-v4/);
 });
 
 test("service worker serves the last successful news response offline", async () => {

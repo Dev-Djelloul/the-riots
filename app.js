@@ -63,7 +63,9 @@ const LIVE_CHANNELS = {
     siteUrl: "https://www.cnews.fr/le-direct",
   },
   rtve: {
+    id: "UC7QZIf0dta-XPXsp9Hv4dTw",
     name: "RTVE Noticias · Canal 24h",
+    liveUrl: "https://www.youtube.com/@rtvenoticias/live",
     siteUrl: "https://www.rtve.es/play/videos/directo/24h/",
   },
 };
