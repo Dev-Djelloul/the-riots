@@ -22,12 +22,12 @@
 
 body {
   margin: 0;
-  min-width: 214px;
+  min-width: 320px;
   background: var(--bg);
   color: var(--text);
   font-family: var(--sans);
   font-size: 13px;
-  zoom: 1.5;
+  zoom: 1;
   -webkit-font-smoothing: antialiased;
 }
 
@@ -130,6 +130,7 @@ h1 em, .about-dialog h2 em { color: var(--accent); font-weight: 500; }
 .stream-link-card .stream-caption > span { display: none; }
 .stream-link-card .stream-open, .stream-link-card .stream-site-link { min-height: 36px; display: inline-flex; align-items: center; justify-content: center; gap: 5px; padding: 7px 8px; border: 1px solid #4a473e; white-space: nowrap; }
 .stream-link-card .stream-open { font: 8px var(--mono); }
+.live-board:not(.europe-live-board) .live-stream-card { grid-column: span 6; }
 .stream-poster { position: relative; display: grid; place-items: center; overflow: hidden; aspect-ratio: 16 / 8.6; background: radial-gradient(ellipse at 50% 20%, #46534a 0, #252d27 38%, #151814 78%); }
 .live-stream-card[data-channel="bfmtv"] .stream-poster { background: radial-gradient(ellipse at 50% 20%, #51423a 0, #302a27 38%, #151814 78%); }
 .live-stream-card[data-channel="france24"] .stream-poster { background: radial-gradient(ellipse at 50% 20%, #3c4857 0, #262d37 38%, #151814 78%); }

@@ -17,11 +17,12 @@ test("PWA manifest points to an existing scalable app icon", async () => {
   await readFile(new URL(manifest.icons[0].src.slice(1), root), "utf8");
 });
 
-test("site-wide zoom is set to 150 percent", async () => {
+test("site-wide zoom is reset to 100 percent and French live streams use two columns", async () => {
   const stylesheet = await readFile(new URL("styles.css", root), "utf8");
 
-  assert.match(stylesheet, /body\s*\{[^}]*zoom:\s*1\.5;/s);
-  assert.match(stylesheet, /body\s*\{[^}]*min-width:\s*214px;/s);
+  assert.match(stylesheet, /body\s*\{[^}]*zoom:\s*1;/s);
+  assert.match(stylesheet, /body\s*\{[^}]*min-width:\s*320px;/s);
+  assert.match(stylesheet, /\.live-board:not\(\.europe-live-board\) \.live-stream-card\s*\{\s*grid-column:\s*span 6;/);
 });
 
 test("social and channel logos referenced by the page exist and are pre-cached", async () => {
@@ -61,7 +62,7 @@ test("European live video cards point to official players and broadcasters", asy
   assert.match(html, /https:\/\/www\.vrt\.be\/vrtnws\/nl\/kijk\//);
   assert.match(html, /https:\/\/www\.raiplay\.it\/dirette\/rainews24/);
   assert.match(html, /https:\/\/www\.tagesschau\.de\/multimedia\/livestreams\//);
-  assert.match(serviceWorker, /veille-shell-v4/);
+  assert.match(serviceWorker, /veille-shell-v5/);
 });
 
 test("service worker serves the last successful news response offline", async () => {
