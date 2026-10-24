@@ -15,7 +15,36 @@ const TYPE_LABELS = {
 };
 
 const COUNTRY_NAMES = { BE: "Belgique", DE: "Allemagne", ES: "Espagne", FR: "France", IT: "Italie" };
+const COUNTRY_FLAGS = { BE: "🇧🇪", DE: "🇩🇪", ES: "🇪🇸", FR: "🇫🇷", IT: "🇮🇹" };
 const COUNTRY_CODES = Object.keys(COUNTRY_NAMES);
+const PUBLISHER_MARKS = {
+  franceinfo: { label: "fi", color: "#f2a900" },
+  bfmtv: { label: "BF", color: "#0783c6" },
+  cnews: { label: "CN", color: "#c5222a" },
+  "le-monde": { label: "LM", color: "#244c83" },
+  "france-24": { label: "F24", color: "#174c99" },
+  rfi: { label: "RFI", color: "#f27a21" },
+  "le-figaro": { label: "FIG", color: "#23557d" },
+  liberation: { label: "LIB", color: "#e3312d" },
+  "ouest-france": { label: "OF", color: "#17609a" },
+  "sud-ouest": { label: "SO", color: "#d62e3c" },
+  "20-minutes": { label: "20", color: "#f4b21b" },
+  "la-croix": { label: "LC", color: "#b41e34" },
+  humanite: { label: "H", color: "#c92734" },
+  "la-depeche": { label: "DD", color: "#17639c" },
+  "le-parisien": { label: "LP", color: "#1677a8" },
+  "france-inter": { label: "FI", color: "#b81238" },
+  lexpress: { label: "LX", color: "#141414" },
+  challenges: { label: "CH", color: "#bd252d" },
+  vrt: { label: "VRT", color: "#f15a24" },
+  rtbf: { label: "RTBF", color: "#c61932" },
+  elpais: { label: "EP", color: "#1d2635" },
+  eldiario: { label: "ED", color: "#df3c31" },
+  rainews: { label: "RAI", color: "#2876c4" },
+  repubblica: { label: "REP", color: "#c91e28" },
+  tagesschau: { label: "TS", color: "#1a5291" },
+  "dw-de": { label: "DW", color: "#17618c" },
+};
 const STORAGE_KEYS = {
   savedArticles: "veille-saved-articles-v1",
   alertRules: "veille-alert-rules-v1",
@@ -32,6 +61,42 @@ const COUNTRY_TREND_COLORS = {
   FR: "#e77e79",
   IT: "#c38be1",
 };
+
+function createCountryLabel(code, className = "") {
+  const label = document.createElement("span");
+  label.className = `country-label${className ? ` ${className}` : ""}`;
+  const flag = createCountryFlag(code);
+  if (flag) label.append(flag);
+  const name = document.createElement("span");
+  name.textContent = COUNTRY_NAMES[code] || "Europe";
+  label.append(name);
+  return label;
+}
+
+function createCountryFlag(code) {
+  if (!COUNTRY_FLAGS[code]) return null;
+  const flag = document.createElement("span");
+  flag.className = "country-flag";
+  flag.setAttribute("aria-hidden", "true");
+  flag.textContent = COUNTRY_FLAGS[code];
+  return flag;
+}
+
+function createPublisherMark(sourceId, sourceName, className = "") {
+  const mark = document.createElement("span");
+  const identity = PUBLISHER_MARKS[sourceId];
+  const words = (sourceName || "Média")
+    .replace(/[^\p{L}\p{N}\s]/gu, " ")
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean);
+  mark.className = `publisher-mark${className ? ` ${className}` : ""}`;
+  mark.textContent = identity?.label.toLocaleUpperCase("fr")
+    || words.slice(0, 2).map((word) => [...word][0]).join("").toLocaleUpperCase("fr");
+  mark.style.setProperty("--publisher-color", identity?.color || "#626b73");
+  mark.setAttribute("aria-hidden", "true");
+  return mark;
+}
 
 function readSharedView() {
   const params = new URLSearchParams(window.location.search);
@@ -301,10 +366,10 @@ async function loadGeography() {
         onEachFeature(feature, layer) {
           const code = feature.properties.countryCode;
           countryLayers.set(code, layer);
-          layer.bindPopup(createLocationPopup(COUNTRY_NAMES[code], [], "country"));
+          layer.bindPopup(createLocationPopup(COUNTRY_NAMES[code], [], "country", code));
           layer.on("click", () => {
             const group = countryArticlesByCode.get(code);
-            layer.setPopupContent(createLocationPopup(COUNTRY_NAMES[code], group?.articles || [], "country"));
+            layer.setPopupContent(createLocationPopup(COUNTRY_NAMES[code], group?.articles || [], "country", code));
           });
         },
       }).addTo(europeLayer);
@@ -466,7 +531,11 @@ function renderEuropeanTimeline(articles) {
     const summary = document.createElement("strong");
     const outlets = new Set(group.articles.map((article) => article.sourceId)).size;
     const place = group.place ? ` · ${group.place}` : "";
-    summary.textContent = `${outlets} média${outlets === 1 ? "" : "s"} · ${COUNTRY_NAMES[group.countryCode] || "Europe"}${place}`;
+    summary.append(
+      document.createTextNode(`${outlets} média${outlets === 1 ? "" : "s"} · `),
+      createCountryLabel(group.countryCode),
+      document.createTextNode(place),
+    );
     const date = document.createElement("time");
     date.dateTime = group.date;
     date.textContent = new Intl.DateTimeFormat("fr-FR", { day: "2-digit", month: "short" }).format(new Date(`${group.date}T12:00:00Z`));
@@ -502,9 +571,7 @@ function renderCoverageComparison(articles) {
     button.className = `coverage-country${state.country === code ? " active" : ""}`;
     button.dataset.country = code;
     button.setAttribute("aria-pressed", String(state.country === code));
-    const name = document.createElement("span");
-    name.className = "coverage-country-name";
-    name.textContent = COUNTRY_NAMES[code];
+    const name = createCountryLabel(code, "coverage-country-name");
     const bar = document.createElement("span");
     bar.className = "coverage-bar";
     const fill = document.createElement("span");
@@ -605,7 +672,7 @@ function renderTrends() {
     const marker = document.createElement("i");
     marker.style.backgroundColor = COUNTRY_TREND_COLORS[code];
     const total = values.reduce((sum, value) => sum + value, 0);
-    entry.append(marker, document.createTextNode(`${COUNTRY_NAMES[code]} · ${total}`));
+    entry.append(marker, createCountryLabel(code), document.createTextNode(` · ${total}`));
     legend.append(entry);
   }
   if (!hasArticles) {
@@ -623,9 +690,10 @@ function renderAlertRules() {
   list.replaceChildren(...alertRules.map((rule) => {
     const item = document.createElement("li");
     const label = document.createElement("span");
-    label.textContent = [rule.query, rule.countryCode && COUNTRY_NAMES[rule.countryCode]]
-      .filter(Boolean)
-      .join(" · ");
+    label.append(document.createTextNode(rule.query || "Tous les articles"));
+    if (rule.countryCode && COUNTRY_NAMES[rule.countryCode]) {
+      label.append(document.createTextNode(" · "), createCountryLabel(rule.countryCode));
+    }
     const remove = document.createElement("button");
     remove.type = "button";
     remove.textContent = "Supprimer";
@@ -861,7 +929,10 @@ function createVisualCard(article, index) {
   caption.className = "visual-caption";
   const meta = document.createElement("span");
   meta.className = "visual-meta";
-  meta.textContent = `${article.sourceName} · ${formatDate(article.publishedAt, article.datePrecision)}`;
+  meta.append(
+    createPublisherMark(article.sourceId, article.sourceName, "publisher-mark-small"),
+    document.createTextNode(`${article.sourceName} · ${formatDate(article.publishedAt, article.datePrecision)}`),
+  );
   const title = document.createElement("span");
   title.className = "visual-title";
   title.textContent = article.title;
@@ -937,7 +1008,8 @@ function createArticleCard(article) {
       : location.precision === "ambiguous"
         ? `Lieu ambigu, non cartographié : ${location.label}`
         : "Lieu non identifié dans le titre ou l’extrait";
-  place.append(placeIcon, placeText);
+  const flag = createCountryFlag(article.countryCode);
+  place.append(...(flag ? [flag] : []), placeIcon, placeText);
   toggle.append(meta, title, place);
   card.append(toggle);
 
@@ -950,7 +1022,7 @@ function createArticleCard(article) {
   attribution.className = "article-attribution";
   const publisher = document.createElement("span");
   publisher.className = "article-publisher";
-  publisher.textContent = article.sourceName;
+  publisher.append(createPublisherMark(article.sourceId, article.sourceName), document.createTextNode(article.sourceName));
   const source = document.createElement("a");
   source.className = "event-source";
   source.href = article.link;
@@ -1107,11 +1179,12 @@ function renderEuropeMap(articles) {
   return { communeCount: 0, departmentCount: 0, countryCount: countries.size, cityCount: cities.size };
 }
 
-function createLocationPopup(name, articles, precision) {
+function createLocationPopup(name, articles, precision, countryCode = null) {
   const popup = document.createElement("div");
   popup.className = "map-popup";
   const heading = document.createElement("strong");
-  heading.textContent = `${name} · ${articles.length} article${articles.length === 1 ? "" : "s"}`;
+  if (countryCode) heading.append(createCountryLabel(countryCode), document.createTextNode(` · ${articles.length} article${articles.length === 1 ? "" : "s"}`));
+  else heading.textContent = `${name} · ${articles.length} article${articles.length === 1 ? "" : "s"}`;
   const note = document.createElement("p");
   note.textContent = precision === "commune"
     ? "La commune est citée dans le titre ou l’extrait ; sa limite et son emplacement exact ne sont pas représentés."
@@ -1152,7 +1225,7 @@ function renderSources() {
     status.setAttribute("aria-label", source.status === "ok"
       ? `${source.articleCount} article(s) correspondant(s)`
       : "Flux temporairement indisponible");
-    item.append(link, status);
+    item.append(createPublisherMark(source.id, source.name, "publisher-mark-small"), link, status);
     if (source.custom) {
       const remove = document.createElement("button");
       remove.type = "button";
@@ -1484,6 +1557,20 @@ document.querySelector("#notification-permission").addEventListener("click", asy
     status.textContent = "Impossible d’activer les notifications. Vérifie les réglages du navigateur et, sur iPhone/iPad, ouvre Veille depuis l’écran d’accueil.";
   }
 });
+
+const backToTopButton = document.querySelector("#back-to-top");
+const updateBackToTopVisibility = () => {
+  backToTopButton.hidden = window.scrollY < 500;
+};
+
+window.addEventListener("scroll", updateBackToTopVisibility, { passive: true });
+backToTopButton.addEventListener("click", () => {
+  window.scrollTo({
+    top: 0,
+    behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth",
+  });
+});
+updateBackToTopVisibility();
 
 document.querySelector("#reset-filters").addEventListener("click", () => {
   state.period = "all";

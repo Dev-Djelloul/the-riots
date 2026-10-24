@@ -34,6 +34,36 @@ test("coverage feed spans the page below the full-width map", async () => {
   assert.match(stylesheet, /@media \(max-width: 600px\)\s*\{[\s\S]*?\.workspace\s*\{\s*display:\s*flex;/);
 });
 
+test("country flags, publisher marks and a return-to-top button are available", async () => {
+  const html = await readFile(new URL("index.html", root), "utf8");
+  const app = await readFile(new URL("app.js", root), "utf8");
+  const stylesheet = await readFile(new URL("styles.css", root), "utf8");
+  const sourceIds = [
+    "franceinfo", "bfmtv", "cnews", "le-monde", "france-24", "rfi", "le-figaro",
+    "liberation", "ouest-france", "sud-ouest", "20-minutes", "la-croix", "humanite",
+    "la-depeche", "le-parisien", "france-inter", "lexpress", "challenges", "vrt",
+    "rtbf", "elpais", "eldiario", "rainews", "repubblica", "tagesschau", "dw-de",
+  ];
+
+  for (const [code, flag] of Object.entries({ BE: "🇧🇪", DE: "🇩🇪", ES: "🇪🇸", FR: "🇫🇷", IT: "🇮🇹" })) {
+    assert.ok(app.includes(`${code}: "${flag}"`), `${code} should have a country flag`);
+  }
+  for (const sourceId of sourceIds) {
+    assert.ok(
+      app.includes(`${sourceId}: { label:`) || app.includes(`"${sourceId}": { label:`),
+      `${sourceId} should have a publisher mark`,
+    );
+  }
+  assert.match(app, /createCountryLabel\(group\.countryCode\)/);
+  assert.match(app, /createCountryLabel\(code\)/);
+  assert.match(app, /createPublisherMark\(article\.sourceId, article\.sourceName\)/);
+  assert.match(app, /createPublisherMark\(source\.id, source\.name, "publisher-mark-small"\)/);
+  assert.match(html, /id="back-to-top"[^>]*aria-label="Retour vers le haut"/);
+  assert.match(app, /backToTopButton\.hidden = window\.scrollY < 500/);
+  assert.match(app, /window\.scrollTo\(\{\s*top: 0,\s*behavior: window\.matchMedia\("\(prefers-reduced-motion: reduce\)"\)\.matches \? "auto" : "smooth",\s*\}\)/s);
+  assert.match(stylesheet, /\.back-to-top\s*\{[^}]*position:\s*fixed;/s);
+});
+
 test("personal alerts, saved articles and European coverage comparison are wired", async () => {
   const html = await readFile(new URL("index.html", root), "utf8");
   const app = await readFile(new URL("app.js", root), "utf8");

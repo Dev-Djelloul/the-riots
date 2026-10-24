@@ -11,6 +11,7 @@ Veille est une application web française de veille éditoriale. Elle agrège de
 - Carte Leaflet interactive couvrant les 96 départements métropolitains et le référentiel de 34 746 communes.
 - Remplissage spectral des départements mentionnés et repères communaux cliquables qui présentent les articles associés.
 - Bascule France / Europe et filtre par pays pour la France, la Belgique, l’Espagne, l’Italie et l’Allemagne.
+- Drapeaux dans les vues et filtres par pays ; monogrammes colorés propres aux médias dans la liste des sources et les articles.
 - Chronologie éditoriale regroupant les articles européens par date, ville citée et sujet détecté, avec le nombre de médias distincts.
 - Comparateur de couverture par pays pilote, comptant les articles et médias distincts reçus dans les flux ; les lignes filtrent la chronologie. Ce n’est pas un décompte d’événements.
 - Liens partageables qui conservent la recherche, la période, le sujet, la vue France/Europe et le pays sélectionné.
@@ -21,6 +22,7 @@ Veille est une application web française de veille éditoriale. Elle agrège de
 - Analyse des mots-clés français, néerlandais, espagnols, italiens et allemands ; titres et extraits affichés dans leur langue d’origine, sans traduction automatique.
 - Fil visuel de jusqu’à six articles illustrés par une image fournie dans leur flux RSS.
 - Lecteurs vidéo officiels chargés au clic et liens de secours vers les chaînes ou sites des médias.
+- Bouton flottant « Retour vers le haut », disponible après avoir fait défiler la page.
 - Recherches publiques par hashtag ou mot-clé sur les réseaux sociaux, statut de disponibilité des API officielles, et lecteur des publications publiques compatibles.
 - PWA installable avec mise en cache de l’interface et des dernières données de veille pour un accès hors connexion.
 
@@ -88,6 +90,8 @@ La section **Directs européens** intègre les lecteurs YouTube officiels de DW 
 ### Icônes et logos
 
 Les icônes Facebook, Instagram, TikTok, Twitch et YouTube dans `icons/` ont été fournies dans le projet. Les logos des chaînes d’information sont des ressources Wikimedia Commons : [franceinfo](https://commons.wikimedia.org/wiki/File:Franceinfo.svg), [France 24](https://commons.wikimedia.org/wiki/File:France_24_logo_(2013).svg), [BFMTV](https://commons.wikimedia.org/wiki/File:BFMTV_2025.svg), [Euronews](https://commons.wikimedia.org/wiki/File:Euronews_Logo_2025.svg), [LCI / TF1 Info](https://commons.wikimedia.org/wiki/File:Tf1_info_lci.png), [TV5MONDE](https://commons.wikimedia.org/wiki/File:Logo_TV5_Monde_-_2021.svg) et [CNEWS](https://commons.wikimedia.org/wiki/File:Canal_News_logo.svg). Les noms et marques restent la propriété de leurs ayants droit ; les logos servent uniquement à identifier les liens et lecteurs officiels.
+
+Les pays sont identifiés par des drapeaux emoji. Les 26 médias RSS/Atom ont chacun un monogramme coloré dérivé de leur identité ; ce sont des repères d’interface et non des logos officiels.
 
 La carte utilise les tuiles [OpenStreetMap](https://www.openstreetmap.org/copyright). Les limites départementales généralisées à 1 000 m viennent du jeu [Contours administratifs](https://www.data.gouv.fr/datasets/contours-administratifs/), notamment basé sur Admin Express de l’IGN, sous Licence Ouverte Etalab 2.0. Le référentiel des communes vient de l’API Découpage Administratif (`geo.api.gouv.fr`). Les contours européens sont une représentation généralisée issue des limites [Natural Earth 1:110m](https://www.naturalearthdata.com/downloads/110m-cultural-vectors/) distribuées au format GeoJSON par [johan/world.geo.json](https://github.com/johan/world.geo.json) ; Natural Earth place ses données dans le domaine public. Ces données de pays ne montrent pas les subdivisions régionales. Les couleurs correspondent aux mentions dans les articles ; elles n’expriment pas l’intensité d’incidents.
 
