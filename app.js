@@ -102,7 +102,7 @@ function createPublisherMark(sourceId, sourceName, className = "") {
     logo.decoding = "async";
     logo.addEventListener("load", () => {
       mark.classList.add("has-logo");
-      mark.textContent = "";
+      mark.replaceChildren(logo);
     }, { once: true });
     logo.addEventListener("error", () => logo.remove(), { once: true });
     mark.append(logo);
