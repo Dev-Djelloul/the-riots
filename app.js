@@ -422,6 +422,7 @@ let countryArticlesByCode = new Map();
 let countryColors = new Map();
 let geographyIndex = null;
 let geographyPromise = Promise.resolve(null);
+let mapDataWarningMode = "none";
 
 if (map) {
   L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
@@ -472,11 +473,12 @@ async function loadGeography() {
     const europeFeatures = combineEuropeBoundaries(localEurope?.features, worldFeatures);
     const hasEuropeBoundaries = europeFeatures.length > 0;
     if (europeFeatures.length < COUNTRY_CODES.length) {
-      mapDataWarning.hidden = false;
+      mapDataWarningMode = "europe";
       mapDataWarning.textContent = `Contours Europe partiels · ${europeFeatures.length}/${COUNTRY_CODES.length} pays · repères approximatifs pour les autres`;
     } else {
-      mapDataWarning.hidden = true;
+      mapDataWarningMode = "none";
     }
+    mapDataWarning.hidden = mapDataWarningMode !== "europe" || state.mapMode !== "europe";
     geographyIndex = createGeographyIndex(communes, departments);
     L.geoJSON(departments, {
       style: departmentStyle,
@@ -510,6 +512,7 @@ async function loadGeography() {
     return geographyIndex;
   } catch (error) {
     console.error("Impossible de charger les données géographiques.", error);
+    mapDataWarningMode = "all";
     mapDataWarning.hidden = false;
     mapDataWarning.textContent = "Limites administratives indisponibles · réessaie après actualisation";
     return null;
@@ -682,6 +685,9 @@ function render() {
   document.querySelector("#map-result-count").textContent = state.mapMode === "europe"
     ? `${mapStats.countryCount} PAYS · ${mapStats.cityCount} VILLE${mapStats.cityCount === 1 ? "" : "S"} · ${mapped.length} ARTICLE${mapped.length === 1 ? "" : "S"} LOCALISÉ${mapped.length === 1 ? "" : "S"}`
     : `${mapStats.communeCount} COMMUNE${mapStats.communeCount === 1 ? "" : "S"} · ${mapStats.departmentCount} DÉPARTEMENT${mapStats.departmentCount === 1 ? "" : "S"} · ${mapped.length} ARTICLE${mapped.length === 1 ? "" : "S"} LOCALISÉ${mapped.length === 1 ? "" : "S"}`;
+  document.querySelector("#map-result-count").classList.toggle("map-result-count--europe", state.mapMode === "europe");
+  mapDataWarning.hidden = mapDataWarningMode === "none"
+    || (mapDataWarningMode === "europe" && state.mapMode !== "europe");
   const modeArticleCount = state.articles.filter((article) => state.mapMode !== "europe"
     || (article.countryCode && (state.country === "all" || article.countryCode === state.country))).length;
   document.querySelector("#count-all").textContent = String(modeArticleCount).padStart(2, "0");
