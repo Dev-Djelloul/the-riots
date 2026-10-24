@@ -574,6 +574,7 @@ export async function fetchArchiveDay(date, {
   gnewsOnly = false,
   gdeltOnly = false,
 } = {}) {
+  let gnewsErrors = [];
   if (gnewsKey) {
     const gnews = await fetchGnewsDay(date, gnewsKey, countryCodes);
     if (gnews.ok) {
@@ -588,6 +589,7 @@ export async function fetchArchiveDay(date, {
         provider: "gnews",
       };
     }
+    gnewsErrors = gnews.errors;
     if (gnewsOnly) {
       return { date, articles: [], available: 0, total: countryCodes?.length || GNEWS_QUERIES.length, errors: gnews.errors, provider: "gnews" };
     }
@@ -635,7 +637,7 @@ export async function fetchArchiveDay(date, {
 
   let available = results.filter((result) => result.ok).length;
   let rawArticles = results.flatMap((result) => result.articles);
-  const errors = results.filter((result) => result.error).map((result) => result.error);
+  const errors = [...gnewsErrors, ...results.filter((result) => result.error).map((result) => result.error)];
   let provider = "google-news-rss";
   if (available === 0 && !gdeltOnly) {
     try {
