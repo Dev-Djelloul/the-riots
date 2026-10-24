@@ -25,6 +25,15 @@ test("site-wide zoom is reset to 100 percent and French live streams use two col
   assert.match(stylesheet, /\.live-board:not\(\.europe-live-board\) \.live-stream-card\s*\{\s*grid-column:\s*span 6;/);
 });
 
+test("coverage feed spans the page below the full-width map", async () => {
+  const stylesheet = await readFile(new URL("styles.css", root), "utf8");
+
+  assert.match(stylesheet, /\.workspace\s*\{[^}]*grid-template-columns:\s*208px minmax\(0,\s*1fr\);[^}]*grid-template-rows:[^}]*;/s);
+  assert.match(stylesheet, /\.map-panel\s*\{[^}]*grid-column:\s*2;[^}]*grid-row:\s*1;/s);
+  assert.match(stylesheet, /\.feed-panel\s*\{[^}]*grid-column:\s*1 \/ -1;[^}]*grid-row:\s*2;[^}]*min-height:\s*600px;/s);
+  assert.match(stylesheet, /@media \(max-width: 600px\)\s*\{[\s\S]*?\.workspace\s*\{\s*display:\s*flex;/);
+});
+
 test("personal alerts, saved articles and European coverage comparison are wired", async () => {
   const html = await readFile(new URL("index.html", root), "utf8");
   const app = await readFile(new URL("app.js", root), "utf8");
