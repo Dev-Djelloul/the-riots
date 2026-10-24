@@ -90,6 +90,7 @@ test("personal alerts, saved articles and European coverage comparison are wired
   assert.match(html, /id="day-calendar"/);
   assert.match(app, /function renderDayCalendar\(\)/);
   assert.match(app, /\/api\/archive\?date=/);
+  assert.match(app, /if \(article\.archive\) return true;\s*const publishedAt = Date\.parse\(article\.publishedAt\);/);
   assert.match(app, /selectedStart = new Date\(`\$\{state\.selectedDate\}T00:00:00`\)/);
   assert.match(app, /navigator\.clipboard\.writeText/);
   assert.match(app, /function renderTrends\(\)/);
@@ -98,6 +99,23 @@ test("personal alerts, saved articles and European coverage comparison are wired
   assert.match(readme, /À lire plus tard/);
   assert.match(readme, /alertes personnalisées/i);
   assert.match(readme, /Comparateur de couverture/);
+});
+
+test("European country coverage and media trends remain searchable and navigable", async () => {
+  const html = await readFile(new URL("index.html", root), "utf8");
+  const app = await readFile(new URL("app.js", root), "utf8");
+  const stylesheet = await readFile(new URL("styles.css", root), "utf8");
+
+  for (const id of ["coverage-search", "coverage-sort", "coverage-expand", "coverage-summary", "trend-country", "trend-summary"]) {
+    assert.match(html, new RegExp(`id="${id}"`), `${id} should be present in the interface`);
+  }
+  assert.match(html, /aria-controls="coverage-compare-list"/);
+  assert.match(app, /codes = codes\.filter\(\(code\) => totals\.get\(code\)\.articles > 0\)\.slice\(0, 8\)/);
+  assert.match(app, /coverage-search"\)\.addEventListener\("input"/);
+  assert.match(app, /trend-country"\)\.addEventListener\("change", renderTrends\)/);
+  assert.match(app, /selectedCountry === "all"\s*\? dates\.map/);
+  assert.match(stylesheet, /\.coverage-compare-list \{ display: grid; grid-template-columns: repeat\(2/);
+  assert.match(stylesheet, /\.trend-chart \{ display: block; width: 100%; height: auto;/);
 });
 
 test("social and channel logos referenced by the page exist and are pre-cached", async () => {

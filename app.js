@@ -63,6 +63,7 @@ const PERIODS = ["all", "today", "week"];
 const ARTICLE_TYPES = ["all", "rassemblement", "tensions", "degradations"];
 const validCountries = ["all", ...COUNTRY_CODES];
 const COUNTRY_TREND_COLORS = createSpectrumPalette(COUNTRY_CODES);
+let showAllCoverageCountries = false;
 
 function createCountryLabel(code, className = "") {
   const label = document.createElement("span");
@@ -607,6 +608,8 @@ function getVisibleArticles({ ignoreCountry = false, fromSaved = false } = {}) {
     .filter((article) => {
       if (fromSaved) return true;
       if (state.selectedDate) {
+        // L’API a déjà recherché cette journée ; ne pas la filtrer une seconde fois selon le fuseau local du navigateur.
+        if (article.archive) return true;
         const publishedAt = Date.parse(article.publishedAt);
         if (!Number.isFinite(publishedAt)) return false;
         const selectedStart = new Date(`${state.selectedDate}T00:00:00`).getTime();
@@ -886,13 +889,40 @@ function renderCoverageComparison(articles) {
   }
   const maxArticles = Math.max(1, ...[...totals.values()].map((total) => total.articles));
   const list = document.querySelector("#coverage-compare-list");
-  list.replaceChildren(...COUNTRY_CODES.map((code) => {
+  const activeCountries = [...totals.values()].filter((total) => total.articles > 0).length;
+  const articleCount = [...totals.values()].reduce((sum, total) => sum + total.articles, 0);
+  const outletCount = new Set(articles.map((article) => article.sourceId || article.sourceName)).size;
+  document.querySelector("#coverage-summary").textContent = `${activeCountries}/${COUNTRY_CODES.length} pays · ${articleCount} articles · ${outletCount} médias`;
+  const search = document.querySelector("#coverage-search").value.trim().normalize("NFD").replace(/\p{Diacritic}/gu, "").toLocaleLowerCase("fr");
+  const sort = document.querySelector("#coverage-sort").value;
+  let codes = COUNTRY_CODES.filter((code) => {
+    const name = COUNTRY_NAMES[code].normalize("NFD").replace(/\p{Diacritic}/gu, "").toLocaleLowerCase("fr");
+    return !search || name.includes(search) || code.toLocaleLowerCase("fr").includes(search);
+  });
+  codes.sort((a, b) => sort === "alphabetical"
+    ? COUNTRY_NAMES[a].localeCompare(COUNTRY_NAMES[b], "fr")
+    : totals.get(b).articles - totals.get(a).articles || COUNTRY_NAMES[a].localeCompare(COUNTRY_NAMES[b], "fr"));
+  if (!showAllCoverageCountries && !search) codes = codes.filter((code) => totals.get(code).articles > 0).slice(0, 8);
+  const expand = document.querySelector("#coverage-expand");
+  expand.hidden = Boolean(search);
+  expand.setAttribute("aria-expanded", String(showAllCoverageCountries));
+  expand.textContent = showAllCoverageCountries ? "Réduire la liste" : `Voir les ${COUNTRY_CODES.length} pays`;
+  if (!codes.length) {
+    const empty = document.createElement("p");
+    empty.className = "coverage-empty";
+    empty.textContent = search ? "Aucun pays ne correspond à cette recherche." : "Aucun article reçu pour les pays sélectionnés.";
+    list.replaceChildren(empty);
+    return;
+  }
+  list.replaceChildren(...codes.map((code) => {
     const total = totals.get(code);
     const button = document.createElement("button");
     button.type = "button";
     button.className = `coverage-country${state.country === code ? " active" : ""}`;
     button.dataset.country = code;
+    button.dataset.count = String(total.articles);
     button.setAttribute("aria-pressed", String(state.country === code));
+    button.setAttribute("aria-label", `${COUNTRY_NAMES[code]} : ${total.articles} articles, ${total.outlets.size} médias`);
     const name = createCountryLabel(code, "coverage-country-name");
     const bar = document.createElement("span");
     bar.className = "coverage-bar";
@@ -914,6 +944,16 @@ function renderTrends() {
 
   const dayCount = Number(document.querySelector("#trend-period").value);
   const selectedType = document.querySelector("#trend-type").value;
+  const countrySelect = document.querySelector("#trend-country");
+  if (countrySelect.options.length !== COUNTRY_CODES.length + 1) {
+    const selectedCountry = countrySelect.value;
+    countrySelect.replaceChildren(new Option("Europe entière", "all"));
+    for (const { code, name } of [...EUROPE_COUNTRIES].sort((a, b) => a.name.localeCompare(b.name, "fr"))) {
+      countrySelect.add(new Option(name, code));
+    }
+    countrySelect.value = validCountries.includes(selectedCountry) ? selectedCountry : "all";
+  }
+  const selectedCountry = countrySelect.value;
   const now = new Date();
   const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
   const firstDay = new Date(today);
@@ -934,13 +974,22 @@ function renderTrends() {
     if (index !== undefined) buckets.get(article.countryCode)[index] += 1;
   }
 
+  const values = selectedCountry === "all"
+    ? dates.map((_, index) => [...buckets.values()].reduce((sum, countryValues) => sum + countryValues[index], 0))
+    : buckets.get(selectedCountry) || dates.map(() => 0);
+  const totalArticles = values.reduce((sum, value) => sum + value, 0);
+  const activeCountries = [...buckets.values()].filter((countryValues) => countryValues.some(Boolean)).length;
+  const seriesName = selectedCountry === "all" ? "Europe entière" : COUNTRY_NAMES[selectedCountry];
+  document.querySelector("#trend-summary").textContent = `${totalArticles} article${totalArticles === 1 ? "" : "s"} · ${selectedCountry === "all" ? `${activeCountries} pays couverts` : seriesName}`;
   const svg = document.querySelector("#trend-chart");
-  const width = 520;
-  const height = 130;
-  const margin = { top: 8, right: 10, bottom: 22, left: 24 };
+  const width = 960;
+  const height = 250;
+  const margin = { top: 18, right: 22, bottom: 34, left: 48 };
   const plotWidth = width - margin.left - margin.right;
   const plotHeight = height - margin.top - margin.bottom;
-  const maxValue = Math.max(1, ...[...buckets.values()].flat());
+  const observedMax = Math.max(1, ...values);
+  const step = observedMax <= 4 ? 1 : observedMax <= 10 ? 2 : Math.pow(10, Math.floor(Math.log10(observedMax))) / 2;
+  const maxValue = Math.ceil(observedMax / step) * step;
   const makeSvgElement = (name, attributes, text) => {
     const element = document.createElementNS("http://www.w3.org/2000/svg", name);
     for (const [key, value] of Object.entries(attributes)) element.setAttribute(key, String(value));
@@ -949,19 +998,27 @@ function renderTrends() {
   };
   svg.setAttribute("viewBox", `0 0 ${width} ${height}`);
   svg.replaceChildren(
-    makeSvgElement("title", { id: "trend-chart-title" }, `Articles par pays sur ${dayCount} jours`),
-    makeSvgElement("desc", { id: "trend-chart-desc" }, "Lignes quotidiennes calculées à partir des articles actuellement disponibles dans les flux RSS suivis."),
+    makeSvgElement("title", { id: "trend-chart-title" }, `${seriesName} · articles sur ${dayCount} jours`),
+    makeSvgElement("desc", { id: "trend-chart-desc" }, "Nombre quotidien d’articles dans les flux actuellement disponibles."),
   );
   svg.setAttribute("aria-labelledby", "trend-chart-title trend-chart-desc");
-  for (let tick = 0; tick <= 2; tick += 1) {
-    const y = margin.top + plotHeight * tick / 2;
-    const value = Math.round(maxValue * (1 - tick / 2));
+  const gradient = makeSvgElement("linearGradient", { id: "trend-area-gradient", x1: "0", x2: "0", y1: "0", y2: "1" });
+  gradient.append(
+    makeSvgElement("stop", { offset: "0%", "stop-color": selectedCountry === "all" ? "#d5b18e" : COUNTRY_TREND_COLORS.get(selectedCountry), "stop-opacity": ".28" }),
+    makeSvgElement("stop", { offset: "100%", "stop-color": selectedCountry === "all" ? "#d5b18e" : COUNTRY_TREND_COLORS.get(selectedCountry), "stop-opacity": "0" }),
+  );
+  svg.append(makeSvgElement("defs", {}, ""));
+  svg.querySelector("defs").append(gradient);
+  for (let tick = 0; tick <= 4; tick += 1) {
+    const ratio = tick / 4;
+    const y = margin.top + plotHeight * ratio;
+    const value = Math.round(maxValue * (1 - ratio));
     svg.append(
       makeSvgElement("line", { class: "trend-gridline", x1: margin.left, x2: width - margin.right, y1: y, y2: y }),
-      makeSvgElement("text", { class: "trend-axis-label", x: margin.left - 5, y: y + 3, "text-anchor": "end" }, value),
+      makeSvgElement("text", { class: "trend-axis-label", x: margin.left - 9, y: y + 4, "text-anchor": "end" }, value),
     );
   }
-  const labelIndexes = new Set([0, Math.floor((dayCount - 1) / 2), dayCount - 1]);
+  const labelIndexes = new Set([0, Math.floor((dayCount - 1) / 3), Math.floor((dayCount - 1) * 2 / 3), dayCount - 1]);
   for (const index of labelIndexes) {
     const x = margin.left + plotWidth * index / Math.max(1, dayCount - 1);
     const label = new Intl.DateTimeFormat("fr-FR", { day: "2-digit", month: "2-digit" }).format(dates[index]);
@@ -975,33 +1032,35 @@ function renderTrends() {
 
   const legend = document.querySelector("#trend-legend");
   legend.replaceChildren();
-  let hasArticles = false;
-  for (const code of COUNTRY_CODES) {
-    const values = buckets.get(code);
-    const points = values.map((value, index) => {
-      if (value) hasArticles = true;
-      const x = margin.left + plotWidth * index / Math.max(1, dayCount - 1);
-      const y = margin.top + plotHeight * (1 - value / maxValue);
-      return [x, y];
-    });
-    const pathData = points.map(([x, y], index) => `${index ? "L" : "M"}${x},${y}`).join(" ");
-    svg.append(makeSvgElement("path", {
-      class: "trend-line",
-      d: pathData,
-      stroke: COUNTRY_TREND_COLORS.get(code),
+  if (totalArticles) {
+    const points = values.map((value, index) => ({
+      value,
+      x: margin.left + plotWidth * index / Math.max(1, dayCount - 1),
+      y: margin.top + plotHeight * (1 - value / maxValue),
     }));
+    const pathData = points.map(({ x, y }, index) => `${index ? "L" : "M"}${x},${y}`).join(" ");
+    const baseline = margin.top + plotHeight;
+    const color = selectedCountry === "all" ? "#d5b18e" : COUNTRY_TREND_COLORS.get(selectedCountry);
+    const areaData = `${pathData} L${points.at(-1).x},${baseline} L${points[0].x},${baseline} Z`;
+    svg.append(
+      makeSvgElement("path", { class: "trend-area", d: areaData, fill: "url(#trend-area-gradient)" }),
+      makeSvgElement("path", { class: "trend-line", d: pathData, stroke: color }),
+      ...points.map(({ value, x, y }, index) => {
+        const point = makeSvgElement("circle", { class: "trend-point", cx: x, cy: y, r: value ? 3.5 : 2, fill: color, tabindex: value ? "0" : "-1", "aria-label": `${dateKey(dates[index])} : ${value} article${value === 1 ? "" : "s"}` });
+        point.append(makeSvgElement("title", {}, `${new Intl.DateTimeFormat("fr-FR", { weekday: "long", day: "numeric", month: "long" }).format(dates[index])} · ${value} article${value === 1 ? "" : "s"}`));
+        return point;
+      }),
+    );
     const entry = document.createElement("span");
     const marker = document.createElement("i");
-    marker.style.backgroundColor = COUNTRY_TREND_COLORS.get(code);
-    const total = values.reduce((sum, value) => sum + value, 0);
-    entry.append(marker, createCountryLabel(code), document.createTextNode(` · ${total}`));
+    marker.style.backgroundColor = color;
+    entry.append(marker, document.createTextNode(`${seriesName} · ${totalArticles} articles`));
     legend.append(entry);
-  }
-  if (!hasArticles) {
+  } else {
     svg.append(makeSvgElement("text", {
-      class: "trend-axis-label",
+      class: "trend-empty-label",
       x: width / 2,
-      y: height / 2,
+      y: margin.top + plotHeight / 2,
       "text-anchor": "middle",
     }, "Aucun article sur cette période"));
   }
@@ -1838,8 +1897,22 @@ document.querySelector("#custom-feed-form").addEventListener("submit", (event) =
   loadArticles();
 });
 
+document.querySelector("#coverage-search").addEventListener("input", () => {
+  renderCoverageComparison(getVisibleArticles({ ignoreCountry: true }));
+});
+
+document.querySelector("#coverage-sort").addEventListener("change", () => {
+  renderCoverageComparison(getVisibleArticles({ ignoreCountry: true }));
+});
+
+document.querySelector("#coverage-expand").addEventListener("click", () => {
+  showAllCoverageCountries = !showAllCoverageCountries;
+  renderCoverageComparison(getVisibleArticles({ ignoreCountry: true }));
+});
+
 document.querySelector("#trend-period").addEventListener("change", renderTrends);
 document.querySelector("#trend-type").addEventListener("change", renderTrends);
+document.querySelector("#trend-country").addEventListener("change", renderTrends);
 
 document.querySelector("#group-by").addEventListener("change", (event) => {
   state.groupBy = GROUP_MODES.includes(event.target.value) ? event.target.value : "default";
