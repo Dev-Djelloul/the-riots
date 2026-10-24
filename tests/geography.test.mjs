@@ -75,6 +75,16 @@ test("évite de prendre le nom commun « vue » pour la commune de Vue", () => {
   assert.equal(locality.places[0].code, "44220");
 });
 
+test("ne prend pas une ville citée comme sujet pour le lieu d’un événement", () => {
+  const club = locateArticle({ title: "Le club de Nantes recrute un nouvel entraîneur", description: "" }, geography);
+  assert.equal(club.precision, "unknown");
+  assert.deepEqual(club.places, []);
+
+  const dateline = locateArticle({ title: "Nantes : le club annonce un nouvel entraîneur", description: "" }, geography);
+  assert.equal(dateline.precision, "commune");
+  assert.equal(dateline.places[0].name, "Nantes");
+});
+
 test("attribue une teinte distincte du spectre à chaque département concerné", () => {
   const palette = createSpectrumPalette(["75", "69", "13", "2A", "75"]);
   assert.equal(palette.size, 4);

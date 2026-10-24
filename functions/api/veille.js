@@ -440,13 +440,16 @@ function findMatchedCity(title, description) {
       const index = normalized.indexOf(entry.normalizedName);
       const prefix = normalized.slice(0, index).trim().split(/\s+/);
       const lastWord = prefix.at(-1);
-      if (isTitle && index === 0) return entry.city;
-      if (["a", "à", "au", "aux", "en", "in", "near", "bei", "naar"].includes(lastWord)
+      if (["a", "au", "aux", "en", "in", "near", "bei", "naar"].includes(lastWord)
         || ["in der", "in den", "in het"].some((cue) => normalized.slice(0, index).trim().endsWith(cue))) {
         return entry.city;
       }
-      if (["bruxelles", "brussels", "berlin", "madrid", "barcelona", "roma", "rome"].includes(entry.normalizedName)
-        && isTitle && index < 32) return entry.city;
+      const escapedName = entry.name.split(/\s+/)
+        .map((part) => part.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"))
+        .join("\\s+");
+      if (isTitle && index === 0 && new RegExp(`^\\s*${escapedName}\\s*(?:[:,—–-])`, "u").test(text)) {
+        return entry.city;
+      }
     }
   }
   return null;

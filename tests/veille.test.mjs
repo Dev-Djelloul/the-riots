@@ -65,6 +65,21 @@ test("analyse un flux Atom VRT et localise une manifestation à Bruxelles", asyn
   assert.equal(article.description, "De manifestatie trekt door het centrum.");
 });
 
+test("n’infère pas une ville européenne depuis un nom en tête de titre sans indice de lieu", async () => {
+  globalThis.fetch = async (input) => {
+    if (!String(input).includes("franceinfo.fr")) return new Response("<rss><channel></channel></rss>");
+    return new Response(
+      `<rss><channel><item><title>Nice en forme avant une manifestation nationale</title><link>https://media.example/nice-club</link><pubDate>${now}</pubDate><description>Un mouvement social sera suivi ailleurs.</description></item></channel></rss>`,
+      { status: 200 },
+    );
+  };
+  const response = await onRequestGet();
+  const payload = await response.json();
+  const article = payload.articles.find((item) => item.link === "https://media.example/nice-club");
+  assert.ok(article);
+  assert.equal(article.city, null);
+});
+
 test("classe des titres espagnols, italiens et allemands avec leur ville et pays", async () => {
   const samples = [
     ["elpais.com", "Manifestación en Barcelona por la vivienda", "https://elpais.com/article/es", "Barcelona", "ES"],

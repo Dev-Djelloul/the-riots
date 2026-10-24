@@ -83,7 +83,7 @@ test("personal alerts, saved articles and European coverage comparison are wired
   assert.match(app, /history\.replaceState/);
   assert.match(app, /navigator\.clipboard\.writeText/);
   assert.match(app, /function renderTrends\(\)/);
-  assert.match(serviceWorker, /veille-shell-v15/);
+  assert.match(serviceWorker, /veille-shell-v16/);
   assert.match(readme, /À lire plus tard/);
   assert.match(readme, /alertes personnalisées/i);
   assert.match(readme, /Comparateur de couverture/);
@@ -126,9 +126,11 @@ test("European live video cards point to official players and broadcasters", asy
   assert.match(html, /https:\/\/www\.vrt\.be\/vrtnws\/nl\/kijk\//);
   assert.match(html, /https:\/\/www\.raiplay\.it\/dirette\/rainews24/);
   assert.match(html, /https:\/\/www\.tagesschau\.de\/multimedia\/livestreams\//);
-  assert.match(serviceWorker, /veille-shell-v15/);
+  assert.match(serviceWorker, /veille-shell-v16/);
   assert.match(app, /card\.dataset\.type/);
   assert.match(html, /id="group-by"/);
+  assert.match(html, /id="feed-jump-top"/);
+  assert.match(app, /document\.querySelector\("#feed-jump-top"\)\.addEventListener\("click"/);
   assert.match(app, /function renderGroupedFeed\(/);
   assert.match(app, /function getMediaCategory\(/);
   assert.match(app, /function getArticleRegion\(/);

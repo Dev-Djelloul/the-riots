@@ -1,4 +1,4 @@
-const LOCATION_CUES = new Set(["a", "au", "aux", "chez", "dans", "de", "des", "du", "vers", "sur"]);
+const LOCATION_CUES = new Set(["a", "au", "aux", "dans", "en"]);
 const COMMON_WORD_COMMUNES = new Set(["vue", "nice", "orange", "sens", "romans", "gap", "bar", "vie", "belle", "salles", "celles", "marche", "arc", "vire", "long", "chat", "mars"]);
 
 function normalizeName(value) {
@@ -27,6 +27,13 @@ function hasClearCommonNameCapitalization(text, name) {
     .map((part) => part.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"))
     .join("[\\s'’`-]+");
   return new RegExp(`(^|[^\\p{L}])${pattern}(?=$|[^\\p{L}])`, "u").test(text);
+}
+
+function hasTitleDatelineCue(text, name) {
+  const escapedName = name.split(/[\s'’`-]+/)
+    .map((part) => part.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"))
+    .join("[\\s'’`-]+");
+  return new RegExp(`^\\s*${escapedName}\\s*(?:[:,—–-])`, "u").test(text);
 }
 
 function createNameIndex(entries) {
@@ -71,12 +78,11 @@ export function createSpectrumPalette(codes) {
   ]));
 }
 
-function hasLocationCue(tokens, start, isTitle, isDepartment) {
-  if (isTitle && start === 0) return true;
+function hasLocationCue(tokens, start, isDepartment) {
   if (isDepartment && tokens[start - 1] === "en") return true;
   if (LOCATION_CUES.has(tokens[start - 1])) return true;
   const prefix = tokens.slice(Math.max(0, start - 3), start).join(" ");
-  return /(?:^| )(?:a proximite de|a cote de|autour de|pres de|dans la|dans le|dans les|dans l|departement de|departement de la|departement du|departement des)$/.test(prefix);
+  return /(?:^| )(?:a proximite de|a cote de|autour de|pres de|dans la|dans le|dans les|dans l|departement de|departement de la|departement du|departement des|departement de l)$/.test(prefix);
 }
 
 function findMentions(text, nameIndex, isTitle, isDepartment = false) {
@@ -86,7 +92,8 @@ function findMentions(text, nameIndex, isTitle, isDepartment = false) {
     for (let length = Math.min(nameIndex.maxWords, tokens.length - start); length > 0; length -= 1) {
       const name = tokens.slice(start, start + length).join(" ");
       const entries = nameIndex.index.get(name);
-      if (!entries || !hasLocationCue(tokens, start, isTitle, isDepartment)) continue;
+      if (!entries || (!hasLocationCue(tokens, start, isDepartment)
+        && !(isTitle && start === 0 && entries.some((entry) => hasTitleDatelineCue(text, entry.name))))) continue;
       const clearEntries = entries.filter((entry) => hasClearCommonNameCapitalization(text, entry.name));
       if (!clearEntries.length) continue;
       candidates.push({ entries: clearEntries, start, end: start + length - 1, length });

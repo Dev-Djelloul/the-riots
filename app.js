@@ -1612,6 +1612,13 @@ document.querySelector("#group-by").addEventListener("change", (event) => {
   render();
 });
 
+document.querySelector("#feed-jump-top").addEventListener("click", () => {
+  feed.scrollTo({
+    top: 0,
+    behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth",
+  });
+});
+
 document.querySelector("#sort-button").addEventListener("click", () => {
   state.newestFirst = !state.newestFirst;
   render();
