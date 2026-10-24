@@ -469,6 +469,16 @@
                 <h2><span id="feed-heading-title">Articles récents</span> <span class="feed-count" id="feed-count">—</span></h2>
               </div>
               <div class="feed-actions">
+                <label class="group-by"><span class="visually-hidden">Regrouper les articles</span>
+                  <select id="group-by" aria-label="Regrouper les articles">
+                    <option value="default">Regroupement automatique</option>
+                    <option value="event">Par événement (date + lieu)</option>
+                    <option value="place">Par ville / lieu cité</option>
+                    <option value="region">Par région ou pays</option>
+                    <option value="media">Par type de média</option>
+                    <option value="timeline">Chronologie simple</option>
+                  </select>
+                </label>
                 <button id="saved-filter" class="saved-filter" type="button" aria-pressed="false">À lire plus tard <span id="saved-count">0</span></button>
                 <button id="share-view" class="saved-filter" type="button">Partager les filtres</button>
                 <button id="sort-button" class="sort-button" type="button" aria-label="Changer l’ordre de tri" title="Changer l’ordre de tri">

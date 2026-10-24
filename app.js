@@ -253,6 +253,7 @@ const state = {
   ...readSharedView(),
   selected: null,
   newestFirst: true,
+  groupBy: "default",
   fetchedAt: null,
   showSaved: false,
   seenArticleIds: new Set(Array.isArray(storedSeenArticles)
@@ -454,8 +455,9 @@ function getVisibleArticles({ ignoreCountry = false, fromSaved = false } = {}) {
 function render() {
   const articles = getVisibleArticles();
   const feedArticles = state.showSaved ? getVisibleArticles({ fromSaved: true }) : articles;
-  if (state.mapMode === "europe") renderEuropeanTimeline(feedArticles);
-  else feed.replaceChildren(...feedArticles.map(createArticleCard));
+  const groupMode = getGroupMode();
+  if (groupMode === "timeline") feed.replaceChildren(...feedArticles.map(createArticleCard));
+  else renderGroupedFeed(feedArticles, groupMode);
   renderVisuals(articles);
   renderCoverageComparison(getVisibleArticles({ ignoreCountry: true }));
   renderTrends();
@@ -518,42 +520,146 @@ function render() {
   renderSources();
 }
 
-function renderEuropeanTimeline(articles) {
+const REGION_DEPARTMENTS = {
+  "Île-de-France": ["75", "77", "78", "91", "92", "93", "94", "95"],
+  "Auvergne-Rhône-Alpes": ["01", "03", "07", "15", "26", "38", "42", "43", "63", "69", "73", "74"],
+  "Bourgogne-Franche-Comté": ["21", "25", "39", "58", "70", "71", "89", "90"],
+  "Bretagne": ["22", "29", "35", "56"],
+  "Centre-Val de Loire": ["18", "28", "36", "37", "41", "45"],
+  "Corse": ["2A", "2B", "20"],
+  "Grand Est": ["08", "10", "51", "52", "54", "55", "57", "67", "68", "88"],
+  "Hauts-de-France": ["02", "59", "60", "62", "80"],
+  "Normandie": ["14", "27", "50", "61", "76"],
+  "Nouvelle-Aquitaine": ["16", "17", "19", "23", "24", "33", "40", "47", "64", "79", "86", "87"],
+  "Occitanie": ["09", "11", "12", "30", "31", "32", "34", "46", "48", "65", "66", "81", "82"],
+  "Pays de la Loire": ["44", "49", "53", "72", "85"],
+  "Provence-Alpes-Côte d’Azur": ["04", "05", "06", "13", "83", "84"],
+};
+const REGION_BY_DEPARTMENT = Object.fromEntries(
+  Object.entries(REGION_DEPARTMENTS).flatMap(([region, codes]) => codes.map((code) => [code, region])),
+);
+const GROUP_MODES = ["default", "event", "place", "region", "media", "timeline"];
+const MEDIA_CATEGORIES = ["Presse nationale", "Presse régionale", "Audiovisuel et chaînes d’info", "Média international", "Autre média"];
+
+function getMediaCategory(sourceId) {
+  const kind = state.sources.find((source) => source.id === sourceId)?.kind || "";
+  if (/régionale/i.test(kind)) return "Presse régionale";
+  if (/audiovisuel|public|chaîne/i.test(kind)) return "Audiovisuel et chaînes d’info";
+  if (/international/i.test(kind)) return "Média international";
+  if (/presse/i.test(kind)) return "Presse nationale";
+  return "Autre média";
+}
+
+function getArticleRegion(article) {
+  if (article.countryCode && article.countryCode !== "FR") {
+    return article.region || COUNTRY_NAMES[article.countryCode] || "Europe";
+  }
+  const place = article.location?.places?.[0];
+  const departmentCode = place?.departmentCode ? String(place.departmentCode) : "";
+  return REGION_BY_DEPARTMENT[departmentCode] || article.region || (article.countryCode === "FR" ? "France · région non précisée" : "Non localisé");
+}
+
+function getGroupMode() {
+  const mode = state.groupBy || "default";
+  if (mode !== "default") return mode;
+  return state.mapMode === "europe" ? "event" : "timeline";
+}
+
+function describeGroup(article, mode) {
+  const date = new Date(article.publishedAt).toISOString().slice(0, 10);
+  const place = article.location?.places?.[0]?.name || "";
+  const countryName = COUNTRY_NAMES[article.countryCode] || "";
+  if (mode === "media") {
+    const category = getMediaCategory(article.sourceId);
+    return { key: category, title: category, rank: MEDIA_CATEGORIES.indexOf(category) };
+  }
+  if (mode === "region") {
+    const region = getArticleRegion(article);
+    return { key: `${article.countryCode}|${region}`, title: region, countryCode: article.countryCode };
+  }
+  if (mode === "place") {
+    return place
+      ? { key: `${article.countryCode}|${normalizePlace(place)}`, title: place, subtitle: getArticleRegion(article), countryCode: article.countryCode }
+      : { key: "none", title: "Lieu non identifié", countryCode: null, last: true };
+  }
+  return place
+    ? { key: [date, article.countryCode, normalizePlace(place), article.type].join("|"), title: place, subtitle: countryName, countryCode: article.countryCode, date, type: article.type }
+    : { key: article.id, title: "Lieu non identifié", subtitle: countryName, countryCode: article.countryCode, date, type: article.type };
+}
+
+function createCoverageChips(articles, mode) {
+  const chips = document.createElement("div");
+  chips.className = "coverage-chips";
+  const counts = new Map();
+  for (const article of articles) {
+    const label = mode === "media" ? getArticleRegion(article) : getMediaCategory(article.sourceId);
+    counts.set(label, (counts.get(label) || 0) + 1);
+  }
+  for (const [label, count] of [...counts].sort((a, b) => b[1] - a[1]).slice(0, 5)) {
+    const chip = document.createElement("span");
+    chip.className = "coverage-chip";
+    chip.textContent = `${label} · ${count}`;
+    chips.append(chip);
+  }
+  const outlets = new Map(articles.map((article) => [article.sourceId, article.sourceName]));
+  const marks = document.createElement("span");
+  marks.className = "coverage-outlets";
+  for (const [id, name] of outlets) {
+    const mark = createPublisherMark(id, name, "publisher-mark-small");
+    mark.title = name;
+    marks.append(mark);
+  }
+  chips.append(marks);
+  return chips;
+}
+
+function renderGroupedFeed(articles, mode) {
   const groups = new Map();
   for (const article of articles) {
-    const date = new Date(article.publishedAt).toISOString().slice(0, 10);
-    const place = article.location?.places?.[0]?.name || "";
-    const key = place
-      ? [date, article.countryCode, normalizePlace(place), article.type].join("|")
-      : article.id;
-    const group = groups.get(key) || { date, countryCode: article.countryCode, place, type: article.type, articles: [] };
+    const descriptor = describeGroup(article, mode);
+    const group = groups.get(descriptor.key) || { ...descriptor, articles: [] };
     group.articles.push(article);
-    groups.set(key, group);
+    groups.set(descriptor.key, group);
   }
 
-  feed.replaceChildren(...[...groups.values()].map((group) => {
+  const ordered = [...groups.values()];
+  if (mode !== "event") {
+    ordered.sort((a, b) => Number(a.last || false) - Number(b.last || false)
+      || (mode === "media" ? a.rank - b.rank : b.articles.length - a.articles.length));
+  }
+
+  feed.replaceChildren(...ordered.map((group) => {
     const section = document.createElement("section");
     section.className = "coverage-group";
+    if (group.type) section.dataset.type = COLORS[group.type] ? group.type : "autre";
     const heading = document.createElement("div");
     heading.className = "coverage-group-heading";
-    const summary = document.createElement("strong");
     const outlets = new Set(group.articles.map((article) => article.sourceId)).size;
-    const place = group.place ? ` · ${group.place}` : "";
-    summary.append(
-      document.createTextNode(`${outlets} média${outlets === 1 ? "" : "s"} · `),
-      createCountryLabel(group.countryCode),
-      document.createTextNode(place),
-    );
+    const title = document.createElement("strong");
+    const flag = createCountryFlag(group.countryCode);
+    title.append(...(flag ? [flag] : []), document.createTextNode(group.title));
+    if (group.subtitle) {
+      const subtitle = document.createElement("span");
+      subtitle.className = "coverage-group-subtitle";
+      subtitle.textContent = group.subtitle;
+      title.append(subtitle);
+    }
+    const stats = document.createElement("span");
+    stats.className = "coverage-group-stats";
+    stats.textContent = `${group.articles.length} article${group.articles.length === 1 ? "" : "s"} · ${outlets} média${outlets === 1 ? "" : "s"}`;
+    const latest = group.date || new Date(group.articles[0].publishedAt).toISOString().slice(0, 10);
     const date = document.createElement("time");
-    date.dateTime = group.date;
-    date.textContent = new Intl.DateTimeFormat("fr-FR", { day: "2-digit", month: "short" }).format(new Date(`${group.date}T12:00:00Z`));
-    heading.append(summary, date);
+    date.dateTime = latest;
+    date.textContent = new Intl.DateTimeFormat("fr-FR", { day: "2-digit", month: "short" }).format(new Date(`${latest}T12:00:00Z`));
+    heading.append(title, stats, date);
 
     const note = document.createElement("p");
     note.className = "coverage-summary";
-    const subject = TYPE_LABELS[group.type] || TYPE_LABELS.autre;
-    note.textContent = `${group.articles.length} article${group.articles.length === 1 ? "" : "s"} associé${group.articles.length === 1 ? "" : "s"} à « ${subject} » par mots-clés. ${outlets > 1 ? "Convergence de couverture, pas confirmation indépendante." : "Un seul média ne constitue pas une confirmation indépendante."}`;
-    section.append(heading, note, ...group.articles.map(createArticleCard));
+    const caveat = outlets > 1 ? "Convergence de couverture, pas confirmation indépendante." : "Un seul média ne constitue pas une confirmation indépendante.";
+    note.textContent = mode === "event"
+      ? `Associé à « ${TYPE_LABELS[group.type] || TYPE_LABELS.autre} » par mots-clés. ${caveat}`
+      : `Articles regroupés ${mode === "media" ? "par type de média" : mode === "region" ? "par région ou pays" : "par lieu cité"}. ${caveat}`;
+    section.append(heading, createCoverageChips(group.articles, mode), note, ...group.articles.map(createArticleCard));
     return section;
   }));
 }
@@ -965,6 +1071,7 @@ function isSafeImageUrl(value) {
 function createArticleCard(article) {
   const card = document.createElement("article");
   card.className = `event-card${state.selected === article.id ? " selected" : ""}`;
+  card.dataset.type = COLORS[article.type] ? article.type : "autre";
 
   const toggle = document.createElement("button");
   toggle.type = "button";
@@ -1499,6 +1606,11 @@ document.querySelector("#custom-feed-form").addEventListener("submit", (event) =
 
 document.querySelector("#trend-period").addEventListener("change", renderTrends);
 document.querySelector("#trend-type").addEventListener("change", renderTrends);
+
+document.querySelector("#group-by").addEventListener("change", (event) => {
+  state.groupBy = GROUP_MODES.includes(event.target.value) ? event.target.value : "default";
+  render();
+});
 
 document.querySelector("#sort-button").addEventListener("click", () => {
   state.newestFirst = !state.newestFirst;

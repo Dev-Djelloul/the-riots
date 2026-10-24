@@ -366,10 +366,16 @@ h1 em, .about-dialog h2 em { color: var(--accent); font-weight: 500; }
 .event-card { position: relative; padding: 0 5px 0 12px; border-top: 1px solid var(--line-soft); border-left: 1px solid transparent; transition: background .18s, border-color .18s; }
 .event-card:hover, .event-card.selected { background: #1d1f1b; border-left-color: var(--accent); }
 .coverage-group { min-width: 0; }
-.coverage-group-heading { display: flex; align-items: baseline; justify-content: space-between; gap: 7px; padding: 10px 5px 0 12px; border-top: 1px solid var(--line); color: #d0b08f; font: 8px var(--mono); }
-.coverage-group-heading strong { display: inline-flex; align-items: center; gap: 4px; min-width: 0; font-weight: 500; }
-.coverage-group-heading time { flex: none; color: #777a70; }
-.coverage-summary { margin: 5px 5px 9px 12px; color: #85877e; font-size: 9px; line-height: 1.45; }
+.coverage-group-heading { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 12px; padding: 14px 5px 0 12px; border-top: 1px solid var(--line); color: #e2c4a4; font: 11px var(--mono); }
+.coverage-group-heading strong { display: inline-flex; align-items: center; flex: 1 1 auto; flex-wrap: wrap; gap: 6px; min-width: 0; font-size: 14px; font-weight: 600; letter-spacing: .01em; }
+.coverage-group-subtitle { color: #8c8f85; font-size: 10px; font-weight: 400; }
+.coverage-group-stats { color: #a9ab9f; font-size: 10px; }
+.coverage-group-heading time { flex: none; color: #8c8f85; }
+.coverage-chips { grid-column: 1 / -1; display: flex; flex-wrap: wrap; align-items: center; gap: 6px; padding: 7px 5px 0 12px; }
+.coverage-chip { padding: 3px 8px; border: 1px solid #3b3e35; border-radius: 999px; background: #1a1c18; color: #c7c9bd; font: 9px var(--mono); }
+.coverage-outlets { display: inline-flex; flex-wrap: wrap; gap: 4px; margin-left: auto; }
+.group-by select { max-width: 210px; padding: 6px 8px; border: 1px solid #343730; background: #141512; color: #d6d5cc; font: 10px var(--sans); }
+.coverage-summary { margin: 7px 5px 11px 12px; color: #999b90; font-size: 11px; line-height: 1.5; }
 .event-summary { display: block; width: 100%; padding: 13px 0 15px; border: 0; background: transparent; color: inherit; text-align: left; cursor: pointer; }
 .event-summary:focus-visible { outline-offset: -1px; }
 .event-meta { display: flex; align-items: center; justify-content: space-between; gap: 7px; margin-bottom: 8px; }
@@ -491,7 +497,15 @@ h1 em, .about-dialog h2 em { color: var(--accent); font-weight: 500; }
 .publisher-mark.has-logo { background: #f4f1e8; padding: 2px; }
 .publisher-mark img { width: 100%; height: 100%; object-fit: contain; border-radius: inherit; }
 .coverage-group { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: 18px; align-content: start; grid-column: 1 / -1; }
-.coverage-group-heading, .coverage-summary { grid-column: 1 / -1; }
+.coverage-group-heading, .coverage-chips, .coverage-summary { grid-column: 1 / -1; }
+.event-card, .coverage-group { --topic: #7f9bb0; }
+.event-card[data-type="rassemblement"], .coverage-group[data-type="rassemblement"] { --topic: #d7a260; }
+.event-card[data-type="tensions"], .coverage-group[data-type="tensions"] { --topic: var(--coral); }
+.event-card[data-type="degradations"], .coverage-group[data-type="degradations"] { --topic: var(--lilac); }
+.event-card { margin: 8px 0; padding-right: 12px; border: 1px solid color-mix(in srgb, var(--topic) 35%, transparent); border-left: 4px solid var(--topic); border-radius: 4px; background: color-mix(in srgb, var(--topic) 8%, #151613); }
+.event-card:hover, .event-card.selected { background: color-mix(in srgb, var(--topic) 15%, #181916); border-left-color: var(--topic); }
+.event-card .event-type { color: var(--topic); font-weight: 600; }
+.coverage-group[data-type] .coverage-group-heading { border-top: 3px solid var(--topic); }
 .event-card.has-preview { display: grid; grid-template-columns: minmax(0, 1fr) minmax(130px, 42%); column-gap: 12px; align-items: start; }
 .event-card.has-preview > :not(.article-preview) { grid-column: 1; }
 .event-card.has-preview > .event-detail { grid-column: 1 / -1; }
