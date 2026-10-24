@@ -127,7 +127,7 @@ test("relit les résultats de la collecte européenne pays par pays depuis KV", 
   assert.equal(result.articles[0].countryCode, "GR");
 });
 
-test("recherche et mémorise une date ancienne dans les groupes européens GDELT", async () => {
+test("recherche et mémorise une date ancienne en une requête GDELT européenne", async () => {
   let calls = 0;
   globalThis.fetch = async (input) => {
     calls += 1;
@@ -173,10 +173,10 @@ test("recherche et mémorise une date ancienne dans les groupes européens GDELT
   const second = await (await onRequestGet({ request: request("2026-09-15", ""), env })).json();
   assert.equal(second.source, "history");
   assert.equal(second.articles.length, 2);
-  assert.equal(calls, Math.ceil(EUROPE_COUNTRIES.length / 12));
+  assert.equal(calls, 1);
 });
 
-test("recherche GDELT dans les groupes de pays même quand aucune archive n’est précollectée", async () => {
+test("inclut toute l’Europe dans une requête GDELT même sans archive précollectée", async () => {
   let calls = 0;
   const sourceQueries = [];
   globalThis.fetch = async (input) => {
@@ -186,7 +186,6 @@ test("recherche GDELT dans les groupes de pays même quand aucune archive n’es
     const query = url.searchParams.get("query");
     sourceQueries.push(query);
     if (!query.includes("sourcecountry:GR")) return Response.json({ articles: [] });
-    assert.ok(query.length < 600);
     return Response.json({
       articles: [{
         url: "https://example.test/greece-story",
@@ -208,8 +207,10 @@ test("recherche GDELT dans les groupes de pays même quand aucune archive n’es
   assert.equal(result.provider, "gdelt");
   assert.equal(result.articles.length, 1);
   assert.equal(result.articles[0].countryCode, "GR");
-  assert.equal(calls, Math.ceil(EUROPE_COUNTRIES.length / 12));
-  assert.ok(sourceQueries.some((query) => query.includes("sourcecountry:UK")));
+  assert.equal(calls, 1);
+  assert.equal(sourceQueries.length, 1);
+  assert.ok(sourceQueries[0].includes("sourcecountry:UK"));
+  assert.ok(sourceQueries[0].includes("sourcecountry:UP"));
 });
 
 test("renvoie une erreur explicite si aucune source ne répond à la recherche européenne", async () => {
@@ -222,13 +223,14 @@ test("renvoie une erreur explicite si aucune source ne répond à la recherche e
   const result = await response.json();
   assert.equal(result.provider, "unavailable");
   assert.equal(result.available, 0);
+  assert.ok(result.errors.some((error) => error.includes("GDELT HTTP 503")));
 });
 
 test("bascule sur les flux Google Actualités si GDELT est indisponible", async () => {
   let calls = 0;
   globalThis.fetch = async () => {
     calls += 1;
-    if (calls <= Math.ceil(EUROPE_COUNTRIES.length / 12)) {
+    if (calls === 1) {
       return new Response("GDELT indisponible", { status: 503 });
     }
     return new Response(`
@@ -251,6 +253,6 @@ test("bascule sur les flux Google Actualités si GDELT est indisponible", async 
   assert.equal(result.provider, "google-news-rss");
   assert.equal(result.source, "external");
   assert.ok(result.articles.some((article) => article.link === "https://example.test/madrid-archive"));
-  assert.equal(calls, Math.ceil(EUROPE_COUNTRIES.length / 12) + 5);
+  assert.equal(calls, 6);
   assert.ok(HISTORY.store.has("archive:2026-09-15"));
 });
