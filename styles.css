@@ -221,7 +221,7 @@ h1 em, .about-dialog h2 em { color: var(--accent); font-weight: 500; }
 .social-embed-card > a { display: block; padding: 8px 10px; color: #d5b18e; font: 8px var(--mono); text-decoration: none; }
 .social-embed-card > a:hover { color: #f0c7a1; text-decoration: underline; }
 
-.workspace { display: grid; grid-template-columns: 208px minmax(0, 1fr); grid-template-rows: minmax(560px, clamp(560px, calc(100vh - 150px), 760px)) auto; height: auto; margin-top: 19px; border: 1px solid var(--line); background: var(--panel); }
+.workspace { display: grid; grid-template-columns: 300px minmax(0, 1fr); grid-template-rows: minmax(560px, clamp(560px, calc(100vh - 150px), 760px)) auto; height: auto; margin-top: 19px; border: 1px solid var(--line); background: var(--panel); }
 .sidebar { grid-column: 1; grid-row: 1; display: flex; min-height: 0; flex-direction: column; overflow-y: auto; padding: 22px 17px 17px; border-right: 1px solid var(--line); }
 .sidebar-heading, .map-topline, .feed-heading { display: flex; align-items: center; justify-content: space-between; }
 .section-kicker { color: var(--muted); }
@@ -409,7 +409,7 @@ h1 em, .about-dialog h2 em { color: var(--accent); font-weight: 500; }
 
 @media (max-width: 1120px) {
   .app-shell { padding: 0 28px; }
-  .workspace { grid-template-columns: 180px minmax(0, 1fr); }
+  .workspace { grid-template-columns: 250px minmax(0, 1fr); }
   .sidebar { padding-right: 13px; padding-left: 13px; }
   .map-panel { padding-right: 17px; padding-left: 17px; }
   .feed-panel { padding-right: 17px; padding-left: 17px; }
@@ -419,7 +419,7 @@ h1 em, .about-dialog h2 em { color: var(--accent); font-weight: 500; }
 }
 @media (max-width: 850px) {
   .app-shell { padding: 0 20px; }
-  .workspace { height: auto; grid-template-columns: 180px minmax(0, 1fr); grid-template-rows: minmax(480px, auto) auto; }
+  .workspace { height: auto; grid-template-columns: 250px minmax(0, 1fr); grid-template-rows: minmax(480px, auto) auto; }
   .map-panel { min-height: 480px; border-right: 0; }
   .feed-panel { grid-column: 1 / -1; grid-row: 2; max-height: 700px; border-top: 1px solid var(--line); }
   .feed-list { max-height: 560px; flex: none; grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: 14px; }

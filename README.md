@@ -80,6 +80,7 @@ La section **Directs européens** intègre les lecteurs YouTube officiels de DW 
 - Cloudflare Pages Functions fournit les routes API.
 - `functions/api/veille.js` récupère les flux RSS et Atom, repère les mots-clés et les lieux côté serveur.
 - `functions/api/social.js` expose les statuts des plateformes et, si configuré, les recherches de chaînes Twitch en direct.
+- `functions/api/veille.js` filtre les articles par règles (termes sûrs, termes ambigus avec contexte, exclusions). Les cas ambigus (jusqu’à 20 par requête) sont tranchés par Workers AI via le binding `AI` déclaré dans `wrangler.toml` ; sans binding ou en cas d’erreur, ils sont écartés.
 - `app.js` gère l’interface, les articles, la carte et les lecteurs.
 - `geography.js` rapproche les articles des données géographiques.
 - `service-worker.js`, `manifest.webmanifest` et les icônes `icons/` fournissent les fonctions PWA.

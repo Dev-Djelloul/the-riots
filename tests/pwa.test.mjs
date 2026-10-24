@@ -28,7 +28,7 @@ test("site-wide zoom is reset to 100 percent and French live streams use two col
 test("coverage feed spans the page below the full-width map", async () => {
   const stylesheet = await readFile(new URL("styles.css", root), "utf8");
 
-  assert.match(stylesheet, /\.workspace\s*\{[^}]*grid-template-columns:\s*208px minmax\(0,\s*1fr\);[^}]*grid-template-rows:[^}]*;/s);
+  assert.match(stylesheet, /\.workspace\s*\{[^}]*grid-template-columns:\s*300px minmax\(0,\s*1fr\);[^}]*grid-template-rows:[^}]*;/s);
   assert.match(stylesheet, /\.map-panel\s*\{[^}]*grid-column:\s*2;[^}]*grid-row:\s*1;/s);
   assert.match(stylesheet, /\.feed-panel\s*\{[^}]*grid-column:\s*1 \/ -1;[^}]*grid-row:\s*2;[^}]*min-height:\s*600px;/s);
   assert.match(stylesheet, /@media \(max-width: 600px\)\s*\{[\s\S]*?\.workspace\s*\{\s*display:\s*flex;/);
@@ -83,7 +83,7 @@ test("personal alerts, saved articles and European coverage comparison are wired
   assert.match(app, /history\.replaceState/);
   assert.match(app, /navigator\.clipboard\.writeText/);
   assert.match(app, /function renderTrends\(\)/);
-  assert.match(serviceWorker, /veille-shell-v11/);
+  assert.match(serviceWorker, /veille-shell-v12/);
   assert.match(readme, /À lire plus tard/);
   assert.match(readme, /alertes personnalisées/i);
   assert.match(readme, /Comparateur de couverture/);
@@ -126,7 +126,7 @@ test("European live video cards point to official players and broadcasters", asy
   assert.match(html, /https:\/\/www\.vrt\.be\/vrtnws\/nl\/kijk\//);
   assert.match(html, /https:\/\/www\.raiplay\.it\/dirette\/rainews24/);
   assert.match(html, /https:\/\/www\.tagesschau\.de\/multimedia\/livestreams\//);
-  assert.match(serviceWorker, /veille-shell-v11/);
+  assert.match(serviceWorker, /veille-shell-v12/);
 });
 
 test("service worker serves the last successful news response offline", async () => {

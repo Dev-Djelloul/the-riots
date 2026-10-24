@@ -27,17 +27,97 @@ const SOURCES = [
   { id: "dw-de", name: "Deutsche Welle", kind: "Média international allemand", feed: "https://rss.dw.com/xml/rss-de-all", url: "https://www.dw.com/de/" },
 ];
 
-const TERMS = [
-  "manifestation", "manifestations", "manifestant", "manifestants", "rassemblement",
-  "rassemblements", "défilé", "mobilisation", "émeute", "émeutes", "émeutier",
-  "violences urbaines", "affrontement", "affrontements", "heurts", "tensions",
-  "dégradation", "dégradations", "vandalisme", "incendie", "cortège", "blocage",
-  "demonstration", "demonstrationen", "demonstrant", "demonstranten", "protest", "proteste",
-  "streik", "streiks", "ausschreitungen", "krawalle", "gewalt", "randale",
-  "betoging", "betogingen", "demonstratie", "demonstraties", "staking", "stakingen", "rellen",
-  "manifestacion", "manifestaciones", "manifestante", "protesta", "protestas", "huelga", "disturbios", "enfrentamientos",
-  "manifestazione", "manifestazioni", "manifestanti", "protesta", "proteste", "sciopero", "scioperi", "scontri", "disordini",
+// Termes sans ambiguïté : suffisent à retenir un article.
+const STRONG_TERMS = [
+  "manifestation", "manifestant", "émeute", "émeutier", "violences urbaines",
+  "affrontement", "heurts", "vandalisme",
+  "demonstration", "demonstrant", "streik", "ausschreitungen", "krawalle", "randale",
+  "betoging", "demonstratie", "staking", "rellen",
+  "manifestacion", "manifestante", "huelga", "disturbios", "enfrentamientos",
+  "manifestazione", "manifestanti", "sciopero", "scioperi", "scontri", "disordini",
 ];
+
+// Termes ambigus : retenus seulement avec un contexte de mobilisation ou d’ordre public.
+const WEAK_TERMS = [
+  "rassemblement", "rassemblements", "défilé", "défilés", "mobilisation", "mobilisations",
+  "tensions", "dégradation", "dégradations", "incendie", "incendies", "cortège", "cortèges", "blocage", "blocages",
+  "protest", "proteste", "protesta", "protestas", "gewalt", "streiks", "stakingen", "betogingen",
+];
+
+const CONTEXT_TERMS = [
+  "police", "policier", "policiers", "gendarme", "gendarmes", "crs", "forces de l ordre", "prefecture", "prefet",
+  "interpelle", "interpelles", "interpellation", "interpellations", "garde a vue", "gaz lacrymogene", "lacrymogenes",
+  "syndicat", "syndicats", "syndical", "intersyndicale", "greve", "greves", "greviste", "militants", "collectif",
+  "reforme", "retraites", "gouvernement", "contre la", "contre le", "contre les", "appel a", "appellent", "revendications",
+  "sit-in", "barricade", "barricades", "voitures brulees", "mobilier urbain", "commissariat", "violences", "emeutes", "casseurs",
+  "polizei", "demonstranten", "festnahmen", "politie", "aanhoudingen", "policia", "detenidos", "polizia", "arresti", "fermati",
+  "protesters", "protestors", "riot", "clashes",
+];
+
+const EXCLUSION_TERMS = [
+  "victoria s secret", "victorias secret", "fashion week", "defile de mode", "defiles de mode", "haute couture", "mannequin",
+  "tapis rouge", "red carpet", "gueule de bois", "festival de cannes", "carnaval", "concert", "cinema", "box-office",
+  "fashion show", "modeschau", "sfilata di moda", "desfile de moda", "rassemblement national", "ras-le-bol fiscal",
+];
+
+function assessRelevance(normalizedText) {
+  const text = normalizedText.replace(/[’']/g, " ").replace(/rassemblement national/g, " ");
+  const strong = STRONG_TERMS.filter((term) => text.includes(normalize(term)));
+  const weak = WEAK_TERMS.filter((term) => containsWord(text, normalize(term)));
+  const context = CONTEXT_TERMS.filter((term) => containsWord(text, normalize(term)));
+  const excluded = EXCLUSION_TERMS.some((term) => containsWord(text, normalize(term)));
+  const score = strong.length * 3 + weak.length + Math.min(context.length, 3) * 2 - (excluded ? 4 : 0);
+  const relevant = strong.length > 0
+    ? !excluded || context.length > 0
+    : weak.length > 0 && context.length > 0 && !excluded;
+  const candidate = !relevant && strong.length + weak.length > 0;
+  return { relevant, candidate, score, matchedTerms: [...strong, ...weak] };
+}
+
+const AI_MODEL = "@cf/meta/llama-3.1-8b-instruct";
+const AI_MAX_CANDIDATES = 20;
+
+// Demande à Workers AI quels articles ambigus traitent réellement d’un rassemblement, d’une manifestation ou de troubles à l’ordre public.
+async function classifyWithAI(ai, candidates) {
+  const batch = candidates.slice(0, AI_MAX_CANDIDATES);
+  const list = batch
+    .map((article, index) => `${index}. ${article.title} — ${article.description.slice(0, 160)}`)
+    .join("\n");
+  const run = ai.run(AI_MODEL, {
+    max_tokens: 120,
+    temperature: 0,
+    messages: [
+      {
+        role: "system",
+        content: "Tu classes des titres de presse. Réponds uniquement par un tableau JSON des numéros dont l’article rapporte un événement réel de manifestation, rassemblement revendicatif, grève, émeute, affrontement ou trouble à l’ordre public. Exclus mode, culture, sport, politique partisane sans mobilisation de rue, métaphores et expressions. Exemple : [0,3]. Si aucun : [].",
+      },
+      { role: "user", content: list },
+    ],
+  });
+  const timeout = new Promise((_, reject) => setTimeout(() => reject(new Error("AI timeout")), 7000));
+  const result = await Promise.race([run, timeout]);
+  const match = String(result?.response ?? "").match(/\[[\d,\s]*\]/);
+  if (!match) throw new Error("AI response unreadable");
+  const accepted = new Set(JSON.parse(match[0]).filter(Number.isInteger));
+  return new Set(batch.filter((_, index) => accepted.has(index)));
+}
+
+async function resolveCandidates(articles, ai) {
+  const candidates = articles
+    .filter((article) => article.candidate)
+    .sort((a, b) => new Date(b.publishedAt) - new Date(a.publishedAt));
+  let accepted = new Set();
+  if (ai && candidates.length > 0) {
+    try {
+      accepted = await classifyWithAI(ai, candidates);
+    } catch (error) {
+      console.warn(JSON.stringify({ event: "ai_classification_unavailable", message: error.message }));
+    }
+  }
+  return articles
+    .filter((article) => !article.candidate || accepted.has(article))
+    .map(({ candidate, ...article }) => (candidate ? { ...article, relevance: 4, classifiedBy: "ai" } : article));
+}
 
 const CITIES = [
   { name: "Paris", region: "Île-de-France", position: [48.8566, 2.3522] },
@@ -92,11 +172,11 @@ const MATCHERS = [
 const MAX_FEED_BYTES = 1_000_000;
 const MAX_ARTICLES_PER_SOURCE = 50;
 
-export async function onRequestGet() {
-  return fetchArticles(SOURCES);
+export async function onRequestGet({ env } = {}) {
+  return fetchArticles(SOURCES, { ai: env?.AI });
 }
 
-export async function onRequestPost({ request }) {
+export async function onRequestPost({ request, env }) {
   const contentLength = Number(request.headers.get("Content-Length") || 0);
   if (contentLength > 16_384) {
     return Response.json({ error: "La configuration des flux est trop volumineuse." }, { status: 413 });
@@ -129,7 +209,7 @@ export async function onRequestPost({ request }) {
     ids.add(source.id);
     customFeeds.push(source);
   }
-  return fetchArticles([...SOURCES, ...customFeeds], { privateResponse: true });
+  return fetchArticles([...SOURCES, ...customFeeds], { privateResponse: true, ai: env?.AI });
 }
 
 async function readLimitedJson(request, maxBytes) {
@@ -195,7 +275,7 @@ function validateCustomFeed(feed) {
  * across redirects, avoiding private-network access through redirect targets.
  */
 
-async function fetchArticles(configuredSources, { privateResponse = false } = {}) {
+async function fetchArticles(configuredSources, { privateResponse = false, ai } = {}) {
   const sourceResults = await Promise.all(configuredSources.map(async (source) => {
     try {
       const response = await fetch(source.feed, {
@@ -221,9 +301,12 @@ async function fetchArticles(configuredSources, { privateResponse = false } = {}
   }));
 
   const sources = sourceResults.map((result) => result.source);
-  const articles = sourceResults.flatMap((result) => result.articles)
+  const articles = (await resolveCandidates(sourceResults.flatMap((result) => result.articles), ai))
     .sort((a, b) => new Date(b.publishedAt) - new Date(a.publishedAt))
     .slice(0, sources.length * MAX_ARTICLES_PER_SOURCE);
+  for (const source of sources) {
+    source.articleCount = articles.filter((article) => article.sourceId === source.id).length;
+  }
   const availableSources = sources.filter((source) => source.status === "ok").length;
   const status = availableSources === 0 ? 503 : 200;
 
@@ -305,8 +388,8 @@ function parseFeed(xml, source) {
       || (timestamp > now + 60 * 60 * 1000 && !isEstimatedToday)) continue;
 
     const normalized = normalize(`${title} ${description}`);
-    const matchedTerms = TERMS.filter((term) => normalized.includes(normalize(term)));
-    if (matchedTerms.length === 0 || seen.has(link)) continue;
+    const { relevant, candidate, matchedTerms, score } = assessRelevance(normalized);
+    if (!(relevant || candidate) || seen.has(link)) continue;
     seen.add(link);
 
     const matchedCity = findMatchedCity(title, description);
@@ -321,6 +404,8 @@ function parseFeed(xml, source) {
       sourceName: source.name,
       type: classify(normalized),
       matchedTerms: [...new Set(matchedTerms)],
+      relevance: score,
+      candidate,
       image: extractImage(item, source.feed),
       city: matchedCity?.name || null,
       region: matchedCity?.region || null,

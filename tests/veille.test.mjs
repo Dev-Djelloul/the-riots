@@ -113,6 +113,49 @@ test("conserve l’historique RSS disponible et ignore les articles hors sujet e
   assert.ok(payload.articles.every((article) => article.image === null));
 });
 
+test("exige un contexte pour les termes ambigus et écarte les faux positifs", async () => {
+  const items = [
+    ["Victoria’s Secret : la vie ressemblait à une fête au défilé de Los Angeles", "https://media.example/fashion"],
+    ["Le Rassemblement national annonce son programme à Paris", "https://media.example/rn"],
+    ["Défilé syndical à Lyon : la police interpelle deux personnes", "https://media.example/syndical"],
+    ["Mobilisation contre la réforme à Marseille", "https://media.example/mobilisation"],
+    ["Manifestation à Bordeaux", "https://media.example/strong"],
+  ];
+  globalThis.fetch = async () => new Response(
+    `<rss><channel>${items.map(([title, link]) => `<item><title>${title}</title><link>${link}</link><pubDate>${now}</pubDate></item>`).join("")}</channel></rss>`,
+    { status: 200 },
+  );
+
+  const payload = await (await onRequestGet()).json();
+  const links = new Set(payload.articles.map((article) => article.link));
+  assert.equal(links.has("https://media.example/fashion"), false);
+  assert.equal(links.has("https://media.example/rn"), false);
+  assert.equal(links.has("https://media.example/syndical"), true);
+  assert.equal(links.has("https://media.example/mobilisation"), true);
+  assert.equal(links.has("https://media.example/strong"), true);
+});
+
+test("délègue les cas ambigus à Workers AI et retombe sur les règles en cas d’échec", async () => {
+  globalThis.fetch = async () => new Response(
+    `<rss><channel><item><title>Rassemblement devant la mairie de Nantes</title><link>https://media.example/ambigu</link><pubDate>${now}</pubDate></item></channel></rss>`,
+    { status: 200 },
+  );
+
+  const withoutAi = await (await onRequestGet({ env: {} })).json();
+  assert.equal(withoutAi.articles.length, 0);
+
+  let prompt = "";
+  const accepting = { run: async (_model, input) => { prompt = input.messages[1].content; return { response: "[0]" }; } };
+  const accepted = await (await onRequestGet({ env: { AI: accepting } })).json();
+  assert.match(prompt, /Rassemblement devant la mairie de Nantes/);
+  assert.ok(accepted.articles.length > 0);
+  assert.ok(accepted.articles.every((article) => article.classifiedBy === "ai" && !("candidate" in article)));
+
+  const failing = { run: async () => { throw new Error("indisponible"); } };
+  const fallback = await (await onRequestGet({ env: { AI: failing } })).json();
+  assert.equal(fallback.articles.length, 0);
+});
+
 test("utilise la date du permalien du Parisien et la marque comme estimée", async () => {
   const date = new Date();
   const day = String(date.getUTCDate()).padStart(2, "0");
