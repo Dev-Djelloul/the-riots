@@ -563,8 +563,8 @@ function renderArchiveStatus() {
   note.hidden = !entry;
   note.textContent = !entry ? ""
     : entry.status === "loading" ? "Recherche des articles archivés de ce jour…"
-      : entry.status === "error" ? "Archive indisponible pour ce jour — réessaie en choisissant à nouveau la date."
-        : `${entry.articles.length} article${entry.articles.length > 1 ? "s" : ""} archivé${entry.articles.length > 1 ? "s" : ""} (titres uniquement, via Google Actualités).`;
+      : entry.status === "error" ? "Aucun article archivé pour ce jour : la veille mémorise désormais chaque article vu, l’historique s’enrichit au fil des jours."
+        : `${entry.articles.length} article${entry.articles.length > 1 ? "s" : ""} archivé${entry.articles.length > 1 ? "s" : ""} pour ce jour.`;
 }
 
 function getVisibleArticles({ ignoreCountry = false, fromSaved = false } = {}) {

@@ -172,8 +172,58 @@ const MATCHERS = [
 const MAX_FEED_BYTES = 1_000_000;
 const MAX_ARTICLES_PER_SOURCE = 50;
 
-export async function onRequestGet({ env } = {}) {
-  return fetchArticles(SOURCES, { ai: env?.AI });
+export async function onRequestGet({ env, waitUntil } = {}) {
+  const response = await fetchArticles(SOURCES, { ai: env?.AI });
+  if (env?.HISTORY && response.ok) {
+    const task = recordHistory(env.HISTORY, await response.clone().json());
+    if (typeof waitUntil === "function") waitUntil(task);
+    else await task;
+  }
+  return response;
+}
+
+const HISTORY_TTL_SECONDS = 400 * 24 * 60 * 60;
+const HISTORY_MAX_PER_DAY = 400;
+
+function dayKey(iso) {
+  return `day:${iso.slice(0, 10)}`;
+}
+
+// Mémorise chaque article vu, par jour de publication, pour garder un historique au-delà de ce que les flux RSS exposent.
+export async function recordHistory(kv, payload) {
+  try {
+    const byDay = new Map();
+    for (const article of payload.articles || []) {
+      if (!article.publishedAt) continue;
+      const key = dayKey(article.publishedAt);
+      if (!byDay.has(key)) byDay.set(key, []);
+      byDay.get(key).push(article);
+    }
+    await Promise.all([...byDay].map(async ([key, fresh]) => {
+      const stored = (await kv.get(key, "json")) || [];
+      const merged = new Map(stored.map((article) => [article.link, article]));
+      let changed = false;
+      for (const article of fresh) {
+        if (!merged.has(article.link)) changed = true;
+        merged.set(article.link, article);
+      }
+      if (!changed) return;
+      const value = [...merged.values()]
+        .sort((a, b) => new Date(b.publishedAt) - new Date(a.publishedAt))
+        .slice(0, HISTORY_MAX_PER_DAY);
+      await kv.put(key, JSON.stringify(value), { expirationTtl: HISTORY_TTL_SECONDS });
+    }));
+  } catch (error) {
+    console.warn(JSON.stringify({ event: "history_write_failed", message: String(error) }));
+  }
+}
+
+export async function readHistoryDay(kv, date) {
+  try {
+    return (await kv.get(`day:${date}`, "json")) || [];
+  } catch {
+    return [];
+  }
 }
 
 export async function onRequestPost({ request, env }) {
@@ -336,33 +386,100 @@ const ARCHIVE_QUERIES = [
   { hl: "de", gl: "DE", ceid: "DE:de", countryCode: "DE", terms: "Demonstration OR Demonstranten OR Ausschreitungen OR Krawalle OR Streik" },
 ];
 
-function shiftDate(date, days) {
+export function shiftDate(date, days) {
   const value = new Date(`${date}T00:00:00Z`);
   value.setUTCDate(value.getUTCDate() + days);
   return value.toISOString().slice(0, 10);
 }
 
-// Les flux RSS des médias ne conservent que quelques jours ; les jours plus anciens passent par la recherche datée de Google Actualités.
+const GDELT_COUNTRIES = { France: "FR", Belgium: "BE", Spain: "ES", Italy: "IT", Germany: "DE" };
+
+// Repli lorsque Google Actualités refuse les requêtes venant des serveurs.
+async function fetchGdeltDay(date) {
+  const compact = date.replaceAll("-", "");
+  const query = "(manifestation OR manifestants OR émeutes OR affrontements OR manifestación OR disturbios OR manifestazione OR scontri OR Demonstration OR Ausschreitungen OR betoging) (sourcecountry:FR OR sourcecountry:BE OR sourcecountry:SP OR sourcecountry:IT OR sourcecountry:GM)";
+  const url = `https://api.gdeltproject.org/api/v2/doc/doc?query=${encodeURIComponent(query)}&mode=artlist&maxrecords=250&format=json&sort=datedesc&startdatetime=${compact}000000&enddatetime=${compact}235959`;
+  const response = await fetch(url, { headers: { Accept: "application/json" }, signal: AbortSignal.timeout(15000) });
+  const text = await response.text();
+  if (!response.ok) throw new Error(`GDELT HTTP ${response.status}`);
+  let payload;
+  try { payload = JSON.parse(text); } catch { throw new Error("GDELT indisponible"); }
+  const seen = new Set();
+  const articles = [];
+  for (const item of payload.articles || []) {
+    const link = safeArticleUrl(item.url, url);
+    const title = cleanText(item.title || "");
+    const match = /^(\d{4})(\d{2})(\d{2})T(\d{2})(\d{2})(\d{2})Z$/.exec(item.seendate || "");
+    const countryCode = GDELT_COUNTRIES[item.sourcecountry];
+    if (!link || !title || !match || !countryCode || seen.has(link)) continue;
+    const normalized = normalize(title);
+    const { relevant, candidate, matchedTerms, score } = assessRelevance(normalized);
+    if (!(relevant || candidate)) continue;
+    seen.add(link);
+    const sourceName = cleanText(item.domain || "").replace(/^www\./, "") || "Archive";
+    const slug = normalize(sourceName).replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "archive";
+    const matchedCity = findMatchedCity(title, "");
+    articles.push({
+      id: `archive-${slug}:${link}`,
+      title,
+      description: "",
+      link,
+      publishedAt: new Date(Date.UTC(+match[1], +match[2] - 1, +match[3], +match[4], +match[5], +match[6])).toISOString(),
+      datePrecision: "minute",
+      sourceId: slug,
+      sourceName,
+      type: classify(normalized),
+      matchedTerms: [...new Set(matchedTerms)],
+      relevance: score,
+      candidate,
+      image: null,
+      archive: true,
+      city: matchedCity?.name || null,
+      region: matchedCity?.region || null,
+      position: matchedCity?.position || null,
+      countryCode: matchedCity?.countryCode || (matchedCity ? "FR" : findCountryCode(title)) || countryCode,
+    });
+  }
+  return articles;
+}
+
+// Les flux RSS des médias ne conservent que quelques jours ; les jours plus anciens passent par une recherche datée.
 export async function fetchArchiveDay(date, { ai } = {}) {
   const results = await Promise.all(ARCHIVE_QUERIES.map(async (query) => {
     const q = `${query.terms} after:${shiftDate(date, -1)} before:${shiftDate(date, 2)}`;
     const feed = `https://news.google.com/rss/search?q=${encodeURIComponent(q)}&hl=${query.hl}&gl=${query.gl}&ceid=${encodeURIComponent(query.ceid)}`;
     try {
       const response = await fetch(feed, {
-        headers: { Accept: "application/rss+xml, application/xml, text/xml;q=0.9" },
+        headers: {
+          Accept: "application/rss+xml, application/xml, text/xml;q=0.9",
+          "User-Agent": "Mozilla/5.0 (compatible; VeilleRSS/1.0)",
+        },
         signal: AbortSignal.timeout(8000),
       });
       if (!response.ok) throw new Error(`HTTP ${response.status}`);
       return { ok: true, articles: parseArchiveFeed(await readLimitedText(response, MAX_FEED_BYTES), query, feed) };
     } catch (error) {
       console.warn(JSON.stringify({ event: "archive_source_unavailable", country: query.countryCode, message: String(error) }));
-      return { ok: false, articles: [] };
+      return { ok: false, articles: [], error: String(error).slice(0, 120) };
     }
   }));
 
-  const articles = (await resolveCandidates(results.flatMap((result) => result.articles), ai))
+  let available = results.filter((result) => result.ok).length;
+  let rawArticles = results.flatMap((result) => result.articles);
+  const errors = results.filter((result) => result.error).map((result) => result.error);
+  if (available === 0) {
+    try {
+      rawArticles = await fetchGdeltDay(date);
+      available = 1;
+    } catch (error) {
+      errors.push(String(error).slice(0, 120));
+    }
+  }
+
+  const articles = (await resolveCandidates(rawArticles, ai))
+    .filter((article) => article.publishedAt.slice(0, 10) >= shiftDate(date, -1) && article.publishedAt.slice(0, 10) <= shiftDate(date, 1))
     .sort((a, b) => new Date(b.publishedAt) - new Date(a.publishedAt));
-  return { date, articles, available: results.filter((result) => result.ok).length, total: results.length };
+  return { date, articles, available, total: results.length, errors };
 }
 
 function parseArchiveFeed(xml, query, feed) {

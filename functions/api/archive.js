@@ -1,4 +1,4 @@
-import { fetchArchiveDay } from "./veille.js";
+import { fetchArchiveDay, readHistoryDay, shiftDate } from "./veille.js";
 
 export async function onRequestGet({ request, env }) {
   const date = new URL(request.url).searchParams.get("date") || "";
@@ -13,14 +13,25 @@ export async function onRequestGet({ request, env }) {
     return Response.json({ date, articles: [], available: 0, total: 0 });
   }
 
-  const result = await fetchArchiveDay(date, { ai: env?.AI });
+  // L’historique mémorisé par la veille est prioritaire ; la recherche externe ne sert que de repli.
+  let articles = [];
+  if (env?.HISTORY) {
+    const days = await Promise.all([-1, 0, 1].map((offset) => readHistoryDay(env.HISTORY, shiftDate(date, offset))));
+    articles = days.flat();
+  }
+  let result = { date, articles, available: articles.length ? 1 : 0, total: 1, source: "history" };
+  if (!articles.length) {
+    result = { ...(await fetchArchiveDay(date, { ai: env?.AI })), source: "external" };
+  }
+
   const recent = Date.now() - parsed.getTime() < 3 * 24 * 60 * 60 * 1000;
+  const cacheable = result.articles.length > 0;
   return Response.json({ ...result, fetchedAt: new Date().toISOString() }, {
-    status: result.available === 0 ? 503 : 200,
+    status: result.source === "external" && result.available === 0 ? 503 : 200,
     headers: {
-      "Cache-Control": result.available === 0
+      "Cache-Control": !cacheable
         ? "no-store"
-        : recent ? "public, max-age=0, s-maxage=900" : "public, max-age=3600, s-maxage=86400",
+        : recent ? "public, max-age=0, s-maxage=300" : "public, max-age=600, s-maxage=3600",
       "X-Content-Type-Options": "nosniff",
     },
   });
