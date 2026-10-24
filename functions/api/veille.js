@@ -515,7 +515,7 @@ export async function fetchArchiveDay(date, { ai, gnewsKey } = {}) {
     if (gnews.ok) {
       const articles = (await resolveCandidates(gnews.articles, ai))
         .sort((a, b) => new Date(b.publishedAt) - new Date(a.publishedAt));
-      return { date, articles, available: 1, total: GNEWS_QUERIES.length, errors: gnews.errors };
+      return { date, articles, available: 1, total: GNEWS_QUERIES.length, errors: gnews.errors, provider: "gnews" };
     }
   }
 

@@ -14,14 +14,21 @@ export async function onRequestGet({ request, env }) {
   }
 
   // L’historique mémorisé par la veille est prioritaire ; la recherche externe ne sert que de repli.
-  let articles = [];
-  if (env?.HISTORY) {
+  // Un jour déjà récupéré chez GNews est relu depuis KV : il ne consomme plus de quota.
+  const archiveKey = `archive:${date}`;
+  const archivedDay = env?.HISTORY ? await env.HISTORY.get(archiveKey, "json").catch(() => null) : null;
+  let articles = Array.isArray(archivedDay) ? archivedDay : [];
+  if (!articles.length && env?.HISTORY) {
     const days = await Promise.all([-1, 0, 1].map((offset) => readHistoryDay(env.HISTORY, shiftDate(date, offset))));
     articles = days.flat();
   }
-  let result = { date, articles, available: articles.length ? 1 : 0, total: 1, source: "history" };
-  if (!articles.length) {
+  let result = { date, articles, available: articles.length || Array.isArray(archivedDay) ? 1 : 0, total: 1, source: "history" };
+  if (!articles.length && !Array.isArray(archivedDay)) {
     result = { ...(await fetchArchiveDay(date, { ai: env?.AI, gnewsKey: env?.GNEWS_API_KEY })), source: "external" };
+    const settled = Date.now() - parsed.getTime() > 3 * 24 * 60 * 60 * 1000;
+    if (env?.HISTORY && result.provider === "gnews" && settled && !result.errors?.length) {
+      await env.HISTORY.put(archiveKey, JSON.stringify(result.articles), { expirationTtl: 400 * 24 * 60 * 60 }).catch(() => {});
+    }
   }
 
   const recent = Date.now() - parsed.getTime() < 3 * 24 * 60 * 60 * 1000;
