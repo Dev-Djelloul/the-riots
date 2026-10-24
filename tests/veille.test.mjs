@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { afterEach, test } from "node:test";
-import { onRequestGet } from "../functions/api/veille.js";
+import { onRequestGet, onRequestPost } from "../functions/api/veille.js";
 
 const originalFetch = globalThis.fetch;
 const now = new Date().toUTCString();
@@ -150,4 +150,59 @@ test("signale une indisponibilité explicite quand tous les flux échouent", asy
   } finally {
     console.warn = originalWarn;
   }
+});
+
+test("ajoute un flux personnel HTTPS, filtre ses articles et ne met pas la réponse en cache", async () => {
+  let customRedirectMode;
+  globalThis.fetch = async (input, options) => {
+    if (String(input) === "https://local-media.example/rss.xml") {
+      customRedirectMode = options.redirect;
+      return new Response(
+        `<rss><channel><item><title>Manifestation nationale annoncée</title><link>https://local-media.example/article</link><pubDate>${now}</pubDate></item></channel></rss>`,
+        { status: 200 },
+      );
+    }
+    return new Response("<rss><channel></channel></rss>", { status: 200 });
+  };
+  const request = new Request("https://veille.example/api/veille", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      customFeeds: [{ id: "local-media", name: "Média local", feed: "https://local-media.example/rss.xml", countryCode: "IT" }],
+    }),
+  });
+
+  const response = await onRequestPost({ request });
+  const payload = await response.json();
+  const article = payload.articles.find((item) => item.sourceId === "custom-local-media");
+  const source = payload.sources.find((item) => item.id === "custom-local-media");
+
+  assert.equal(response.status, 200);
+  assert.equal(response.headers.get("Cache-Control"), "no-store");
+  assert.equal(customRedirectMode, "manual");
+  assert.ok(article);
+  assert.equal(article.countryCode, "IT");
+  assert.equal(source.custom, true);
+  assert.equal(source.name, "Média local");
+});
+
+test("refuse les flux personnels non HTTPS et les adresses IP avant toute requête réseau", async () => {
+  let fetchCount = 0;
+  globalThis.fetch = async () => {
+    fetchCount += 1;
+    return new Response("<rss><channel></channel></rss>");
+  };
+  const request = new Request("https://veille.example/api/veille", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      customFeeds: [{ id: "private", name: "Local", feed: "https://127.0.0.1/feed.xml", countryCode: "" }],
+    }),
+  });
+  const response = await onRequestPost({ request });
+  const payload = await response.json();
+
+  assert.equal(response.status, 400);
+  assert.match(payload.error, /invalide/);
+  assert.equal(fetchCount, 0);
 });

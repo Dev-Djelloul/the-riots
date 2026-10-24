@@ -384,6 +384,34 @@
               <ul class="alert-rules" id="alert-rules" aria-label="Alertes enregistrées"></ul>
             </section>
 
+            <section class="personal-feeds" aria-labelledby="custom-feeds-heading">
+              <h3 class="filter-label" id="custom-feeds-heading">MES FLUX RSS / ATOM</h3>
+              <p class="filter-note">Jusqu’à cinq flux HTTPS directs, sans redirection. Seuls les articles repérés par les mots-clés de veille sont affichés.</p>
+              <form id="custom-feed-form" class="alert-form">
+                <label class="alert-field">
+                  <span>NOM DU MÉDIA</span>
+                  <input id="custom-feed-name" type="text" maxlength="60" required placeholder="Ex. Média local" />
+                </label>
+                <label class="alert-field">
+                  <span>URL DU FLUX HTTPS</span>
+                  <input id="custom-feed-url" type="url" required placeholder="https://exemple.fr/rss.xml" />
+                </label>
+                <label class="alert-field">
+                  <span>PAYS (FACULTATIF)</span>
+                  <select id="custom-feed-country">
+                    <option value="">Non précisé</option>
+                    <option value="FR">France</option>
+                    <option value="BE">Belgique</option>
+                    <option value="ES">Espagne</option>
+                    <option value="IT">Italie</option>
+                    <option value="DE">Allemagne</option>
+                  </select>
+                </label>
+                <button class="personal-action" type="submit">Ajouter ce flux</button>
+              </form>
+              <p class="personal-status" id="custom-feed-status" aria-live="polite"></p>
+            </section>
+
             <details class="sources-section" open>
               <summary class="filter-label">SOURCES SUIVIES <span id="source-count">—</span></summary>
               <ul class="source-list" id="source-list" aria-live="polite"></ul>
@@ -442,16 +470,44 @@
               </div>
               <div class="feed-actions">
                 <button id="saved-filter" class="saved-filter" type="button" aria-pressed="false">À lire plus tard <span id="saved-count">0</span></button>
+                <button id="share-view" class="saved-filter" type="button">Partager les filtres</button>
                 <button id="sort-button" class="sort-button" type="button" aria-label="Changer l’ordre de tri" title="Changer l’ordre de tri">
                   <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M4 5h12M6 10h8m-6 5h4"></path></svg>
                 </button>
               </div>
             </div>
+            <p class="personal-status share-status" id="share-status" aria-live="polite"></p>
             <p class="timeline-note" id="timeline-note" hidden>Regroupement éditorial par date, pays, ville citée et mots-clés. Les titres et extraits restent dans la langue du média ; plusieurs articles ne constituent pas une vérification indépendante.</p>
             <section class="coverage-compare" id="coverage-compare" aria-label="Comparaison de la couverture par pays" hidden>
               <h3>Couverture par pays</h3>
               <p>Articles et médias distincts dans les flux reçus · pas un décompte d’événements.</p>
               <div class="coverage-compare-list" id="coverage-compare-list"></div>
+            </section>
+            <section class="trend-panel" id="trend-panel" aria-labelledby="trend-heading" hidden>
+              <div class="trend-header">
+                <div>
+                  <h3 id="trend-heading">Tendances des articles</h3>
+                  <p>Volume d’articles dans les flux reçus · ne mesure pas les événements.</p>
+                </div>
+                <div class="trend-controls">
+                  <label><span class="visually-hidden">Période des tendances</span>
+                    <select id="trend-period" aria-label="Période des tendances">
+                      <option value="7">7 jours</option>
+                      <option value="30">30 jours</option>
+                    </select>
+                  </label>
+                  <label><span class="visually-hidden">Sujet des tendances</span>
+                    <select id="trend-type" aria-label="Sujet des tendances">
+                      <option value="all">Tous les sujets</option>
+                      <option value="rassemblement">Rassemblements</option>
+                      <option value="tensions">Tensions</option>
+                      <option value="degradations">Dégradations</option>
+                    </select>
+                  </label>
+                </div>
+              </div>
+              <svg class="trend-chart" id="trend-chart" role="img" aria-label="Évolution du nombre d’articles par pays"></svg>
+              <div class="trend-legend" id="trend-legend"></div>
             </section>
             <div class="feed-list" id="feed-list" aria-live="polite"></div>
             <div class="empty-state" id="empty-state" hidden>

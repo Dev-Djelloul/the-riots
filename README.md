@@ -13,6 +13,9 @@ Veille est une application web française de veille éditoriale. Elle agrège de
 - Bascule France / Europe et filtre par pays pour la France, la Belgique, l’Espagne, l’Italie et l’Allemagne.
 - Chronologie éditoriale regroupant les articles européens par date, ville citée et sujet détecté, avec le nombre de médias distincts.
 - Comparateur de couverture par pays pilote, comptant les articles et médias distincts reçus dans les flux ; les lignes filtrent la chronologie. Ce n’est pas un décompte d’événements.
+- Liens partageables qui conservent la recherche, la période, le sujet, la vue France/Europe et le pays sélectionné.
+- Jusqu’à cinq flux RSS/Atom personnels sécurisés en HTTPS, enregistrés uniquement dans le navigateur et agrégés lors des actualisations ; les flux sont filtrés par les mots-clés de veille. Les flux personnalisés sont transmis en requête non mise en cache et les redirections ne sont pas suivies.
+- Graphique de tendances quotidiennes par pays pilote, filtrable par sujet et sur 7 ou 30 jours. Il s’appuie sur les articles actuellement disponibles, pas sur une archive exhaustive.
 - Liste « À lire plus tard » persistante dans le navigateur, conservée localement même après la disparition d’un article des flux.
 - Alertes personnalisées par ville/mot-clé et pays facultatif, avec notifications navigateur sur action explicite. Les alertes se déclenchent lorsque Veille est ouverte et récupère de nouveaux articles ; elles ne fonctionnent pas en arrière-plan. Sur iPhone/iPad, les notifications web nécessitent d’ajouter Veille à l’écran d’accueil et de l’ouvrir depuis son icône.
 - Analyse des mots-clés français, néerlandais, espagnols, italiens et allemands ; titres et extraits affichés dans leur langue d’origine, sans traduction automatique.
@@ -118,6 +121,7 @@ Après une première visite connectée :
 - l’application, ses scripts, ses styles, son icône et les données géographiques locales sont mis en cache ;
 - la dernière réponse réussie de `/api/veille` est conservée et affichée avec une indication de données hors connexion si le réseau est absent ;
 - la liste de lecture, les alertes et l’historique des articles déjà vus sont stockés dans le navigateur et ne sont pas synchronisés entre appareils ;
+- les flux personnels sont également stockés dans le navigateur et ne sont pas inclus dans les liens partagés ;
 - les routes `/api/social`, les flux RSS, les polices et scripts tiers, les tuiles cartographiques et les lecteurs vidéo nécessitent toujours une connexion.
 
 Les résultats de veille affichés hors connexion sont ceux de la dernière actualisation réussie. Les actions de recherche ou de rafraîchissement peuvent nécessiter un accès réseau.

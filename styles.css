@@ -252,6 +252,9 @@ h1 em, .about-dialog h2 em { color: var(--accent); font-weight: 500; }
 .alert-rules:empty { display: none; }
 .alert-rules li { display: flex; align-items: center; justify-content: space-between; gap: 6px; color: #b8b9af; font-size: 9px; }
 .alert-rules button { flex: none; border: 0; background: none; color: #d5b18e; font-size: 9px; cursor: pointer; }
+.personal-feeds { margin-top: 18px; }
+.personal-feeds > .filter-label { margin-bottom: 6px; }
+.personal-feeds .filter-note { margin: 0 0 10px; }
 .sources-section { margin-top: 22px; }
 .sources-section summary { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; cursor: pointer; list-style: none; }
 .sources-section summary::-webkit-details-marker { display: none; }
@@ -260,6 +263,7 @@ h1 em, .about-dialog h2 em { color: var(--accent); font-weight: 500; }
 .source-list li { display: flex; justify-content: space-between; align-items: center; gap: 4px; min-width: 0; }
 .source-list a { overflow: hidden; color: #a1a398; font-size: 9px; text-decoration: none; text-overflow: ellipsis; white-space: nowrap; }
 .source-list a:hover { color: var(--text); text-decoration: underline; }
+.remove-custom-feed { flex: none; padding: 0 2px; border: 0; background: none; color: #d5b18e; font-size: 13px; cursor: pointer; }
 .source-status { flex: none; min-width: 12px; color: var(--mint); text-align: right; font: 8px var(--mono); }
 .source-status.indisponible { color: var(--coral); }
 .sidebar-bottom { display: flex; gap: 9px; align-items: start; margin-top: auto; padding-top: 17px; border-top: 1px solid var(--line); color: #878980; }
@@ -312,7 +316,8 @@ h1 em, .about-dialog h2 em { color: var(--accent); font-weight: 500; }
 .feed-panel { display: flex; flex-direction: column; min-width: 0; min-height: 0; overflow: hidden; padding: 22px 16px 0; }
 .feed-heading { align-items: start; margin-bottom: 14px; }
 .feed-heading h2 { font-size: 20px; }
-.feed-actions { display: flex; align-items: center; gap: 6px; }
+.feed-actions { display: flex; flex-wrap: wrap; justify-content: end; align-items: center; gap: 6px; }
+.share-status { margin: -8px 0 7px; }
 .saved-filter { min-height: 28px; padding: 4px 7px; border: 1px solid #343730; background: transparent; color: #96988e; font-size: 9px; white-space: nowrap; cursor: pointer; }
 .saved-filter.active { border-color: #80684f; background: #28231e; color: #e8c3a1; }
 .saved-filter span { margin-left: 3px; font: 8px var(--mono); }
@@ -328,6 +333,21 @@ h1 em, .about-dialog h2 em { color: var(--accent); font-weight: 500; }
 .coverage-bar { height: 5px; overflow: hidden; background: #2a2d27; }
 .coverage-bar > span { display: block; height: 100%; background: var(--accent); }
 .coverage-count { color: #85877e; font: 7px var(--mono); white-space: nowrap; }
+.trend-panel { flex: none; margin: 0 0 10px; padding: 10px; border: 1px solid var(--line); background: #141512; }
+.trend-header { display: flex; align-items: start; justify-content: space-between; gap: 8px; }
+.trend-header h3 { margin: 0; color: #d5b18e; font: 9px var(--mono); letter-spacing: .06em; text-transform: uppercase; }
+.trend-header p { margin: 4px 0 0; color: #777a70; font-size: 8px; line-height: 1.4; }
+.trend-controls { display: flex; flex-wrap: wrap; justify-content: end; gap: 4px; }
+.trend-controls select { max-width: 100px; padding: 4px 5px; border: 1px solid #343730; background: #141512; color: #d6d5cc; font: 8px var(--sans); }
+.trend-chart { display: block; width: 100%; height: 125px; margin-top: 6px; overflow: visible; }
+.trend-gridline { stroke: #30332d; stroke-width: 1; }
+.trend-axis-label { fill: #777a70; font: 8px var(--mono); }
+.trend-line { fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.trend-point { stroke: #141512; stroke-width: 1.5; }
+.trend-legend { display: flex; flex-wrap: wrap; gap: 5px 10px; color: #a5a79e; font-size: 8px; }
+.trend-legend span { display: inline-flex; align-items: center; gap: 4px; }
+.trend-legend i { width: 7px; height: 7px; border-radius: 50%; }
+.visually-hidden { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; }
 .sort-button { display: grid; place-items: center; width: 28px; height: 28px; border: 1px solid #343730; background: transparent; color: #96988e; cursor: pointer; }
 .sort-button svg { width: 15px; fill: none; stroke: currentColor; stroke-width: 1.4; }
 .feed-list { display: grid; min-height: 0; flex: 1; overflow-y: auto; overscroll-behavior: contain; scrollbar-color: #44473e transparent; scrollbar-width: thin; }

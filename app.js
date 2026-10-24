@@ -20,7 +20,46 @@ const STORAGE_KEYS = {
   savedArticles: "veille-saved-articles-v1",
   alertRules: "veille-alert-rules-v1",
   seenArticles: "veille-seen-articles-v1",
+  customFeeds: "veille-custom-feeds-v1",
 };
+const PERIODS = ["all", "today", "week"];
+const ARTICLE_TYPES = ["all", "rassemblement", "tensions", "degradations"];
+const validCountries = ["all", ...COUNTRY_CODES];
+const COUNTRY_TREND_COLORS = {
+  BE: "#67c8a3",
+  DE: "#8798ef",
+  ES: "#e2a85b",
+  FR: "#e77e79",
+  IT: "#c38be1",
+};
+
+function readSharedView() {
+  const params = new URLSearchParams(window.location.search);
+  return {
+    query: (params.get("q") || "").slice(0, 120).trim().toLocaleLowerCase("fr"),
+    period: PERIODS.includes(params.get("period")) ? params.get("period") : "all",
+    type: ARTICLE_TYPES.includes(params.get("type")) ? params.get("type") : "all",
+    mapMode: ["france", "europe"].includes(params.get("view")) ? params.get("view") : "france",
+    country: validCountries.includes(params.get("country")) ? params.get("country") : "all",
+  };
+}
+
+function isPublicFeedUrl(value) {
+  try {
+    const url = new URL(value);
+    return url.protocol === "https:"
+      && !url.username && !url.password && !url.port
+      && url.hostname.replace(/\.$/, "") !== "localhost"
+      && !url.hostname.endsWith(".localhost")
+      && url.hostname.includes(".")
+      && !/\.(?:local|internal|test|invalid)$/i.test(url.hostname)
+      && !/^\d+(?:\.\d+){3}$/.test(url.hostname)
+      && !url.hostname.includes(":")
+      && url.href.length <= 2048;
+  } catch {
+    return false;
+  }
+}
 
 function readStoredValue(key, fallback) {
   try {
@@ -71,6 +110,15 @@ const alertRules = Array.isArray(storedAlertRules)
     && (!rule.countryCode || COUNTRY_CODES.includes(rule.countryCode)))
   : [];
 const storedSeenArticles = readStoredValue(STORAGE_KEYS.seenArticles, null);
+const storedCustomFeeds = readStoredValue(STORAGE_KEYS.customFeeds, []);
+const customFeeds = Array.isArray(storedCustomFeeds)
+  ? storedCustomFeeds.filter((feed) => feed && typeof feed.id === "string"
+    && /^[a-z0-9-]{1,40}$/.test(feed.id)
+    && typeof feed.name === "string" && feed.name.trim().length > 0 && feed.name.trim().length <= 60
+    && typeof feed.feed === "string" && isPublicFeedUrl(feed.feed)
+    && typeof feed.countryCode === "string"
+    && (!feed.countryCode || COUNTRY_CODES.includes(feed.countryCode)))
+  : [];
 
 const LIVE_CHANNELS = {
   dwnews: {
@@ -129,20 +177,43 @@ const LIVE_CHANNELS = {
 const state = {
   articles: [],
   sources: [],
-  period: "all",
-  type: "all",
-  query: "",
+  ...readSharedView(),
   selected: null,
   newestFirst: true,
   fetchedAt: null,
-  mapMode: "france",
-  country: "all",
   showSaved: false,
   seenArticleIds: new Set(Array.isArray(storedSeenArticles)
     ? storedSeenArticles.filter((id) => typeof id === "string")
     : []),
   seenArticlesInitialized: Array.isArray(storedSeenArticles),
 };
+
+function updateShareUrl() {
+  const url = new URL(window.location.href);
+  for (const key of ["q", "period", "type", "view", "country"]) url.searchParams.delete(key);
+  if (state.query) url.searchParams.set("q", state.query);
+  if (state.period !== "all") url.searchParams.set("period", state.period);
+  if (state.type !== "all") url.searchParams.set("type", state.type);
+  if (state.mapMode !== "france") url.searchParams.set("view", state.mapMode);
+  if (state.country !== "all") url.searchParams.set("country", state.country);
+  window.history.replaceState(null, "", url);
+}
+
+function syncSharedViewControls() {
+  document.querySelector("#search-input").value = state.query;
+  document.querySelectorAll("[data-period]").forEach((button) => {
+    button.classList.toggle("active", button.dataset.period === state.period);
+  });
+  document.querySelectorAll("[data-type]").forEach((button) => {
+    button.classList.toggle("active", button.dataset.type === state.type);
+  });
+  document.querySelectorAll("[data-map-mode]").forEach((button) => {
+    const active = button.dataset.mapMode === state.mapMode;
+    button.classList.toggle("active", active);
+    button.setAttribute("aria-pressed", String(active));
+  });
+  document.querySelector("#country-filter").value = state.country;
+}
 
 const feed = document.querySelector("#feed-list");
 const mapElement = document.querySelector("#france-map");
@@ -314,6 +385,7 @@ function render() {
   else feed.replaceChildren(...feedArticles.map(createArticleCard));
   renderVisuals(articles);
   renderCoverageComparison(getVisibleArticles({ ignoreCountry: true }));
+  renderTrends();
   const mapped = articles.filter((article) => article.countryCode && (state.mapMode === "france"
     ? article.countryCode === "FR" && article.location?.places.length
     : true));
@@ -365,6 +437,11 @@ function render() {
   document.querySelector("#feed-heading-label").textContent = state.mapMode === "europe" ? "CHRONOLOGIE DE COUVERTURE" : "LE FIL";
   document.querySelector("#feed-heading-title").textContent = state.mapMode === "europe" ? "Échos médiatiques" : "Articles récents";
   document.querySelector("#timeline-note").hidden = state.mapMode !== "europe";
+  document.querySelectorAll("[data-map-mode]").forEach((button) => {
+    const active = button.dataset.mapMode === state.mapMode;
+    button.classList.toggle("active", active);
+    button.setAttribute("aria-pressed", String(active));
+  });
   renderSources();
 }
 
@@ -439,6 +516,106 @@ function renderCoverageComparison(articles) {
     button.append(name, bar, count);
     return button;
   }));
+}
+
+function renderTrends() {
+  const panel = document.querySelector("#trend-panel");
+  panel.hidden = state.mapMode !== "europe" || state.showSaved;
+  if (panel.hidden) return;
+
+  const dayCount = Number(document.querySelector("#trend-period").value);
+  const selectedType = document.querySelector("#trend-type").value;
+  const now = new Date();
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const firstDay = new Date(today);
+  firstDay.setDate(firstDay.getDate() - dayCount + 1);
+  const dateKey = (date) => `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
+  const dates = Array.from({ length: dayCount }, (_, index) => {
+    const date = new Date(firstDay);
+    date.setDate(firstDay.getDate() + index);
+    return date;
+  });
+  const dateIndexes = new Map(dates.map((date, index) => [dateKey(date), index]));
+  const buckets = new Map(COUNTRY_CODES.map((code) => [code, dates.map(() => 0)]));
+  for (const article of state.articles) {
+    if (!buckets.has(article.countryCode) || (selectedType !== "all" && article.type !== selectedType)) continue;
+    const publishedAt = new Date(article.publishedAt);
+    if (!Number.isFinite(publishedAt.getTime())) continue;
+    const index = dateIndexes.get(dateKey(publishedAt));
+    if (index !== undefined) buckets.get(article.countryCode)[index] += 1;
+  }
+
+  const svg = document.querySelector("#trend-chart");
+  const width = 520;
+  const height = 130;
+  const margin = { top: 8, right: 10, bottom: 22, left: 24 };
+  const plotWidth = width - margin.left - margin.right;
+  const plotHeight = height - margin.top - margin.bottom;
+  const maxValue = Math.max(1, ...[...buckets.values()].flat());
+  const makeSvgElement = (name, attributes, text) => {
+    const element = document.createElementNS("http://www.w3.org/2000/svg", name);
+    for (const [key, value] of Object.entries(attributes)) element.setAttribute(key, String(value));
+    if (text) element.textContent = text;
+    return element;
+  };
+  svg.setAttribute("viewBox", `0 0 ${width} ${height}`);
+  svg.replaceChildren(
+    makeSvgElement("title", { id: "trend-chart-title" }, `Articles par pays sur ${dayCount} jours`),
+    makeSvgElement("desc", { id: "trend-chart-desc" }, "Lignes quotidiennes calculées à partir des articles actuellement disponibles dans les flux RSS suivis."),
+  );
+  svg.setAttribute("aria-labelledby", "trend-chart-title trend-chart-desc");
+  for (let tick = 0; tick <= 2; tick += 1) {
+    const y = margin.top + plotHeight * tick / 2;
+    const value = Math.round(maxValue * (1 - tick / 2));
+    svg.append(
+      makeSvgElement("line", { class: "trend-gridline", x1: margin.left, x2: width - margin.right, y1: y, y2: y }),
+      makeSvgElement("text", { class: "trend-axis-label", x: margin.left - 5, y: y + 3, "text-anchor": "end" }, value),
+    );
+  }
+  const labelIndexes = new Set([0, Math.floor((dayCount - 1) / 2), dayCount - 1]);
+  for (const index of labelIndexes) {
+    const x = margin.left + plotWidth * index / Math.max(1, dayCount - 1);
+    const label = new Intl.DateTimeFormat("fr-FR", { day: "2-digit", month: "2-digit" }).format(dates[index]);
+    svg.append(makeSvgElement("text", {
+      class: "trend-axis-label",
+      x,
+      y: height - 5,
+      "text-anchor": index === 0 ? "start" : index === dayCount - 1 ? "end" : "middle",
+    }, label));
+  }
+
+  const legend = document.querySelector("#trend-legend");
+  legend.replaceChildren();
+  let hasArticles = false;
+  for (const code of COUNTRY_CODES) {
+    const values = buckets.get(code);
+    const points = values.map((value, index) => {
+      if (value) hasArticles = true;
+      const x = margin.left + plotWidth * index / Math.max(1, dayCount - 1);
+      const y = margin.top + plotHeight * (1 - value / maxValue);
+      return [x, y];
+    });
+    const pathData = points.map(([x, y], index) => `${index ? "L" : "M"}${x},${y}`).join(" ");
+    svg.append(makeSvgElement("path", {
+      class: "trend-line",
+      d: pathData,
+      stroke: COUNTRY_TREND_COLORS[code],
+    }));
+    const entry = document.createElement("span");
+    const marker = document.createElement("i");
+    marker.style.backgroundColor = COUNTRY_TREND_COLORS[code];
+    const total = values.reduce((sum, value) => sum + value, 0);
+    entry.append(marker, document.createTextNode(`${COUNTRY_NAMES[code]} · ${total}`));
+    legend.append(entry);
+  }
+  if (!hasArticles) {
+    svg.append(makeSvgElement("text", {
+      class: "trend-axis-label",
+      x: width / 2,
+      y: height / 2,
+      "text-anchor": "middle",
+    }, "Aucun article sur cette période"));
+  }
 }
 
 function renderAlertRules() {
@@ -976,9 +1153,32 @@ function renderSources() {
       ? `${source.articleCount} article(s) correspondant(s)`
       : "Flux temporairement indisponible");
     item.append(link, status);
+    if (source.custom) {
+      const remove = document.createElement("button");
+      remove.type = "button";
+      remove.className = "remove-custom-feed";
+      remove.textContent = "×";
+      remove.setAttribute("aria-label", `Supprimer le flux ${source.name}`);
+      remove.addEventListener("click", () => removeCustomFeed(source.id));
+      item.append(remove);
+    }
     return item;
   }));
   document.querySelector("#source-count").textContent = `${state.sources.length} MÉDIAS`;
+}
+
+function removeCustomFeed(sourceId) {
+  const id = sourceId.replace(/^custom-/, "");
+  const index = customFeeds.findIndex((candidate) => candidate.id === id);
+  if (index < 0) return;
+  const [removed] = customFeeds.splice(index, 1);
+  if (!writeStoredValue(STORAGE_KEYS.customFeeds, customFeeds)) {
+    customFeeds.splice(index, 0, removed);
+    document.querySelector("#custom-feed-status").textContent = "Stockage local indisponible : le flux n’a pas été supprimé.";
+    return;
+  }
+  document.querySelector("#custom-feed-status").textContent = `Flux « ${removed.name} » supprimé.`;
+  loadArticles();
 }
 
 function formatDate(dateString, precision = "minute") {
@@ -1020,11 +1220,19 @@ async function loadArticles() {
 
   try {
     const [response, geography] = await Promise.all([
-      fetch("/api/veille", { headers: { Accept: "application/json" } }),
+      fetch("/api/veille", customFeeds.length
+        ? {
+          method: "POST",
+          headers: { Accept: "application/json", "Content-Type": "application/json" },
+          body: JSON.stringify({ customFeeds }),
+        }
+        : { headers: { Accept: "application/json" } }),
       geographyPromise,
     ]);
     const payload = await response.json();
-    if (!response.ok && response.status !== 503) throw new Error(`Réponse inattendue (${response.status})`);
+    if (!response.ok && response.status !== 503) {
+      throw new Error(payload.error || `Réponse inattendue (${response.status})`);
+    }
     state.articles = Array.isArray(payload.articles)
       ? payload.articles.map((article) => {
         let location = geography ? locateArticle(article, geography) : { precision: "unknown", places: [] };
@@ -1044,6 +1252,14 @@ async function loadArticles() {
       processNewArticles(state.articles);
     }
     state.sources = Array.isArray(payload.sources) ? payload.sources : [];
+    if (customFeeds.length) {
+      const configuredSources = state.sources.filter((source) => source.custom);
+      const available = configuredSources.filter((source) => source.status === "ok").length;
+      const failed = configuredSources.length - available;
+      document.querySelector("#custom-feed-status").textContent = failed
+        ? `${available}/${configuredSources.length} flux personnel${configuredSources.length > 1 ? "s" : ""} disponible${available > 1 ? "s" : ""} · ${failed} indisponible${failed > 1 ? "s" : ""}. Vérifie les URL et l’accès public.`
+        : `${available} flux personnel${available > 1 ? "s" : ""} chargé${available > 1 ? "s" : ""}.`;
+    }
     state.fetchedAt = payload.fetchedAt || null;
     if (response.headers.get("X-PWA-Offline") === "true") {
       updateStatus("partial", `Hors connexion · dernières données du ${formatClock(state.fetchedAt)}.`);
@@ -1057,6 +1273,9 @@ async function loadArticles() {
     render();
   } catch (error) {
     console.error("Impossible de charger la veille de presse.", error);
+    if (customFeeds.length) {
+      document.querySelector("#custom-feed-status").textContent = `Impossible d’interroger les flux personnels : ${error.message}`;
+    }
     updateStatus("error", "Connexion impossible — vérifie le serveur et réessaie.");
     if (state.articles.length === 0) {
       document.querySelector("#empty-title").textContent = "Flux indisponibles";
@@ -1082,6 +1301,7 @@ document.querySelector("#period-filters").addEventListener("click", (event) => {
   if (!button) return;
   state.period = button.dataset.period;
   document.querySelectorAll("[data-period]").forEach((item) => item.classList.toggle("active", item === button));
+  updateShareUrl();
   render();
 });
 
@@ -1090,6 +1310,7 @@ document.querySelector("#map-mode-controls").addEventListener("click", (event) =
   if (!button || button.dataset.mapMode === state.mapMode) return;
   state.mapMode = button.dataset.mapMode;
   state.selected = null;
+  updateShareUrl();
   document.querySelectorAll("[data-map-mode]").forEach((item) => {
     const active = item === button;
     item.classList.toggle("active", active);
@@ -1104,6 +1325,7 @@ document.querySelector("#map-mode-controls").addEventListener("click", (event) =
 
 document.querySelector("#country-filter").addEventListener("change", (event) => {
   state.country = event.target.value;
+  updateShareUrl();
   render();
 });
 
@@ -1112,6 +1334,7 @@ document.querySelector("#coverage-compare-list").addEventListener("click", (even
   if (!button) return;
   state.country = state.country === button.dataset.country ? "all" : button.dataset.country;
   document.querySelector("#country-filter").value = state.country;
+  updateShareUrl();
   render();
 });
 
@@ -1120,13 +1343,68 @@ document.querySelector("#type-filters").addEventListener("click", (event) => {
   if (!button) return;
   state.type = button.dataset.type;
   document.querySelectorAll("[data-type]").forEach((item) => item.classList.toggle("active", item === button));
+  updateShareUrl();
   render();
 });
 
 document.querySelector("#search-input").addEventListener("input", (event) => {
   state.query = event.target.value.trim().toLocaleLowerCase("fr");
+  updateShareUrl();
   render();
 });
+
+document.querySelector("#share-view").addEventListener("click", async () => {
+  const status = document.querySelector("#share-status");
+  updateShareUrl();
+  try {
+    await navigator.clipboard.writeText(window.location.href);
+    status.textContent = "Lien avec les filtres copiés.";
+  } catch (error) {
+    console.error("Impossible de copier le lien de partage.", error);
+    status.textContent = "Copie impossible. Vérifie l’autorisation du presse-papiers dans le navigateur.";
+  }
+});
+
+document.querySelector("#custom-feed-form").addEventListener("submit", (event) => {
+  event.preventDefault();
+  const name = document.querySelector("#custom-feed-name").value.trim();
+  const feedUrl = document.querySelector("#custom-feed-url").value.trim();
+  const countryCode = document.querySelector("#custom-feed-country").value;
+  const status = document.querySelector("#custom-feed-status");
+  if (!isPublicFeedUrl(feedUrl)) {
+    status.textContent = "Seuls les flux publics HTTPS sans adresse locale ni redirection sont acceptés.";
+    return;
+  }
+  const url = new URL(feedUrl);
+  if (customFeeds.length >= 5) {
+    status.textContent = "La limite de cinq flux personnels est atteinte.";
+    return;
+  }
+  if (customFeeds.some((item) => item.feed === url.href)) {
+    status.textContent = "Ce flux est déjà dans ta liste.";
+    return;
+  }
+  const customFeed = {
+    id: crypto.randomUUID().replaceAll("-", ""),
+    name: name.slice(0, 60),
+    feed: url.href,
+    countryCode,
+  };
+  customFeeds.push(customFeed);
+  if (!writeStoredValue(STORAGE_KEYS.customFeeds, customFeeds)) {
+    customFeeds.pop();
+    status.textContent = "Stockage local indisponible : le flux n’a pas été ajouté.";
+    return;
+  }
+  document.querySelector("#custom-feed-name").value = "";
+  document.querySelector("#custom-feed-url").value = "";
+  document.querySelector("#custom-feed-country").value = "";
+  status.textContent = "Flux ajouté. Vérification et chargement des articles…";
+  loadArticles();
+});
+
+document.querySelector("#trend-period").addEventListener("change", renderTrends);
+document.querySelector("#trend-type").addEventListener("change", renderTrends);
 
 document.querySelector("#sort-button").addEventListener("click", () => {
   state.newestFirst = !state.newestFirst;
@@ -1217,6 +1495,7 @@ document.querySelector("#reset-filters").addEventListener("click", () => {
   document.querySelectorAll("[data-period]").forEach((item) => item.classList.toggle("active", item.dataset.period === "all"));
   document.querySelectorAll("[data-type]").forEach((item) => item.classList.toggle("active", item.dataset.type === "all"));
   document.querySelector("#country-filter").value = "all";
+  updateShareUrl();
   render();
 });
 
@@ -1380,6 +1659,7 @@ document.addEventListener("keydown", (event) => {
   }
 });
 
+syncSharedViewControls();
 loadArticles();
 renderAlertRules();
 updateNotificationButton();

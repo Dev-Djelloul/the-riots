@@ -31,7 +31,7 @@ test("personal alerts, saved articles and European coverage comparison are wired
   const serviceWorker = await readFile(new URL("service-worker.js", root), "utf8");
   const readme = await readFile(new URL("README.md", root), "utf8");
 
-  for (const id of ["alert-form", "alert-query", "alert-country", "alert-rules", "notification-permission", "saved-filter", "coverage-compare-list"]) {
+  for (const id of ["alert-form", "alert-query", "alert-country", "alert-rules", "notification-permission", "saved-filter", "coverage-compare-list", "share-view", "custom-feed-form", "custom-feed-url", "trend-panel", "trend-period", "trend-type"]) {
     assert.match(html, new RegExp(`id="${id}"`), `${id} should be present in the interface`);
   }
   assert.match(app, /processNewArticles\(state\.articles\)/);
@@ -41,7 +41,10 @@ test("personal alerts, saved articles and European coverage comparison are wired
   assert.match(app, /isIOSWithoutInstalledApp/);
   assert.match(app, /toggleSavedArticle\(article\)/);
   assert.match(app, /getVisibleArticles\(\{ ignoreCountry: true \}\)/);
-  assert.match(serviceWorker, /veille-shell-v7/);
+  assert.match(app, /history\.replaceState/);
+  assert.match(app, /navigator\.clipboard\.writeText/);
+  assert.match(app, /function renderTrends\(\)/);
+  assert.match(serviceWorker, /veille-shell-v8/);
   assert.match(readme, /À lire plus tard/);
   assert.match(readme, /alertes personnalisées/i);
   assert.match(readme, /Comparateur de couverture/);
@@ -84,7 +87,7 @@ test("European live video cards point to official players and broadcasters", asy
   assert.match(html, /https:\/\/www\.vrt\.be\/vrtnws\/nl\/kijk\//);
   assert.match(html, /https:\/\/www\.raiplay\.it\/dirette\/rainews24/);
   assert.match(html, /https:\/\/www\.tagesschau\.de\/multimedia\/livestreams\//);
-  assert.match(serviceWorker, /veille-shell-v7/);
+  assert.match(serviceWorker, /veille-shell-v8/);
 });
 
 test("service worker serves the last successful news response offline", async () => {

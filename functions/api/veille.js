@@ -93,18 +93,126 @@ const MAX_FEED_BYTES = 1_000_000;
 const MAX_ARTICLES_PER_SOURCE = 50;
 
 export async function onRequestGet() {
-  const sourceResults = await Promise.all(SOURCES.map(async (source) => {
+  return fetchArticles(SOURCES);
+}
+
+export async function onRequestPost({ request }) {
+  const contentLength = Number(request.headers.get("Content-Length") || 0);
+  if (contentLength > 16_384) {
+    return Response.json({ error: "La configuration des flux est trop volumineuse." }, { status: 413 });
+  }
+  if (request.headers.get("Content-Type")?.split(";")[0].trim().toLowerCase() !== "application/json") {
+    return Response.json({ error: "Un corps JSON est requis." }, { status: 415 });
+  }
+
+  let body;
+  try {
+    body = await readLimitedJson(request, 16_384);
+  } catch (error) {
+    if (error instanceof RangeError) {
+      return Response.json({ error: "La configuration des flux est trop volumineuse." }, { status: 413 });
+    }
+    return Response.json({ error: "Configuration JSON invalide." }, { status: 400 });
+  }
+
+  if (!Array.isArray(body?.customFeeds) || body.customFeeds.length > 5) {
+    return Response.json({ error: "Ajoute au maximum cinq flux RSS/Atom personnels." }, { status: 400 });
+  }
+
+  const customFeeds = [];
+  const ids = new Set();
+  for (const feed of body.customFeeds) {
+    const source = validateCustomFeed(feed);
+    if (!source || ids.has(source.id)) {
+      return Response.json({ error: "Un flux personnel est invalide ou dupliqué." }, { status: 400 });
+    }
+    ids.add(source.id);
+    customFeeds.push(source);
+  }
+  return fetchArticles([...SOURCES, ...customFeeds], { privateResponse: true });
+}
+
+async function readLimitedJson(request, maxBytes) {
+  if (!request.body) throw new SyntaxError("Missing request body");
+  const reader = request.body.getReader();
+  const chunks = [];
+  let length = 0;
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    length += value.byteLength;
+    if (length > maxBytes) {
+      await reader.cancel();
+      throw new RangeError("Request body exceeds size limit");
+    }
+    chunks.push(value);
+  }
+  const bytes = new Uint8Array(length);
+  let offset = 0;
+  for (const chunk of chunks) {
+    bytes.set(chunk, offset);
+    offset += chunk.byteLength;
+  }
+  return JSON.parse(new TextDecoder().decode(bytes));
+}
+
+function validateCustomFeed(feed) {
+  if (!feed || typeof feed !== "object"
+    || typeof feed.id !== "string"
+    || !/^[a-z0-9-]{1,40}$/.test(feed.id)
+    || typeof feed.name !== "string"
+    || !feed.name.trim()
+    || feed.name.trim().length > 60
+    || typeof feed.feed !== "string"
+    || feed.feed.length > 2048
+    || typeof feed.countryCode !== "string"
+    || (feed.countryCode && !["FR", "BE", "ES", "IT", "DE"].includes(feed.countryCode))) return null;
+  try {
+    const url = new URL(feed.feed);
+    if (url.protocol !== "https:" || url.username || url.password || url.port
+      || url.hostname.replace(/\.$/, "") === "localhost"
+      || url.hostname.endsWith(".localhost")
+      || !url.hostname.includes(".")
+      || /\.(?:local|internal|test|invalid)$/i.test(url.hostname)
+      || /^\d+(?:\.\d+){3}$/.test(url.hostname)
+      || url.hostname.includes(":")) return null;
+    return {
+      id: `custom-${feed.id}`,
+      name: feed.name.trim(),
+      kind: "Flux personnel",
+      feed: url.href,
+      url: `${url.origin}/`,
+      countryCode: feed.countryCode || null,
+      custom: true,
+    };
+  } catch {
+    return null;
+  }
+}
+
+/*
+ * Custom feeds are bounded to a small set of HTTPS URLs and are not followed
+ * across redirects, avoiding private-network access through redirect targets.
+ */
+
+async function fetchArticles(configuredSources, { privateResponse = false } = {}) {
+  const sourceResults = await Promise.all(configuredSources.map(async (source) => {
     try {
       const response = await fetch(source.feed, {
         headers: { Accept: "application/rss+xml, application/xml, text/xml;q=0.9, */*;q=0.5" },
         signal: AbortSignal.timeout(8000),
+        redirect: source.custom ? "manual" : "follow",
       });
       if (!response.ok) throw new Error(`HTTP ${response.status}`);
       const xml = await readLimitedText(response, MAX_FEED_BYTES);
       const articles = parseFeed(xml, source);
       return { source: publicSource(source, "ok", articles.length), articles };
     } catch (error) {
-      console.warn(JSON.stringify({ event: "rss_source_unavailable", source: source.id, message: String(error) }));
+      console.warn(JSON.stringify({
+        event: "rss_source_unavailable",
+        source: source.id,
+        message: source.custom ? error.name : String(error),
+      }));
       return {
         source: publicSource(source, "indisponible", 0),
         articles: [],
@@ -115,7 +223,7 @@ export async function onRequestGet() {
   const sources = sourceResults.map((result) => result.source);
   const articles = sourceResults.flatMap((result) => result.articles)
     .sort((a, b) => new Date(b.publishedAt) - new Date(a.publishedAt))
-    .slice(0, SOURCES.length * MAX_ARTICLES_PER_SOURCE);
+    .slice(0, sources.length * MAX_ARTICLES_PER_SOURCE);
   const availableSources = sources.filter((source) => source.status === "ok").length;
   const status = availableSources === 0 ? 503 : 200;
 
@@ -129,14 +237,24 @@ export async function onRequestGet() {
   }, {
     status,
     headers: {
-      "Cache-Control": "public, max-age=0, s-maxage=180, stale-while-revalidate=60",
+      "Cache-Control": privateResponse
+        ? "no-store"
+        : "public, max-age=0, s-maxage=180, stale-while-revalidate=60",
       "X-Content-Type-Options": "nosniff",
     },
   });
 }
 
 function publicSource(source, status, articleCount) {
-  return { id: source.id, name: source.name, kind: source.kind, url: source.url, status, articleCount };
+  return {
+    id: source.id,
+    name: source.name,
+    kind: source.kind,
+    url: source.url,
+    status,
+    articleCount,
+    custom: Boolean(source.custom),
+  };
 }
 
 async function readLimitedText(response, maxBytes) {
@@ -181,7 +299,10 @@ function parseFeed(xml, source) {
     const parsedDate = Date.parse(dateValue);
     const timestamp = Number.isFinite(parsedDate) ? parsedDate : source.id === "le-parisien" ? dateFromLeParisienUrl(link) : Number.NaN;
     const datePrecision = Number.isFinite(parsedDate) ? "minute" : Number.isFinite(timestamp) ? "day" : null;
-    if (!title || !link || !Number.isFinite(timestamp) || timestamp > now + 60 * 60 * 1000) continue;
+    const isEstimatedToday = datePrecision === "day"
+      && new Date(timestamp).toISOString().slice(0, 10) === new Date(now).toISOString().slice(0, 10);
+    if (!title || !link || !Number.isFinite(timestamp)
+      || (timestamp > now + 60 * 60 * 1000 && !isEstimatedToday)) continue;
 
     const normalized = normalize(`${title} ${description}`);
     const matchedTerms = TERMS.filter((term) => normalized.includes(normalize(term)));
@@ -204,7 +325,7 @@ function parseFeed(xml, source) {
       city: matchedCity?.name || null,
       region: matchedCity?.region || null,
       position: matchedCity?.position || null,
-      countryCode: matchedCity?.countryCode || (matchedCity ? "FR" : findCountryCode(`${title} ${description}`)),
+      countryCode: matchedCity?.countryCode || (matchedCity ? "FR" : findCountryCode(`${title} ${description}`)) || source.countryCode || null,
     });
     if (articles.length >= MAX_ARTICLES_PER_SOURCE) break;
   }
