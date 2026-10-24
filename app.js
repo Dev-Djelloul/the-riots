@@ -456,7 +456,11 @@ function render() {
   const articles = getVisibleArticles();
   const feedArticles = state.showSaved ? getVisibleArticles({ fromSaved: true }) : articles;
   const groupMode = getGroupMode();
-  if (groupMode === "timeline") feed.replaceChildren(...feedArticles.map(createArticleCard));
+  if (groupMode === "timeline") {
+    const cards = feedArticles.map(createArticleCard);
+    if (cards.length) cards.push(createFeedJumpButton());
+    feed.replaceChildren(...cards);
+  }
   else renderGroupedFeed(feedArticles, groupMode);
   renderVisuals(articles);
   renderCoverageComparison(getVisibleArticles({ ignoreCountry: true }));
@@ -613,6 +617,22 @@ function createCoverageChips(articles, mode) {
   return chips;
 }
 
+function createFeedJumpButton() {
+  const button = document.createElement("button");
+  button.className = "feed-jump-top";
+  button.id = "feed-jump-top";
+  button.type = "button";
+  button.setAttribute("aria-label", "Revenir au premier article du fil");
+  button.textContent = "↑ Retour au premier article";
+  button.addEventListener("click", () => {
+    feed.scrollTo({
+      top: 0,
+      behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth",
+    });
+  });
+  return button;
+}
+
 function renderGroupedFeed(articles, mode) {
   const groups = new Map();
   for (const article of articles) {
@@ -628,7 +648,7 @@ function renderGroupedFeed(articles, mode) {
       || (mode === "media" ? a.rank - b.rank : b.articles.length - a.articles.length));
   }
 
-  feed.replaceChildren(...ordered.map((group) => {
+  const sections = ordered.map((group) => {
     const section = document.createElement("section");
     section.className = "coverage-group";
     if (group.type) section.dataset.type = COLORS[group.type] ? group.type : "autre";
@@ -661,7 +681,9 @@ function renderGroupedFeed(articles, mode) {
       : `Articles regroupés ${mode === "media" ? "par type de média" : mode === "region" ? "par région ou pays" : "par lieu cité"}. ${caveat}`;
     section.append(heading, createCoverageChips(group.articles, mode), note, ...group.articles.map(createArticleCard));
     return section;
-  }));
+  });
+  if (sections.length) sections.push(createFeedJumpButton());
+  feed.replaceChildren(...sections);
 }
 
 function renderCoverageComparison(articles) {
@@ -1610,13 +1632,6 @@ document.querySelector("#trend-type").addEventListener("change", renderTrends);
 document.querySelector("#group-by").addEventListener("change", (event) => {
   state.groupBy = GROUP_MODES.includes(event.target.value) ? event.target.value : "default";
   render();
-});
-
-document.querySelector("#feed-jump-top").addEventListener("click", () => {
-  feed.scrollTo({
-    top: 0,
-    behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth",
-  });
 });
 
 document.querySelector("#sort-button").addEventListener("click", () => {
