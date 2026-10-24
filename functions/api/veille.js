@@ -328,6 +328,88 @@ async function fetchArticles(configuredSources, { privateResponse = false, ai } 
   });
 }
 
+const ARCHIVE_QUERIES = [
+  { hl: "fr", gl: "FR", ceid: "FR:fr", countryCode: "FR", terms: "manifestation OR manifestants OR émeutes OR affrontements OR rassemblement OR \"violences urbaines\"" },
+  { hl: "fr", gl: "BE", ceid: "BE:fr", countryCode: "BE", terms: "manifestation OR manifestants OR émeutes OR affrontements" },
+  { hl: "es", gl: "ES", ceid: "ES:es", countryCode: "ES", terms: "manifestación OR manifestantes OR disturbios OR huelga OR protesta" },
+  { hl: "it", gl: "IT", ceid: "IT:it", countryCode: "IT", terms: "manifestazione OR manifestanti OR scontri OR sciopero OR disordini" },
+  { hl: "de", gl: "DE", ceid: "DE:de", countryCode: "DE", terms: "Demonstration OR Demonstranten OR Ausschreitungen OR Krawalle OR Streik" },
+];
+
+function shiftDate(date, days) {
+  const value = new Date(`${date}T00:00:00Z`);
+  value.setUTCDate(value.getUTCDate() + days);
+  return value.toISOString().slice(0, 10);
+}
+
+// Les flux RSS des médias ne conservent que quelques jours ; les jours plus anciens passent par la recherche datée de Google Actualités.
+export async function fetchArchiveDay(date, { ai } = {}) {
+  const results = await Promise.all(ARCHIVE_QUERIES.map(async (query) => {
+    const q = `${query.terms} after:${shiftDate(date, -1)} before:${shiftDate(date, 2)}`;
+    const feed = `https://news.google.com/rss/search?q=${encodeURIComponent(q)}&hl=${query.hl}&gl=${query.gl}&ceid=${encodeURIComponent(query.ceid)}`;
+    try {
+      const response = await fetch(feed, {
+        headers: { Accept: "application/rss+xml, application/xml, text/xml;q=0.9" },
+        signal: AbortSignal.timeout(8000),
+      });
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      return { ok: true, articles: parseArchiveFeed(await readLimitedText(response, MAX_FEED_BYTES), query, feed) };
+    } catch (error) {
+      console.warn(JSON.stringify({ event: "archive_source_unavailable", country: query.countryCode, message: String(error) }));
+      return { ok: false, articles: [] };
+    }
+  }));
+
+  const articles = (await resolveCandidates(results.flatMap((result) => result.articles), ai))
+    .sort((a, b) => new Date(b.publishedAt) - new Date(a.publishedAt));
+  return { date, articles, available: results.filter((result) => result.ok).length, total: results.length };
+}
+
+function parseArchiveFeed(xml, query, feed) {
+  const items = xml.match(/<item(?:\s[^>]*)?>[\s\S]*?<\/item\s*>/gi) || [];
+  const now = Date.now();
+  const seen = new Set();
+  const articles = [];
+  for (const item of items) {
+    const rawTitle = cleanText(readTag(item, "title"));
+    const sourceName = cleanText(readTag(item, "source")) || "Google Actualités";
+    const suffix = ` - ${sourceName}`;
+    const title = rawTitle.endsWith(suffix) ? rawTitle.slice(0, -suffix.length).trim() : rawTitle;
+    const link = safeArticleUrl(cleanText(readTag(item, "link")), feed);
+    const timestamp = Date.parse(cleanText(readTag(item, "pubDate")));
+    if (!title || !link || !Number.isFinite(timestamp) || timestamp > now + 60 * 60 * 1000 || seen.has(link)) continue;
+
+    const normalized = normalize(title);
+    const { relevant, candidate, matchedTerms, score } = assessRelevance(normalized);
+    if (!(relevant || candidate)) continue;
+    seen.add(link);
+
+    const matchedCity = findMatchedCity(title, "");
+    const slug = normalize(sourceName).replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "archive";
+    articles.push({
+      id: `archive-${slug}:${link}`,
+      title,
+      description: "",
+      link,
+      publishedAt: new Date(timestamp).toISOString(),
+      datePrecision: "minute",
+      sourceId: slug,
+      sourceName,
+      type: classify(normalized),
+      matchedTerms: [...new Set(matchedTerms)],
+      relevance: score,
+      candidate,
+      image: null,
+      archive: true,
+      city: matchedCity?.name || null,
+      region: matchedCity?.region || null,
+      position: matchedCity?.position || null,
+      countryCode: matchedCity?.countryCode || (matchedCity ? "FR" : findCountryCode(title)) || query.countryCode,
+    });
+  }
+  return articles;
+}
+
 function publicSource(source, status, articleCount) {
   return {
     id: source.id,

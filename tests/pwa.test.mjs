@@ -89,10 +89,11 @@ test("personal alerts, saved articles and European coverage comparison are wired
   assert.match(app, /history\.replaceState/);
   assert.match(html, /id="day-calendar"/);
   assert.match(app, /function renderDayCalendar\(\)/);
+  assert.match(app, /\/api\/archive\?date=/);
   assert.match(app, /selectedStart = new Date\(`\$\{state\.selectedDate\}T00:00:00`\)/);
   assert.match(app, /navigator\.clipboard\.writeText/);
   assert.match(app, /function renderTrends\(\)/);
-  assert.match(serviceWorker, /veille-shell-v21/);
+  assert.match(serviceWorker, /veille-shell-v22/);
   assert.match(readme, /À lire plus tard/);
   assert.match(readme, /alertes personnalisées/i);
   assert.match(readme, /Comparateur de couverture/);
@@ -135,7 +136,7 @@ test("European live video cards point to official players and broadcasters", asy
   assert.match(html, /https:\/\/www\.vrt\.be\/vrtnws\/nl\/kijk\//);
   assert.match(html, /https:\/\/www\.raiplay\.it\/dirette\/rainews24/);
   assert.match(html, /https:\/\/www\.tagesschau\.de\/multimedia\/livestreams\//);
-  assert.match(serviceWorker, /veille-shell-v21/);
+  assert.match(serviceWorker, /veille-shell-v22/);
   assert.match(app, /card\.dataset\.type/);
   assert.match(html, /id="group-by"/);
   assert.match(app, /function renderGroupedFeed\(/);

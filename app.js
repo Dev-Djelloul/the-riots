@@ -350,6 +350,8 @@ function setSelectedDate(date) {
   syncSharedViewControls();
   updateShareUrl();
   render();
+  if (state.selectedDate) loadArchiveDay(state.selectedDate);
+  else renderArchiveStatus();
 }
 
 function updateShareUrl() {
@@ -515,11 +517,66 @@ function countryStyle(feature) {
   };
 }
 
+function enrichArticle(article, geography) {
+  let location = geography ? locateArticle(article, geography) : { precision: "unknown", places: [] };
+  if (article.countryCode && article.countryCode !== "FR") {
+    location = article.city && article.position
+      ? { precision: "city", places: [{ name: article.city, precision: "city", coordinates: article.position }] }
+      : { precision: "country", places: [] };
+  }
+  return {
+    ...article,
+    countryCode: article.countryCode || (location.places.length ? "FR" : null),
+    location,
+  };
+}
+
+const archiveDays = new Map();
+
+async function loadArchiveDay(date) {
+  if (archiveDays.has(date) && archiveDays.get(date).status !== "error") return;
+  archiveDays.set(date, { status: "loading", articles: [] });
+  renderArchiveStatus();
+  try {
+    const [response, geography] = await Promise.all([
+      fetch(`/api/archive?date=${encodeURIComponent(date)}`, { headers: { Accept: "application/json" } }),
+      geographyPromise,
+    ]);
+    const payload = await response.json();
+    if (!response.ok) throw new Error(payload.error || `Réponse inattendue (${response.status})`);
+    archiveDays.set(date, {
+      status: "ready",
+      articles: (payload.articles || []).map((article) => enrichArticle(article, geography)),
+    });
+  } catch (error) {
+    console.error("Archive indisponible.", error);
+    archiveDays.set(date, { status: "error", articles: [] });
+  }
+  if (state.selectedDate === date) render();
+  else renderArchiveStatus();
+}
+
+function renderArchiveStatus() {
+  const note = document.querySelector("#archive-status");
+  if (!note) return;
+  const entry = state.selectedDate ? archiveDays.get(state.selectedDate) : null;
+  note.hidden = !entry;
+  note.textContent = !entry ? ""
+    : entry.status === "loading" ? "Recherche des articles archivés de ce jour…"
+      : entry.status === "error" ? "Archive indisponible pour ce jour — réessaie en choisissant à nouveau la date."
+        : `${entry.articles.length} article${entry.articles.length > 1 ? "s" : ""} archivé${entry.articles.length > 1 ? "s" : ""} (titres uniquement, via Google Actualités).`;
+}
+
 function getVisibleArticles({ ignoreCountry = false, fromSaved = false } = {}) {
   const now = new Date();
   const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
   const startOfTomorrow = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1).getTime();
-  const sourceArticles = fromSaved ? [...savedArticles.values()] : state.articles;
+  let sourceArticles = fromSaved ? [...savedArticles.values()] : state.articles;
+  if (!fromSaved && state.selectedDate) {
+    const known = new Set(sourceArticles.map((article) => article.link));
+    const archived = (archiveDays.get(state.selectedDate)?.articles || []).filter((article) => !known.has(article.link));
+    sourceArticles = [...sourceArticles, ...archived];
+  }
   return sourceArticles
     .filter((article) => {
       if (fromSaved) return true;
@@ -600,6 +657,7 @@ function render() {
     || (article.countryCode && (state.country === "all" || article.countryCode === state.country))).length;
   document.querySelector("#count-all").textContent = String(modeArticleCount).padStart(2, "0");
   renderDayCalendar();
+  renderArchiveStatus();
   document.querySelector("#today-label").textContent = state.mapMode === "europe" ? "ÉDITION EUROPE" : "ÉDITION FRANCE";
   document.querySelector("#map-title").textContent = state.mapMode === "europe" ? "Europe · pays pilotes" : "France métropolitaine";
   mapElement.setAttribute("aria-label", state.mapMode === "europe"
@@ -1558,21 +1616,8 @@ async function loadArticles() {
     if (!response.ok && response.status !== 503) {
       throw new Error(payload.error || `Réponse inattendue (${response.status})`);
     }
-    state.articles = Array.isArray(payload.articles)
-      ? payload.articles.map((article) => {
-        let location = geography ? locateArticle(article, geography) : { precision: "unknown", places: [] };
-        if (article.countryCode && article.countryCode !== "FR") {
-          location = article.city && article.position
-            ? { precision: "city", places: [{ name: article.city, precision: "city", coordinates: article.position }] }
-            : { precision: "country", places: [] };
-        }
-        return {
-          ...article,
-          countryCode: article.countryCode || (location.places.length ? "FR" : null),
-          location,
-        };
-      })
-      : [];
+    state.articles = Array.isArray(payload.articles) ? payload.articles.map((article) => enrichArticle(article, geography)) : [];
+    state.geography = geography;
     if (response.ok && response.headers.get("X-PWA-Offline") !== "true") {
       processNewArticles(state.articles);
     }
@@ -1596,6 +1641,7 @@ async function loadArticles() {
       updateStatus("ready", `${state.sources.length} médias · actualisé ${formatClock(state.fetchedAt)}.`);
     }
     render();
+    if (state.selectedDate) loadArchiveDay(state.selectedDate);
   } catch (error) {
     console.error("Impossible de charger la veille de presse.", error);
     if (customFeeds.length) {
