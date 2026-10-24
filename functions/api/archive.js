@@ -21,7 +21,7 @@ export async function onRequestGet({ request, env }) {
   }
   let result = { date, articles, available: articles.length ? 1 : 0, total: 1, source: "history" };
   if (!articles.length) {
-    result = { ...(await fetchArchiveDay(date, { ai: env?.AI })), source: "external" };
+    result = { ...(await fetchArchiveDay(date, { ai: env?.AI, gnewsKey: env?.GNEWS_API_KEY })), source: "external" };
   }
 
   const recent = Date.now() - parsed.getTime() < 3 * 24 * 60 * 60 * 1000;

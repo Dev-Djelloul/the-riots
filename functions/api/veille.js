@@ -443,8 +443,82 @@ async function fetchGdeltDay(date) {
   return articles;
 }
 
+const GNEWS_QUERIES = [
+  { lang: "fr", country: "fr", countryCode: "FR", q: "manifestation OR manifestants OR émeutes OR affrontements OR \"violences urbaines\"" },
+  { lang: "fr", country: "be", countryCode: "BE", q: "manifestation OR manifestants OR émeutes OR affrontements" },
+  { lang: "es", country: "es", countryCode: "ES", q: "manifestación OR manifestantes OR disturbios OR huelga" },
+  { lang: "it", country: "it", countryCode: "IT", q: "manifestazione OR manifestanti OR scontri OR sciopero" },
+  { lang: "de", country: "de", countryCode: "DE", q: "Demonstration OR Demonstranten OR Ausschreitungen OR Krawalle" },
+];
+
+// Archive par jour via l’API GNews (clé GNEWS_API_KEY, jamais exposée au navigateur).
+async function fetchGnewsDay(date, apiKey) {
+  const from = `${date}T00:00:00Z`;
+  const to = `${date}T23:59:59Z`;
+  const results = await Promise.all(GNEWS_QUERIES.map(async (query) => {
+    const url = `https://gnews.io/api/v4/search?q=${encodeURIComponent(query.q)}&lang=${query.lang}&country=${query.country}&from=${from}&to=${to}&max=50&sortby=publishedAt&apikey=${encodeURIComponent(apiKey)}`;
+    try {
+      const response = await fetch(url, { headers: { Accept: "application/json" }, signal: AbortSignal.timeout(10000) });
+      if (!response.ok) throw new Error(`GNews HTTP ${response.status}`);
+      const payload = await response.json();
+      const articles = [];
+      for (const item of payload.articles || []) {
+        const link = safeArticleUrl(item.url, url);
+        const title = cleanText(item.title || "");
+        const timestamp = Date.parse(item.publishedAt);
+        if (!link || !title || !Number.isFinite(timestamp)) continue;
+        const description = cleanText(item.description || "").slice(0, 320);
+        const normalized = normalize(`${title} ${description}`);
+        const { relevant, candidate, matchedTerms, score } = assessRelevance(normalized);
+        if (!(relevant || candidate)) continue;
+        const sourceName = cleanText(item.source?.name || "") || "GNews";
+        const slug = normalize(sourceName).replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "archive";
+        const matchedCity = findMatchedCity(title, description);
+        articles.push({
+          id: `archive-${slug}:${link}`,
+          title,
+          description,
+          link,
+          publishedAt: new Date(timestamp).toISOString(),
+          datePrecision: "minute",
+          sourceId: slug,
+          sourceName,
+          type: classify(normalized),
+          matchedTerms: [...new Set(matchedTerms)],
+          relevance: score,
+          candidate,
+          image: safeImageUrl(item.image || "", url),
+          archive: true,
+          city: matchedCity?.name || null,
+          region: matchedCity?.region || null,
+          position: matchedCity?.position || null,
+          countryCode: matchedCity?.countryCode || (matchedCity ? "FR" : findCountryCode(`${title} ${description}`)) || query.countryCode,
+        });
+      }
+      return { ok: true, articles };
+    } catch (error) {
+      return { ok: false, articles: [], error: String(error).replace(apiKey, "***").slice(0, 120) };
+    }
+  }));
+  const seen = new Set();
+  return {
+    ok: results.some((result) => result.ok),
+    articles: results.flatMap((result) => result.articles).filter((article) => !seen.has(article.link) && seen.add(article.link)),
+    errors: results.filter((result) => result.error).map((result) => result.error),
+  };
+}
+
 // Les flux RSS des médias ne conservent que quelques jours ; les jours plus anciens passent par une recherche datée.
-export async function fetchArchiveDay(date, { ai } = {}) {
+export async function fetchArchiveDay(date, { ai, gnewsKey } = {}) {
+  if (gnewsKey) {
+    const gnews = await fetchGnewsDay(date, gnewsKey);
+    if (gnews.ok) {
+      const articles = (await resolveCandidates(gnews.articles, ai))
+        .sort((a, b) => new Date(b.publishedAt) - new Date(a.publishedAt));
+      return { date, articles, available: 1, total: GNEWS_QUERIES.length, errors: gnews.errors };
+    }
+  }
+
   const results = await Promise.all(ARCHIVE_QUERIES.map(async (query) => {
     const q = `${query.terms} after:${shiftDate(date, -1)} before:${shiftDate(date, 2)}`;
     const feed = `https://news.google.com/rss/search?q=${encodeURIComponent(q)}&hl=${query.hl}&gl=${query.gl}&ceid=${encodeURIComponent(query.ceid)}`;
