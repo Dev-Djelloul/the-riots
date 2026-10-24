@@ -266,6 +266,7 @@ const state = {
   selected: null,
   newestFirst: true,
   groupBy: "default",
+  calendarMonth: "",
   fetchedAt: null,
   showSaved: false,
   seenArticleIds: new Set(Array.isArray(storedSeenArticles)
@@ -273,6 +274,83 @@ const state = {
     : []),
   seenArticlesInitialized: Array.isArray(storedSeenArticles),
 };
+
+function toDateKey(date) {
+  const pad = (value) => String(value).padStart(2, "0");
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
+}
+
+function renderDayCalendar() {
+  const container = document.querySelector("#day-calendar");
+  if (!container) return;
+  if (!state.calendarMonth) state.calendarMonth = toDateKey(new Date()).slice(0, 7);
+  const [year, month] = state.calendarMonth.split("-").map(Number);
+  const counts = new Map();
+  for (const article of state.articles) {
+    const time = Date.parse(article.publishedAt);
+    if (!Number.isFinite(time)) continue;
+    const key = toDateKey(new Date(time));
+    counts.set(key, (counts.get(key) || 0) + 1);
+  }
+  const max = Math.max(1, ...counts.values());
+  const todayKey = toDateKey(new Date());
+  const title = new Intl.DateTimeFormat("fr-FR", { month: "long", year: "numeric" }).format(new Date(year, month - 1, 1));
+  const offset = (new Date(year, month - 1, 1).getDay() + 6) % 7;
+  const daysInMonth = new Date(year, month, 0).getDate();
+
+  const head = document.createElement("div");
+  head.className = "cal-head";
+  const prev = document.createElement("button");
+  prev.type = "button";
+  prev.dataset.calNav = "-1";
+  prev.setAttribute("aria-label", "Mois précédent");
+  prev.textContent = "‹";
+  const next = document.createElement("button");
+  next.type = "button";
+  next.dataset.calNav = "1";
+  next.setAttribute("aria-label", "Mois suivant");
+  next.textContent = "›";
+  const label = document.createElement("strong");
+  label.textContent = title;
+  head.append(prev, label, next);
+
+  const grid = document.createElement("div");
+  grid.className = "cal-grid";
+  for (const name of ["L", "M", "M", "J", "V", "S", "D"]) {
+    const cell = document.createElement("span");
+    cell.className = "cal-dow";
+    cell.textContent = name;
+    grid.append(cell);
+  }
+  for (let i = 0; i < offset; i += 1) grid.append(document.createElement("span"));
+  for (let day = 1; day <= daysInMonth; day += 1) {
+    const key = `${state.calendarMonth}-${String(day).padStart(2, "0")}`;
+    const count = counts.get(key) || 0;
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = "cal-day";
+    button.dataset.calDay = key;
+    button.style.setProperty("--heat", count ? (0.18 + 0.62 * count / max).toFixed(2) : "0");
+    button.classList.toggle("has-articles", count > 0);
+    button.classList.toggle("today", key === todayKey);
+    button.classList.toggle("selected", key === state.selectedDate);
+    button.setAttribute("aria-pressed", String(key === state.selectedDate));
+    button.setAttribute("aria-label", `${day} ${title} : ${count} article${count > 1 ? "s" : ""}`);
+    button.title = `${count} article${count > 1 ? "s" : ""}`;
+    button.textContent = String(day);
+    grid.append(button);
+  }
+  container.replaceChildren(head, grid);
+}
+
+function setSelectedDate(date) {
+  state.selectedDate = isValidDateOnly(date) ? date : "";
+  state.period = state.selectedDate ? "all" : state.period;
+  if (state.selectedDate) state.calendarMonth = state.selectedDate.slice(0, 7);
+  syncSharedViewControls();
+  updateShareUrl();
+  render();
+}
 
 function updateShareUrl() {
   const url = new URL(window.location.href);
@@ -291,7 +369,8 @@ function syncSharedViewControls() {
   document.querySelectorAll("[data-period]").forEach((button) => {
     button.classList.toggle("active", !state.selectedDate && button.dataset.period === state.period);
   });
-  document.querySelector("#publication-date").value = state.selectedDate;
+  if (state.selectedDate) state.calendarMonth = state.selectedDate.slice(0, 7);
+  renderDayCalendar();
   document.querySelectorAll("[data-type]").forEach((button) => {
     button.classList.toggle("active", button.dataset.type === state.type);
   });
@@ -520,6 +599,7 @@ function render() {
   const modeArticleCount = state.articles.filter((article) => state.mapMode !== "europe"
     || (article.countryCode && (state.country === "all" || article.countryCode === state.country))).length;
   document.querySelector("#count-all").textContent = String(modeArticleCount).padStart(2, "0");
+  renderDayCalendar();
   document.querySelector("#today-label").textContent = state.mapMode === "europe" ? "ÉDITION EUROPE" : "ÉDITION FRANCE";
   document.querySelector("#map-title").textContent = state.mapMode === "europe" ? "Europe · pays pilotes" : "France métropolitaine";
   mapElement.setAttribute("aria-label", state.mapMode === "europe"
@@ -1546,19 +1626,24 @@ document.querySelector("#period-filters").addEventListener("click", (event) => {
   if (!button) return;
   state.period = button.dataset.period;
   state.selectedDate = "";
-  document.querySelectorAll("[data-period]").forEach((item) => item.classList.toggle("active", item === button));
-  document.querySelector("#publication-date").value = "";
+  if (button.dataset.period === "today") state.calendarMonth = toDateKey(new Date()).slice(0, 7);
+  syncSharedViewControls();
   updateShareUrl();
   render();
 });
 
-document.querySelector("#publication-date").addEventListener("change", (event) => {
-  const date = event.target.value;
-  state.selectedDate = isValidDateOnly(date) ? date : "";
-  state.period = "all";
-  syncSharedViewControls();
-  updateShareUrl();
-  render();
+document.querySelector("#day-calendar").addEventListener("click", (event) => {
+  const target = event.target instanceof Element ? event.target : null;
+  const dayButton = target?.closest("[data-cal-day]");
+  if (dayButton) {
+    setSelectedDate(dayButton.dataset.calDay === state.selectedDate ? "" : dayButton.dataset.calDay);
+    return;
+  }
+  const nav = target?.closest("[data-cal-nav]");
+  if (!nav) return;
+  const [year, month] = state.calendarMonth.split("-").map(Number);
+  state.calendarMonth = toDateKey(new Date(year, month - 1 + Number(nav.dataset.calNav), 1)).slice(0, 7);
+  renderDayCalendar();
 });
 
 document.querySelector("#map-mode-controls").addEventListener("click", (event) => {
@@ -1768,7 +1853,7 @@ document.querySelector("#reset-filters").addEventListener("click", () => {
   state.query = "";
   state.selected = null;
   document.querySelector("#search-input").value = "";
-  document.querySelector("#publication-date").value = "";
+  renderDayCalendar();
   document.querySelectorAll("[data-period]").forEach((item) => item.classList.toggle("active", item.dataset.period === "all"));
   document.querySelectorAll("[data-type]").forEach((item) => item.classList.toggle("active", item.dataset.type === "all"));
   document.querySelector("#country-filter").value = "all";
