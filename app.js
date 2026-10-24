@@ -97,11 +97,16 @@ function createPublisherMark(sourceId, sourceName, className = "") {
   mark.setAttribute("aria-hidden", "true");
   if (identity && /^[a-z0-9-]+$/.test(sourceId)) {
     const logo = document.createElement("img");
-    logo.src = `/icons/press/${sourceId}.png`;
     logo.alt = "";
     logo.loading = "lazy";
     logo.decoding = "async";
-    logo.addEventListener("load", () => { mark.classList.add("has-logo"); mark.textContent = ""; mark.append(logo); }, { once: true });
+    logo.addEventListener("load", () => {
+      mark.classList.add("has-logo");
+      mark.textContent = "";
+    }, { once: true });
+    logo.addEventListener("error", () => logo.remove(), { once: true });
+    mark.append(logo);
+    logo.src = `/icons/press/${sourceId}.png`;
   }
   return mark;
 }
