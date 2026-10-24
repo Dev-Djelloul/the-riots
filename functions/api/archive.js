@@ -91,7 +91,7 @@ export async function onRequestGet({ request, env }) {
     }
     const settled = Date.now() - parsed.getTime() > 3 * 24 * 60 * 60 * 1000;
     if (env?.HISTORY && result.available > 0 && !result.errors?.length
-      && (result.provider === "gdelt" || (result.provider === "gnews" && settled))) {
+      && (["gdelt", "google-news-rss"].includes(result.provider) || (result.provider === "gnews" && settled))) {
       const key = countryCode ? `archive-country:${date}:${countryCode}` : archiveKey;
       const expirationTtl = settled ? 400 * 24 * 60 * 60 : 15 * 60;
       await env.HISTORY.put(key, JSON.stringify(result.articles), { expirationTtl }).catch(() => {});

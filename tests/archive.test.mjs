@@ -127,33 +127,34 @@ test("relit les résultats de la collecte européenne pays par pays depuis KV", 
   assert.equal(result.articles[0].countryCode, "GR");
 });
 
-test("recherche et mémorise une date ancienne pour tous les pays européens", async () => {
+test("recherche et mémorise une date ancienne dans les groupes européens GDELT", async () => {
   let calls = 0;
   globalThis.fetch = async (input) => {
     calls += 1;
     const url = new URL(String(input));
     assert.equal(url.hostname, "api.gdeltproject.org");
     const query = url.searchParams.get("query");
-    assert.match(query, /sourcecountry:GR/);
-    assert.match(query, /sourcecountry:UK/);
-    assert.equal((query.match(/sourcecountry:/g) || []).length, EUROPE_COUNTRIES.length);
+    const articles = [];
+    if (query.includes("sourcecountry:GR")) {
+      articles.push({
+        url: "https://example.test/athens",
+        title: "Protest in Athens, Greece",
+        seendate: "20260915T100000Z",
+        domain: "example.test",
+        sourcecountry: "Greece",
+      });
+    }
+    if (query.includes("sourcecountry:UK")) {
+      articles.push({
+        url: "https://example.test/london",
+        title: "Demonstration in London",
+        seendate: "20260915T110000Z",
+        domain: "example.test",
+        sourcecountry: "United Kingdom",
+      });
+    }
     return Response.json({
-      articles: [
-        {
-          url: "https://example.test/athens",
-          title: "Protest in Athens, Greece",
-          seendate: "20260915T100000Z",
-          domain: "example.test",
-          sourcecountry: "Greece",
-        },
-        {
-          url: "https://example.test/london",
-          title: "Demonstration in London",
-          seendate: "20260915T110000Z",
-          domain: "example.test",
-          sourcecountry: "United Kingdom",
-        },
-      ],
+      articles,
     });
   };
   const HISTORY = createKv();
@@ -172,7 +173,43 @@ test("recherche et mémorise une date ancienne pour tous les pays européens", a
   const second = await (await onRequestGet({ request: request("2026-09-15", ""), env })).json();
   assert.equal(second.source, "history");
   assert.equal(second.articles.length, 2);
-  assert.equal(calls, 1);
+  assert.equal(calls, Math.ceil(EUROPE_COUNTRIES.length / 12));
+});
+
+test("recherche GDELT dans les groupes de pays même quand aucune archive n’est précollectée", async () => {
+  let calls = 0;
+  const sourceQueries = [];
+  globalThis.fetch = async (input) => {
+    calls += 1;
+    const url = new URL(String(input));
+    assert.equal(url.hostname, "api.gdeltproject.org");
+    const query = url.searchParams.get("query");
+    sourceQueries.push(query);
+    if (!query.includes("sourcecountry:GR")) return Response.json({ articles: [] });
+    assert.ok(query.length < 600);
+    return Response.json({
+      articles: [{
+        url: "https://example.test/greece-story",
+        title: "Greek newspapers report on a major protest",
+        seendate: "20260914T200000Z",
+        domain: "example.test",
+        sourcecountry: "Greece",
+      }],
+    });
+  };
+  const HISTORY = createKv();
+  const response = await onRequestGet({
+    request: request("2026-09-14", ""),
+    env: { HISTORY },
+  });
+  const result = await response.json();
+
+  assert.equal(response.status, 200);
+  assert.equal(result.provider, "gdelt");
+  assert.equal(result.articles.length, 1);
+  assert.equal(result.articles[0].countryCode, "GR");
+  assert.equal(calls, Math.ceil(EUROPE_COUNTRIES.length / 12));
+  assert.ok(sourceQueries.some((query) => query.includes("sourcecountry:UK")));
 });
 
 test("renvoie une erreur explicite si aucune source ne répond à la recherche européenne", async () => {
@@ -183,6 +220,37 @@ test("renvoie une erreur explicite si aucune source ne répond à la recherche e
   });
   assert.equal(response.status, 503);
   const result = await response.json();
-  assert.equal(result.provider, "gdelt");
+  assert.equal(result.provider, "unavailable");
   assert.equal(result.available, 0);
+});
+
+test("bascule sur les flux Google Actualités si GDELT est indisponible", async () => {
+  let calls = 0;
+  globalThis.fetch = async () => {
+    calls += 1;
+    if (calls <= Math.ceil(EUROPE_COUNTRIES.length / 12)) {
+      return new Response("GDELT indisponible", { status: 503 });
+    }
+    return new Response(`
+      <rss><channel><item>
+        <title>Manifestation à Madrid - Source Test</title>
+        <link>https://example.test/madrid-archive</link>
+        <pubDate>Tue, 15 Sep 2026 10:00:00 GMT</pubDate>
+        <source>Source Test</source>
+      </item></channel></rss>
+    `, { headers: { "Content-Type": "application/rss+xml" } });
+  };
+  const HISTORY = createKv();
+  const response = await onRequestGet({
+    request: request("2026-09-15", ""),
+    env: { HISTORY },
+  });
+  const result = await response.json();
+
+  assert.equal(response.status, 200);
+  assert.equal(result.provider, "google-news-rss");
+  assert.equal(result.source, "external");
+  assert.ok(result.articles.some((article) => article.link === "https://example.test/madrid-archive"));
+  assert.equal(calls, Math.ceil(EUROPE_COUNTRIES.length / 12) + 5);
+  assert.ok(HISTORY.store.has("archive:2026-09-15"));
 });

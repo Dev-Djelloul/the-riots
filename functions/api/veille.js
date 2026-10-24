@@ -429,61 +429,67 @@ const GDELT_SOURCE_COUNTRIES = new Map([
 
 // Codes de source GDELT (FIPS) par pays suivi ; ses résultats alimentent la recherche historique Europe.
 async function fetchGdeltDay(date, countryCodes = EUROPE_COUNTRIES.map(({ code }) => code)) {
+  return fetchGdeltByCountryDay(date, countryCodes);
+}
+
+async function fetchGdeltByCountryDay(date, countryCodes) {
   const compact = date.replaceAll("-", "");
-  const countryFilters = countryCodes
+  const countryFilters = [...new Set(countryCodes
     .map((code) => GDELT_COUNTRY_CODES[code])
-    .filter(Boolean)
-    .map((code) => `sourcecountry:${code}`);
-  if (!countryFilters.length) return [];
-  const terms = "manifestation OR manifestants OR émeutes OR affrontements OR rassemblement OR protest OR demonstration OR strike OR riot OR unrest OR manifestación OR manifestantes OR disturbios OR huelga OR protesta OR manifestazione OR scontri OR sciopero OR Demonstration OR Ausschreitungen OR Streik OR betoging OR demonstratie OR staking OR διαδήλωση OR διαμαρτυρία OR απεργία OR protesto OR manifestação OR greve OR демонстрация OR забастовка OR protest OR demonstracja OR strajk OR demonstracija OR štrajk";
-  const query = `(${terms}) (${countryFilters.join(" OR ")})`;
-  const url = `https://api.gdeltproject.org/api/v2/doc/doc?query=${encodeURIComponent(query)}&mode=artlist&maxrecords=250&format=json&sort=datedesc&startdatetime=${compact}000000&enddatetime=${compact}235959`;
-  const response = await fetch(url, { headers: { Accept: "application/json" }, signal: AbortSignal.timeout(15000) });
-  const text = await response.text();
-  if (!response.ok) throw new Error(`GDELT HTTP ${response.status}`);
-  let payload;
-  try { payload = JSON.parse(text); } catch { throw new Error("GDELT indisponible"); }
-  const seen = new Set();
-  const articles = [];
-  for (const item of payload.articles || []) {
-    const link = safeArticleUrl(item.url, url);
-    const title = cleanText(item.title || "");
-    const match = /^(\d{4})(\d{2})(\d{2})T(\d{2})(\d{2})(\d{2})Z$/.exec(item.seendate || "");
-    const sourceCountry = cleanText(item.sourcecountry || "");
-    const countryCode = EUROPE_COUNTRIES.some((country) => country.code === sourceCountry)
-      ? sourceCountry
-      : GDELT_SOURCE_COUNTRIES.get(normalize(sourceCountry));
-    if (!countryCode || !countryCodes.includes(countryCode)) continue;
-    if (!link || !title || !match || seen.has(link)) continue;
-    const normalized = normalize(title);
-    const { relevant, candidate, matchedTerms, score } = assessRelevance(normalized);
-    if (!(relevant || candidate)) continue;
-    seen.add(link);
-    const sourceName = cleanText(item.domain || "").replace(/^www\./, "") || "Archive";
-    const slug = normalize(sourceName).replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "archive";
-    const matchedCity = findMatchedCity(title, "");
-    articles.push({
-      id: `archive-${slug}:${link}`,
-      title,
-      description: "",
-      link,
-      publishedAt: new Date(Date.UTC(+match[1], +match[2] - 1, +match[3], +match[4], +match[5], +match[6])).toISOString(),
-      datePrecision: "minute",
-      sourceId: slug,
-      sourceName,
-      type: classify(normalized),
-      matchedTerms: [...new Set(matchedTerms)],
-      relevance: score,
-      candidate,
-      image: null,
-      archive: true,
-      city: matchedCity?.name || null,
-      region: matchedCity?.region || null,
-      position: matchedCity?.position || null,
-      countryCode: matchedCity?.countryCode || (matchedCity ? "FR" : findCountryCode(title)) || countryCode,
+    .filter(Boolean))];
+  const batchSize = 12;
+  const batches = Array.from({ length: Math.ceil(countryFilters.length / batchSize) }, (_, index) =>
+    countryFilters.slice(index * batchSize, (index + 1) * batchSize));
+  const results = await Promise.all(batches.map(async (batch) => {
+    const filters = batch.map((code) => `sourcecountry:${code}`).join(" OR ");
+    const query = `(${filters}) (protest OR demonstration OR strike OR riot OR unrest OR manifestation OR huelga OR protesta OR διαδήλωση OR демонстрация)`;
+    const url = `https://api.gdeltproject.org/api/v2/doc/doc?query=${encodeURIComponent(query)}&mode=artlist&maxrecords=250&format=json&sort=datedesc&startdatetime=${compact}000000&enddatetime=${compact}235959`;
+    const response = await fetch(url, { headers: { Accept: "application/json" }, signal: AbortSignal.timeout(15000) });
+    if (!response.ok) throw new Error(`GDELT HTTP ${response.status}`);
+    let payload;
+    try {
+      payload = await response.json();
+    } catch {
+      throw new Error("GDELT indisponible");
+    }
+    return (payload.articles || []).flatMap((item) => {
+      const link = safeArticleUrl(item.url, url);
+      const title = cleanText(item.title || "");
+      const match = /^(\d{4})(\d{2})(\d{2})T(\d{2})(\d{2})(\d{2})Z$/.exec(item.seendate || "");
+      const sourceCountry = cleanText(item.sourcecountry || "");
+      const countryCode = EUROPE_COUNTRIES.some((country) => country.code === sourceCountry)
+        ? sourceCountry
+        : GDELT_SOURCE_COUNTRIES.get(normalize(sourceCountry));
+      if (!countryCode || !countryCodes.includes(countryCode) || !link || !title || !match) return [];
+      const normalized = normalize(title);
+      const { relevant, candidate, matchedTerms, score } = assessRelevance(normalized);
+      if (!(relevant || candidate)) return [];
+      const sourceName = cleanText(item.domain || "") || "Archive";
+      const slug = normalize(sourceName).replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "archive";
+      const matchedCity = findMatchedCity(title, "");
+      return [{
+        id: `archive-${slug}:${link}`,
+        title,
+        description: "",
+        link,
+        publishedAt: new Date(Date.UTC(+match[1], +match[2] - 1, +match[3], +match[4], +match[5], +match[6])).toISOString(),
+        datePrecision: "minute",
+        sourceId: slug,
+        sourceName,
+        type: classify(normalized),
+        matchedTerms: [...new Set(matchedTerms)],
+        relevance: score,
+        candidate,
+        image: null,
+        archive: true,
+        city: matchedCity?.name || null,
+        region: matchedCity?.region || null,
+        position: matchedCity?.position || null,
+        countryCode: matchedCity?.countryCode || (matchedCity ? "FR" : findCountryCode(title)) || countryCode,
+      }];
     });
-  }
-  return articles;
+  }));
+  return [...new Map(results.flat().map((article) => [article.link, article])).values()];
 }
 
 const GNEWS_SUPPORTED_LANGUAGES = new Set([
@@ -601,14 +607,10 @@ export async function fetchArchiveDay(date, {
         provider: "gdelt",
       };
     } catch (error) {
-      return {
-        date,
-        articles: [],
-        available: 0,
-        total: countryCodes?.length || EUROPE_COUNTRIES.length,
-        errors: [String(error).slice(0, 120)],
-        provider: "gdelt",
-      };
+      console.warn(JSON.stringify({
+        event: "archive_gdelt_unavailable",
+        message: String(error).slice(0, 120),
+      }));
     }
   }
 
@@ -635,7 +637,7 @@ export async function fetchArchiveDay(date, {
   let rawArticles = results.flatMap((result) => result.articles);
   const errors = results.filter((result) => result.error).map((result) => result.error);
   let provider = "google-news-rss";
-  if (available === 0) {
+  if (available === 0 && !gdeltOnly) {
     try {
       rawArticles = await fetchGdeltDay(date, countryCodes);
       available = 1;
@@ -643,6 +645,10 @@ export async function fetchArchiveDay(date, {
     } catch (error) {
       errors.push(String(error).slice(0, 120));
     }
+  }
+  if (available === 0 && gdeltOnly) {
+    provider = "unavailable";
+    errors.unshift("GDELT indisponible ; les flux RSS de repli n’ont pas répondu.");
   }
 
   const articles = (await resolveCandidates(rawArticles, ai))
