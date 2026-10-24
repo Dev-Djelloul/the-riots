@@ -629,9 +629,9 @@ function render() {
   const mapStats = renderMap(articles);
   mapEmpty.hidden = Boolean(map) && mapped.length > 0;
   mapEmpty.innerHTML = state.mapMode === "europe"
-    ? "Aucun article géolocalisé dans les pays sélectionnés.<br /><span>Les contours et repères contextualisent des articles, pas des événements vérifiés.</span>"
+    ? "Aucun article géolocalisé dans les pays sélectionnés.<br /><span>Les contours et repères situent les lieux mentionnés dans les articles des médias suivis.</span>"
     : geographyIndex
-      ? "Aucun lieu suffisamment précis cité dans les titres ou extraits.<br /><span>Les limites des 96 départements restent visibles ; les zones colorées reflètent les mentions d’articles, pas des événements vérifiés.</span>"
+      ? "Aucun lieu suffisamment précis cité dans les titres ou extraits.<br /><span>Les limites des 96 départements restent visibles ; les couleurs distinguent les départements cités dans les articles.</span>"
       : "Données géographiques indisponibles.<br /><span>Les articles restent consultables ; réessaie après actualisation.</span>";
   const isEmpty = feedArticles.length === 0;
   emptyState.hidden = !isEmpty;
@@ -835,10 +835,10 @@ function renderGroupedFeed(articles, mode) {
 
     const note = document.createElement("p");
     note.className = "coverage-summary";
-    const caveat = outlets > 1 ? "Convergence de couverture, pas confirmation indépendante." : "Un seul média ne constitue pas une confirmation indépendante.";
+    const coverage = outlets > 1 ? `${outlets} médias suivis couvrent ce sujet.` : "Sujet repéré dans un média suivi.";
     note.textContent = mode === "event"
-      ? `Associé à « ${TYPE_LABELS[group.type] || TYPE_LABELS.autre} » par mots-clés. ${caveat}`
-      : `Articles regroupés ${mode === "media" ? "par type de média" : mode === "region" ? "par région ou pays" : "par lieu cité"}. ${caveat}`;
+      ? `Associé à « ${TYPE_LABELS[group.type] || TYPE_LABELS.autre} » par mots-clés. ${coverage}`
+      : `Articles regroupés ${mode === "media" ? "par type de média" : mode === "region" ? "par région ou pays" : "par lieu cité"}. ${coverage}`;
     section.append(heading, createCoverageChips(group.articles, mode), note, ...group.articles.map(createArticleCard));
     return section;
   });
@@ -1361,7 +1361,7 @@ function createArticleCard(article) {
     }
     const disclaimer = document.createElement("p");
     disclaimer.className = "article-disclaimer";
-    disclaimer.textContent = "Mots-clés de veille uniquement : ce classement ne vérifie pas le contenu de l’article.";
+    disclaimer.textContent = "Catégorie attribuée automatiquement selon les mots-clés repérés dans l’article. Ouvre la source pour lire sa publication complète.";
     detail.append(tags, disclaimer);
     card.append(detail);
   }
@@ -1499,10 +1499,10 @@ function createLocationPopup(name, articles, precision, countryCode = null) {
   note.textContent = precision === "commune"
     ? "La commune est citée dans le titre ou l’extrait ; sa limite et son emplacement exact ne sont pas représentés."
     : precision === "city"
-      ? "Cette ville est citée dans un article ; le repère indique son centre approximatif, pas le lieu exact d’un événement vérifié."
+      ? "Cette ville est citée dans un article ; le repère indique son centre approximatif."
       : precision === "country"
         ? "Les articles citent ce pays ; la couleur indique uniquement la présence de couverture médiatique, pas un nombre ni une intensité d’événements."
-        : "La couleur distingue ce département parmi ceux cités dans les articles ; elle ne représente ni une intensité ni un décompte d’événements vérifiés.";
+        : "La couleur distingue ce département parmi ceux cités dans les articles ; elle représente la couverture éditoriale, pas une intensité.";
   const list = document.createElement("ul");
   articles.forEach((article) => {
     const item = document.createElement("li");

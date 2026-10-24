@@ -2,7 +2,7 @@
 
 Veille est une application web française de veille éditoriale. Elle agrège des articles provenant de flux RSS et Atom, relie les mentions géographiques aux départements et communes de France métropolitaine, et propose une vue de couverture européenne pour cinq pays pilotes.
 
-> Veille ne vérifie pas les faits. Un article isolé ne confirme pas un événement ; les mentions sur la carte reflètent la couverture des médias, pas des incidents confirmés. Manifestations et émeutes ne sont pas synonymes.
+> Veille relaie des articles publiés par les médias référencés et attribue chaque contenu à sa source d’origine. Les catégories et regroupements sont générés automatiquement à partir des mots-clés ; la carte situe les lieux mentionnés dans les articles. La sélection dépend des flux disponibles et ne représente pas l’ensemble de la couverture médiatique. Manifestations et émeutes sont des catégories distinctes.
 
 ## Fonctionnalités
 
@@ -59,7 +59,7 @@ Veille est une application web française de veille éditoriale. Elle agrège de
 
 Les flux sont filtrés par mots-clés multilingues liés aux manifestations, rassemblements, tensions et dégradations. Les lieux européens sont associés uniquement lorsqu’un nom de ville ou de pays est repéré dans le titre ou l’extrait ; l’adresse d’un média ne sert jamais à déduire le pays de l’article. Le référentiel de villes est volontairement limité aux grandes villes du pilote et peut manquer des lieux. Le Parisien n’inclut pas systématiquement l’heure de publication ; sa date est estimée depuis le permalien et signalée dans l’interface. La durée de rétention dépend des éditeurs et ne forme pas une archive exhaustive.
 
-La chronologie européenne regroupe par journée, pays, ville citée et catégorie de mots-clés. Lorsqu’aucune ville n’est identifiée, l’article reste isolé et n’est pas fusionné avec d’autres actualités du pays. Le nombre affiché correspond aux médias distincts dans les flux suivis, pas au nombre d’événements ou à des confirmations indépendantes. Une même information peut être reprise d’une dépêche commune.
+La chronologie européenne regroupe par journée, pays, ville citée et catégorie de mots-clés. Lorsqu’aucune ville n’est identifiée, l’article reste isolé et n’est pas fusionné avec d’autres actualités du pays. Le nombre affiché correspond aux médias distincts dans les flux suivis, et non au nombre d’événements. Une même information peut être reprise d’une dépêche commune.
 
 ### Vidéos en direct
 
@@ -165,4 +165,4 @@ Ne pas créer uniquement un enregistrement CNAME à la main : Cloudflare précis
 
 ## Données cartographiques
 
-Les données locales sont dans `data/communes.json` et `data/departements.geojson`. Les limites administratives sont attribuées selon les indications de leur source et affichées pour contextualiser les mentions d’articles, pas pour représenter des événements vérifiés.
+Les données locales sont dans `data/communes.json` et `data/departements.geojson`. Les limites administratives sont attribuées selon les indications de leur source. La carte met en contexte les lieux cités et la couverture des médias ; les couleurs distinguent les départements mentionnés dans les articles.
