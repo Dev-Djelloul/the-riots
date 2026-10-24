@@ -70,7 +70,7 @@ export async function onRequestGet({ request, env }) {
     result = {
       ...(await fetchArchiveDay(date, {
         ai: env?.AI,
-        gnewsKey: countryCode ? env?.GNEWS_API_KEY : undefined,
+        gnewsKey: env?.GNEWS_API_KEY,
         countryCodes: countryCode ? [countryCode] : undefined,
         gdeltOnly: !countryCode,
       })),

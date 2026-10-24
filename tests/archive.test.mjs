@@ -256,3 +256,47 @@ test("bascule sur les flux Google Actualités si GDELT est indisponible", async 
   assert.equal(calls, 6);
   assert.ok(HISTORY.store.has("archive:2026-09-15"));
 });
+
+test("utilise une recherche GNews mondiale de repli et écarte les articles hors Europe", async () => {
+  let calls = 0;
+  globalThis.fetch = async (input) => {
+    calls += 1;
+    const url = new URL(String(input));
+    if (url.hostname === "api.gdeltproject.org") {
+      return new Response("GDELT indisponible", { status: 429 });
+    }
+    assert.equal(url.hostname, "gnews.io");
+    assert.equal(url.searchParams.get("country"), null);
+    assert.equal(url.searchParams.get("lang"), null);
+    return gnewsResponse([
+      {
+        title: "Demonstration in Athens",
+        description: "Protesters gathered in the Greek capital.",
+        url: "https://example.test/athens",
+        publishedAt: "2026-09-15T10:00:00Z",
+        source: { name: "Example Europe" },
+      },
+      {
+        title: "Demonstration in New York",
+        description: "Protesters gathered in the United States.",
+        url: "https://example.test/new-york",
+        publishedAt: "2026-09-15T11:00:00Z",
+        source: { name: "Example US" },
+      },
+    ]);
+  };
+  const HISTORY = createKv();
+
+  const response = await onRequestGet({
+    request: request("2026-09-15", ""),
+    env: { HISTORY, GNEWS_API_KEY: "secret" },
+  });
+  const result = await response.json();
+
+  assert.equal(response.status, 200);
+  assert.equal(result.provider, "gnews");
+  assert.equal(result.articles.length, 1);
+  assert.equal(result.articles[0].countryCode, "GR");
+  assert.equal(calls, 2);
+  assert.ok(HISTORY.store.has("archive:2026-09-15"));
+});

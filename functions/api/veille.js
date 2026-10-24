@@ -500,12 +500,24 @@ const GNEWS_QUERIES = EUROPE_COUNTRIES.map(({ code, lang, query }) => ({
 }));
 
 // Archive par jour via l’API GNews (clé GNEWS_API_KEY, jamais exposée au navigateur).
-async function fetchGnewsDay(date, apiKey, countryCodes = EUROPE_COUNTRIES.map(({ code }) => code)) {
+async function fetchGnewsDay(date, apiKey, countryCodes = EUROPE_COUNTRIES.map(({ code }) => code), globalSearch = false) {
   const from = `${date}T00:00:00Z`;
   const to = `${date}T23:59:59Z`;
-  const queries = GNEWS_QUERIES.filter((query) => countryCodes.includes(query.countryCode));
+  const queries = globalSearch
+    ? [{ countryCode: "GLOBAL", q: EUROPE_WIDE_QUERY }]
+    : GNEWS_QUERIES.filter((query) => countryCodes.includes(query.countryCode));
   const results = await Promise.all(queries.map(async (query) => {
-    const url = `https://gnews.io/api/v4/search?q=${encodeURIComponent(query.q)}&lang=${query.lang}&country=${query.country}&from=${from}&to=${to}&max=50&sortby=publishedAt&apikey=${encodeURIComponent(apiKey)}`;
+    const params = new URLSearchParams({
+      q: query.q,
+      from,
+      to,
+      max: "50",
+      sortby: "publishedAt",
+      apikey: apiKey,
+    });
+    if (query.lang) params.set("lang", query.lang);
+    if (query.country) params.set("country", query.country);
+    const url = `https://gnews.io/api/v4/search?${params}`;
     try {
       const response = await fetch(url, { headers: { Accept: "application/json" }, signal: AbortSignal.timeout(10000) });
       if (!response.ok) throw new Error(`GNews HTTP ${response.status}`);
@@ -523,6 +535,9 @@ async function fetchGnewsDay(date, apiKey, countryCodes = EUROPE_COUNTRIES.map((
         const sourceName = cleanText(item.source?.name || "") || "GNews";
         const slug = normalize(sourceName).replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "archive";
         const matchedCity = findMatchedCity(title, description);
+        const detectedCountry = matchedCity?.countryCode
+          || (matchedCity ? "FR" : findCountryCode(`${title} ${description}`));
+        if (globalSearch && !detectedCountry) continue;
         articles.push({
           id: `archive-${slug}:${link}`,
           title,
@@ -541,7 +556,7 @@ async function fetchGnewsDay(date, apiKey, countryCodes = EUROPE_COUNTRIES.map((
           city: matchedCity?.name || null,
           region: matchedCity?.region || null,
           position: matchedCity?.position || null,
-          countryCode: matchedCity?.countryCode || (matchedCity ? "FR" : findCountryCode(`${title} ${description}`)) || query.countryCode,
+          countryCode: detectedCountry || query.countryCode,
         });
       }
       return { ok: true, articles };
@@ -570,7 +585,7 @@ export async function fetchArchiveDay(date, {
   gdeltOnly = false,
 } = {}) {
   let gnewsErrors = [];
-  if (gnewsKey) {
+  if (gnewsKey && !gdeltOnly) {
     const gnews = await fetchGnewsDay(date, gnewsKey, countryCodes);
     if (gnews.ok) {
       const articles = (await resolveCandidates(gnews.articles, ai))
@@ -611,6 +626,22 @@ export async function fetchArchiveDay(date, {
       }));
       gdeltError = String(error).slice(0, 120);
     }
+  }
+  if (gdeltOnly && gnewsKey) {
+    const gnews = await fetchGnewsDay(date, gnewsKey, undefined, true);
+    if (gnews.ok) {
+      const articles = (await resolveCandidates(gnews.articles, ai))
+        .sort((a, b) => new Date(b.publishedAt) - new Date(a.publishedAt));
+      return {
+        date,
+        articles,
+        available: Object.values(gnews.countryResults).filter((result) => result.ok).length,
+        total: EUROPE_COUNTRIES.length,
+        errors: gnews.errors,
+        provider: "gnews",
+      };
+    }
+    gnewsErrors = gnews.errors;
   }
 
   const results = await Promise.all(ARCHIVE_QUERIES.map(async (query) => {
