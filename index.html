@@ -339,13 +339,14 @@
             </label>
 
             <div class="filter-group">
-              <p class="filter-label">PÉRIODE</p>
+              <p class="filter-label">JOUR DE PUBLICATION</p>
+              <label class="publication-date-label" for="publication-date">Choisir une date précise</label>
+              <input class="publication-date" id="publication-date" type="date" aria-label="Afficher les articles publiés à cette date" />
               <div class="filter-options" id="period-filters">
-                <button class="filter-option active" type="button" data-period="all"><span>Historique disponible</span><span class="option-count" id="count-all">04</span></button>
+                <button class="filter-option active" type="button" data-period="all"><span>Toutes dates · historique disponible</span><span class="option-count" id="count-all">04</span></button>
                 <button class="filter-option" type="button" data-period="today"><span>Aujourd’hui</span></button>
-                <button class="filter-option" type="button" data-period="week"><span>7 derniers jours</span></button>
               </div>
-              <p class="filter-note">Historique fourni par les flux RSS encore disponibles ; ce n’est pas une archive exhaustive depuis le début des événements.</p>
+              <p class="filter-note">Choisis un jour dans le calendrier pour afficher uniquement les articles publiés ce jour-là. L’historique dépend des flux RSS disponibles et n’est pas exhaustif.</p>
             </div>
 
             <div class="filter-group">

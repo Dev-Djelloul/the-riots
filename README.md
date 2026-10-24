@@ -7,14 +7,14 @@ Veille est une application web française de veille éditoriale. Elle agrège de
 ## Fonctionnalités
 
 - Agrégation de 26 flux RSS/Atom publics, actualisée à l’ouverture et automatiquement toutes les cinq minutes.
-- Recherche, filtres par période et sujet, et tri chronologique des articles.
+- Recherche, sélection des articles par jour au calendrier (avec raccourci « Aujourd’hui » et accès à tout l’historique disponible), filtre par sujet et tri chronologique.
 - Carte Leaflet interactive couvrant les 96 départements métropolitains et le référentiel de 34 746 communes.
 - Remplissage spectral des départements mentionnés et repères communaux cliquables qui présentent les articles associés.
 - Bascule France / Europe et filtre par pays pour la France, la Belgique, l’Espagne, l’Italie et l’Allemagne.
 - Drapeaux dans les vues et filtres par pays ; logos des médias (avec repli sur un monogramme coloré) dans la liste des sources et les articles, et aperçu d’image des articles quand le flux en fournit une.
 - Chronologie éditoriale regroupant les articles européens par date, ville citée et sujet détecté, avec le nombre de médias distincts.
 - Comparateur de couverture par pays pilote, comptant les articles et médias distincts reçus dans les flux ; les lignes filtrent la chronologie. Ce n’est pas un décompte d’événements.
-- Liens partageables qui conservent la recherche, la période, le sujet, la vue France/Europe et le pays sélectionné.
+- Liens partageables qui conservent la recherche, le jour sélectionné, le sujet, la vue France/Europe et le pays sélectionné.
 - Jusqu’à cinq flux RSS/Atom personnels sécurisés en HTTPS, enregistrés uniquement dans le navigateur et agrégés lors des actualisations ; les flux sont filtrés par les mots-clés de veille. Les flux personnalisés sont transmis en requête non mise en cache et les redirections ne sont pas suivies.
 - Graphique de tendances quotidiennes par pays pilote, filtrable par sujet et sur 7 ou 30 jours. Il s’appuie sur les articles actuellement disponibles, pas sur une archive exhaustive.
 - Liste « À lire plus tard » persistante dans le navigateur, conservée localement même après la disparition d’un article des flux.

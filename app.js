@@ -17,6 +17,12 @@ const TYPE_LABELS = {
 const COUNTRY_NAMES = { BE: "Belgique", DE: "Allemagne", ES: "Espagne", FR: "France", IT: "Italie" };
 const COUNTRY_FLAGS = { BE: "🇧🇪", DE: "🇩🇪", ES: "🇪🇸", FR: "🇫🇷", IT: "🇮🇹" };
 const COUNTRY_CODES = Object.keys(COUNTRY_NAMES);
+function isValidDateOnly(value) {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(value || "")) return false;
+  const date = new Date(`${value}T00:00:00Z`);
+  return Number.isFinite(date.getTime()) && date.toISOString().slice(0, 10) === value;
+}
+
 const PUBLISHER_MARKS = {
   franceinfo: { label: "fi", color: "#f2a900" },
   bfmtv: { label: "BF", color: "#0783c6" },
@@ -116,6 +122,7 @@ function readSharedView() {
   return {
     query: (params.get("q") || "").slice(0, 120).trim().toLocaleLowerCase("fr"),
     period: PERIODS.includes(params.get("period")) ? params.get("period") : "all",
+    selectedDate: isValidDateOnly(params.get("date")) ? params.get("date") : "",
     type: ARTICLE_TYPES.includes(params.get("type")) ? params.get("type") : "all",
     mapMode: ["france", "europe"].includes(params.get("view")) ? params.get("view") : "france",
     country: validCountries.includes(params.get("country")) ? params.get("country") : "all",
@@ -269,9 +276,10 @@ const state = {
 
 function updateShareUrl() {
   const url = new URL(window.location.href);
-  for (const key of ["q", "period", "type", "view", "country"]) url.searchParams.delete(key);
+  for (const key of ["q", "period", "date", "type", "view", "country"]) url.searchParams.delete(key);
   if (state.query) url.searchParams.set("q", state.query);
-  if (state.period !== "all") url.searchParams.set("period", state.period);
+  if (state.selectedDate) url.searchParams.set("date", state.selectedDate);
+  else if (state.period !== "all") url.searchParams.set("period", state.period);
   if (state.type !== "all") url.searchParams.set("type", state.type);
   if (state.mapMode !== "france") url.searchParams.set("view", state.mapMode);
   if (state.country !== "all") url.searchParams.set("country", state.country);
@@ -281,8 +289,9 @@ function updateShareUrl() {
 function syncSharedViewControls() {
   document.querySelector("#search-input").value = state.query;
   document.querySelectorAll("[data-period]").forEach((button) => {
-    button.classList.toggle("active", button.dataset.period === state.period);
+    button.classList.toggle("active", !state.selectedDate && button.dataset.period === state.period);
   });
+  document.querySelector("#publication-date").value = state.selectedDate;
   document.querySelectorAll("[data-type]").forEach((button) => {
     button.classList.toggle("active", button.dataset.type === state.type);
   });
@@ -435,6 +444,14 @@ function getVisibleArticles({ ignoreCountry = false, fromSaved = false } = {}) {
   return sourceArticles
     .filter((article) => {
       if (fromSaved) return true;
+      if (state.selectedDate) {
+        const publishedAt = Date.parse(article.publishedAt);
+        if (!Number.isFinite(publishedAt)) return false;
+        const selectedStart = new Date(`${state.selectedDate}T00:00:00`).getTime();
+        const selectedEnd = new Date(`${state.selectedDate}T00:00:00`);
+        selectedEnd.setDate(selectedEnd.getDate() + 1);
+        return publishedAt >= selectedStart && publishedAt < selectedEnd.getTime();
+      }
       if (state.period === "all") return true;
       const publishedAt = Date.parse(article.publishedAt);
       if (!Number.isFinite(publishedAt) || publishedAt > now.getTime()) return false;
@@ -1528,7 +1545,18 @@ document.querySelector("#period-filters").addEventListener("click", (event) => {
   const button = event.target instanceof Element ? event.target.closest("[data-period]") : null;
   if (!button) return;
   state.period = button.dataset.period;
+  state.selectedDate = "";
   document.querySelectorAll("[data-period]").forEach((item) => item.classList.toggle("active", item === button));
+  document.querySelector("#publication-date").value = "";
+  updateShareUrl();
+  render();
+});
+
+document.querySelector("#publication-date").addEventListener("change", (event) => {
+  const date = event.target.value;
+  state.selectedDate = isValidDateOnly(date) ? date : "";
+  state.period = "all";
+  syncSharedViewControls();
   updateShareUrl();
   render();
 });
@@ -1734,11 +1762,13 @@ updateBackToTopVisibility();
 
 document.querySelector("#reset-filters").addEventListener("click", () => {
   state.period = "all";
+  state.selectedDate = "";
   state.type = "all";
   state.country = "all";
   state.query = "";
   state.selected = null;
   document.querySelector("#search-input").value = "";
+  document.querySelector("#publication-date").value = "";
   document.querySelectorAll("[data-period]").forEach((item) => item.classList.toggle("active", item.dataset.period === "all"));
   document.querySelectorAll("[data-type]").forEach((item) => item.classList.toggle("active", item.dataset.type === "all"));
   document.querySelector("#country-filter").value = "all";
