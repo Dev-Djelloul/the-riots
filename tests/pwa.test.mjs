@@ -45,9 +45,9 @@ test("country flags, publisher marks and a return-to-top button are available", 
     "rtbf", "elpais", "eldiario", "rainews", "repubblica", "tagesschau", "dw-de",
   ];
 
-  for (const [code, flag] of Object.entries({ BE: "🇧🇪", DE: "🇩🇪", ES: "🇪🇸", FR: "🇫🇷", IT: "🇮🇹" })) {
-    assert.ok(app.includes(`${code}: "${flag}"`), `${code} should have a country flag`);
-  }
+  assert.match(app, /String\.fromCodePoint\(\.\.\.code\.split\(""\)\.map/);
+  assert.match(app, /populateCountrySelectors\(\)/);
+  assert.match(app, /EUROPE_COUNTRIES\.length/);
   for (const sourceId of sourceIds) {
     assert.ok(
       app.includes(`${sourceId}: { label:`) || app.includes(`"${sourceId}": { label:`),
@@ -93,7 +93,8 @@ test("personal alerts, saved articles and European coverage comparison are wired
   assert.match(app, /selectedStart = new Date\(`\$\{state\.selectedDate\}T00:00:00`\)/);
   assert.match(app, /navigator\.clipboard\.writeText/);
   assert.match(app, /function renderTrends\(\)/);
-  assert.match(serviceWorker, /veille-shell-v23/);
+  assert.match(serviceWorker, /veille-shell-v25/);
+  assert.ok(serviceWorker.includes('"/europe-countries.js"'));
   assert.match(readme, /À lire plus tard/);
   assert.match(readme, /alertes personnalisées/i);
   assert.match(readme, /Comparateur de couverture/);
@@ -103,6 +104,9 @@ test("social and channel logos referenced by the page exist and are pre-cached",
   const html = await readFile(new URL("index.html", root), "utf8");
   const serviceWorker = await readFile(new URL("service-worker.js", root), "utf8");
   assert.ok(serviceWorker.includes('"/data/europe-countries.geojson"'));
+  assert.match(serviceWorker, /url\.origin === "https:\/\/raw\.githubusercontent\.com"/);
+  assert.match(serviceWorker, /url\.pathname === "\/johan\/world\.geo\.json\/master\/countries\.geo\.json"/);
+  assert.match(serviceWorker, /\["basic", "cors"\]\.includes\(response\.type\)/);
   const iconPaths = [...html.matchAll(/src="(\/icons\/[^"]+)"/g)].map((match) => match[1]);
 
   assert.ok(iconPaths.length > 0);
@@ -136,7 +140,7 @@ test("European live video cards point to official players and broadcasters", asy
   assert.match(html, /https:\/\/www\.vrt\.be\/vrtnws\/nl\/kijk\//);
   assert.match(html, /https:\/\/www\.raiplay\.it\/dirette\/rainews24/);
   assert.match(html, /https:\/\/www\.tagesschau\.de\/multimedia\/livestreams\//);
-  assert.match(serviceWorker, /veille-shell-v23/);
+  assert.match(serviceWorker, /veille-shell-v25/);
   assert.match(app, /card\.dataset\.type/);
   assert.match(html, /id="group-by"/);
   assert.match(app, /function renderGroupedFeed\(/);

@@ -210,7 +210,7 @@ test("signale une indisponibilité explicite quand tous les flux échouent", asy
   }
 });
 
-test("ajoute un flux personnel HTTPS, filtre ses articles et ne met pas la réponse en cache", async () => {
+test("ajoute un flux personnel HTTPS en Tchéquie, filtre ses articles et ne met pas la réponse en cache", async () => {
   let customRedirectMode;
   globalThis.fetch = async (input, options) => {
     if (String(input) === "https://local-media.example/rss.xml") {
@@ -226,7 +226,7 @@ test("ajoute un flux personnel HTTPS, filtre ses articles et ne met pas la répo
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
-      customFeeds: [{ id: "local-media", name: "Média local", feed: "https://local-media.example/rss.xml", countryCode: "IT" }],
+      customFeeds: [{ id: "local-media", name: "Média local", feed: "https://local-media.example/rss.xml", countryCode: "CZ" }],
     }),
   });
 
@@ -239,7 +239,7 @@ test("ajoute un flux personnel HTTPS, filtre ses articles et ne met pas la répo
   assert.equal(response.headers.get("Cache-Control"), "no-store");
   assert.equal(customRedirectMode, "manual");
   assert.ok(article);
-  assert.equal(article.countryCode, "IT");
+  assert.equal(article.countryCode, "CZ");
   assert.equal(source.custom, true);
   assert.equal(source.name, "Média local");
 });

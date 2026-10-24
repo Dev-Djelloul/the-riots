@@ -1,3 +1,5 @@
+import { EUROPE_CAPITALS, EUROPE_COUNTRIES } from "../../europe-countries.js";
+
 const SOURCES = [
   { id: "franceinfo", name: "franceinfo", kind: "Audiovisuel public", feed: "https://www.franceinfo.fr/titres.rss", url: "https://www.franceinfo.fr/" },
   { id: "bfmtv", name: "BFMTV", kind: "Chaîne d’information", feed: "https://www.bfmtv.com/rss/news-24-7/", url: "https://www.bfmtv.com/" },
@@ -26,6 +28,8 @@ const SOURCES = [
   { id: "tagesschau", name: "tagesschau", kind: "Audiovisuel public allemand", feed: "https://www.tagesschau.de/infoservices/alle-meldungen-100~rss2.xml", url: "https://www.tagesschau.de/" },
   { id: "dw-de", name: "Deutsche Welle", kind: "Média international allemand", feed: "https://rss.dw.com/xml/rss-de-all", url: "https://www.dw.com/de/" },
 ];
+const EUROPE_QUERY_TERMS = [...new Set(EUROPE_COUNTRIES.flatMap(({ query }) =>
+  query.split(/\s+OR\s+/i).map((term) => term.replace(/^["']|["']$/g, ""))))];
 
 // Termes sans ambiguïté : suffisent à retenir un article.
 const STRONG_TERMS = [
@@ -62,7 +66,7 @@ const EXCLUSION_TERMS = [
 
 function assessRelevance(normalizedText) {
   const text = normalizedText.replace(/[’']/g, " ").replace(/rassemblement national/g, " ");
-  const strong = STRONG_TERMS.filter((term) => text.includes(normalize(term)));
+  const strong = [...STRONG_TERMS, ...EUROPE_QUERY_TERMS].filter((term) => text.includes(normalize(term)));
   const weak = WEAK_TERMS.filter((term) => containsWord(text, normalize(term)));
   const context = CONTEXT_TERMS.filter((term) => containsWord(text, normalize(term)));
   const excluded = EXCLUSION_TERMS.some((term) => containsWord(text, normalize(term)));
@@ -161,6 +165,11 @@ const CITIES = [
   { name: "Francfort", countryCode: "DE", position: [50.1109, 8.6821], aliases: ["Frankfurt"] },
   { name: "Stuttgart", countryCode: "DE", position: [48.7758, 9.1829] },
   { name: "Leipzig", countryCode: "DE", position: [51.3397, 12.3731] },
+];
+const ALL_CITIES = [
+  ...CITIES,
+  ...EUROPE_COUNTRIES.flatMap(({ code, center }) => (EUROPE_CAPITALS[code] || [])
+    .map((name) => ({ name, countryCode: code, position: center }))),
 ];
 
 const MATCHERS = [
@@ -296,7 +305,7 @@ function validateCustomFeed(feed) {
     || typeof feed.feed !== "string"
     || feed.feed.length > 2048
     || typeof feed.countryCode !== "string"
-    || (feed.countryCode && !["FR", "BE", "ES", "IT", "DE"].includes(feed.countryCode))) return null;
+    || (feed.countryCode && !EUROPE_COUNTRIES.some((country) => country.code === feed.countryCode))) return null;
   try {
     const url = new URL(feed.feed);
     if (url.protocol !== "https:" || url.username || url.password || url.port
@@ -443,19 +452,24 @@ async function fetchGdeltDay(date) {
   return articles;
 }
 
-const GNEWS_QUERIES = [
-  { lang: "fr", country: "fr", countryCode: "FR", q: "manifestation OR manifestants OR émeutes OR affrontements OR \"violences urbaines\"" },
-  { lang: "fr", country: "be", countryCode: "BE", q: "manifestation OR manifestants OR émeutes OR affrontements" },
-  { lang: "es", country: "es", countryCode: "ES", q: "manifestación OR manifestantes OR disturbios OR huelga" },
-  { lang: "it", country: "it", countryCode: "IT", q: "manifestazione OR manifestanti OR scontri OR sciopero" },
-  { lang: "de", country: "de", countryCode: "DE", q: "Demonstration OR Demonstranten OR Ausschreitungen OR Krawalle" },
-];
+const GNEWS_SUPPORTED_LANGUAGES = new Set([
+  "ar", "bn", "de", "el", "en", "es", "fr", "he", "hi", "id", "it", "ja", "ko",
+  "ml", "mr", "nl", "no", "pt", "ru", "sv", "ta", "te", "th", "tr", "uk", "vi", "zh",
+]);
+const EUROPE_WIDE_QUERY = "protest OR demonstration OR strike OR riot OR unrest";
+const GNEWS_QUERIES = EUROPE_COUNTRIES.map(({ code, lang, query }) => ({
+  lang: GNEWS_SUPPORTED_LANGUAGES.has(lang) ? lang : "en",
+  country: code.toLowerCase(),
+  countryCode: code,
+  q: GNEWS_SUPPORTED_LANGUAGES.has(lang) ? query : EUROPE_WIDE_QUERY,
+}));
 
 // Archive par jour via l’API GNews (clé GNEWS_API_KEY, jamais exposée au navigateur).
-async function fetchGnewsDay(date, apiKey) {
+async function fetchGnewsDay(date, apiKey, countryCodes = EUROPE_COUNTRIES.map(({ code }) => code)) {
   const from = `${date}T00:00:00Z`;
   const to = `${date}T23:59:59Z`;
-  const results = await Promise.all(GNEWS_QUERIES.map(async (query) => {
+  const queries = GNEWS_QUERIES.filter((query) => countryCodes.includes(query.countryCode));
+  const results = await Promise.all(queries.map(async (query) => {
     const url = `https://gnews.io/api/v4/search?q=${encodeURIComponent(query.q)}&lang=${query.lang}&country=${query.country}&from=${from}&to=${to}&max=50&sortby=publishedAt&apikey=${encodeURIComponent(apiKey)}`;
     try {
       const response = await fetch(url, { headers: { Accept: "application/json" }, signal: AbortSignal.timeout(10000) });
@@ -505,17 +519,31 @@ async function fetchGnewsDay(date, apiKey) {
     ok: results.some((result) => result.ok),
     articles: results.flatMap((result) => result.articles).filter((article) => !seen.has(article.link) && seen.add(article.link)),
     errors: results.filter((result) => result.error).map((result) => result.error),
+    countryResults: Object.fromEntries(queries.map((query, index) => [
+      query.countryCode,
+      { ok: results[index].ok, articles: results[index].articles },
+    ])),
   };
 }
 
 // Les flux RSS des médias ne conservent que quelques jours ; les jours plus anciens passent par une recherche datée.
-export async function fetchArchiveDay(date, { ai, gnewsKey } = {}) {
+export async function fetchArchiveDay(date, { ai, gnewsKey, countryCodes, gnewsOnly = false } = {}) {
   if (gnewsKey) {
-    const gnews = await fetchGnewsDay(date, gnewsKey);
+    const gnews = await fetchGnewsDay(date, gnewsKey, countryCodes);
     if (gnews.ok) {
       const articles = (await resolveCandidates(gnews.articles, ai))
         .sort((a, b) => new Date(b.publishedAt) - new Date(a.publishedAt));
-      return { date, articles, available: 1, total: GNEWS_QUERIES.length, errors: gnews.errors, provider: "gnews" };
+      return {
+        date,
+        articles,
+        available: gnews.countryResults ? Object.values(gnews.countryResults).filter((result) => result.ok).length : 0,
+        total: countryCodes?.length || GNEWS_QUERIES.length,
+        errors: gnews.errors,
+        provider: "gnews",
+      };
+    }
+    if (gnewsOnly) {
+      return { date, articles: [], available: 0, total: countryCodes?.length || GNEWS_QUERIES.length, errors: gnews.errors, provider: "gnews" };
     }
   }
 
@@ -703,7 +731,7 @@ function readItemLink(item) {
 }
 
 function findMatchedCity(title, description) {
-  const entries = CITIES.flatMap((city) => [city.name, ...(city.aliases || [])]
+  const entries = ALL_CITIES.flatMap((city) => [city.name, ...(city.aliases || [])]
     .map((name) => ({ city, name, normalizedName: normalize(name) })))
     .sort((a, b) => b.normalizedName.length - a.normalizedName.length);
   for (const [text, isTitle] of [[title, true], [description, false]]) {
@@ -713,7 +741,7 @@ function findMatchedCity(title, description) {
       const index = normalized.indexOf(entry.normalizedName);
       const prefix = normalized.slice(0, index).trim().split(/\s+/);
       const lastWord = prefix.at(-1);
-      if (["a", "au", "aux", "en", "in", "near", "bei", "naar"].includes(lastWord)
+      if (["a", "au", "aux", "en", "in", "near", "bei", "naar", "w", "we", "v", "ve", "i", "pa", "στη", "στην", "στο", "σε", "u", "na", "do", "em"].includes(lastWord)
         || ["in der", "in den", "in het"].some((cue) => normalized.slice(0, index).trim().endsWith(cue))) {
         return entry.city;
       }
@@ -731,11 +759,11 @@ function findMatchedCity(title, description) {
 function findCountryCode(text) {
   const normalized = normalize(text);
   const countries = [
-    ["BE", ["belgique", "belgium", "belgie", "belgië"]],
-    ["ES", ["espagne", "espana", "spain", "españa"]],
-    ["IT", ["italie", "italia", "italy"]],
-    ["DE", ["allemagne", "deutschland", "germany"]],
-    ["FR", ["france"]],
+    ...EUROPE_COUNTRIES.map(({ code, name }) => {
+      const englishName = new Intl.DisplayNames(["en"], { type: "region" }).of(code);
+      return [code, [name, englishName]];
+    }),
+    ["GB", ["uk", "britain", "england"]],
   ];
   return countries.find(([, names]) => names.some((name) => containsWord(normalized, normalize(name))))?.[0] || null;
 }
@@ -832,5 +860,6 @@ function classify(text) {
   for (const matcher of MATCHERS) {
     if (matcher.terms.some((term) => text.includes(normalize(term)))) return matcher.type;
   }
+  if (EUROPE_QUERY_TERMS.some((term) => text.includes(normalize(term)))) return "rassemblement";
   return "autre";
 }

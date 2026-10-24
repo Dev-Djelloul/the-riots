@@ -1,4 +1,5 @@
 import { createGeographyIndex, createSpectrumPalette, locateArticle } from "./geography.js";
+import { combineEuropeBoundaries, EUROPE_COUNTRIES } from "./europe-countries.js";
 
 const COLORS = {
   rassemblement: "dot-amber",
@@ -14,9 +15,10 @@ const TYPE_LABELS = {
   autre: "Sujet associé",
 };
 
-const COUNTRY_NAMES = { BE: "Belgique", DE: "Allemagne", ES: "Espagne", FR: "France", IT: "Italie" };
-const COUNTRY_FLAGS = { BE: "🇧🇪", DE: "🇩🇪", ES: "🇪🇸", FR: "🇫🇷", IT: "🇮🇹" };
-const COUNTRY_CODES = Object.keys(COUNTRY_NAMES);
+const COUNTRY_NAMES = Object.fromEntries(EUROPE_COUNTRIES.map(({ code, name }) => [code, name]));
+const COUNTRY_CODES = EUROPE_COUNTRIES.map(({ code }) => code);
+const COUNTRY_BOUNDARY_CODES = new Set(["BE", "DE", "ES", "FR", "IT"]);
+const EUROPE_BOUNDARIES_URL = "https://raw.githubusercontent.com/johan/world.geo.json/master/countries.geo.json";
 function isValidDateOnly(value) {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(value || "")) return false;
   const date = new Date(`${value}T00:00:00Z`);
@@ -60,13 +62,7 @@ const STORAGE_KEYS = {
 const PERIODS = ["all", "today", "week"];
 const ARTICLE_TYPES = ["all", "rassemblement", "tensions", "degradations"];
 const validCountries = ["all", ...COUNTRY_CODES];
-const COUNTRY_TREND_COLORS = {
-  BE: "#67c8a3",
-  DE: "#8798ef",
-  ES: "#e2a85b",
-  FR: "#e77e79",
-  IT: "#c38be1",
-};
+const COUNTRY_TREND_COLORS = createSpectrumPalette(COUNTRY_CODES);
 
 function createCountryLabel(code, className = "") {
   const label = document.createElement("span");
@@ -80,13 +76,31 @@ function createCountryLabel(code, className = "") {
 }
 
 function createCountryFlag(code) {
-  if (!COUNTRY_FLAGS[code]) return null;
+  if (!/^[A-Z]{2}$/.test(code || "")) return null;
   const flag = document.createElement("span");
   flag.className = "country-flag";
   flag.setAttribute("aria-hidden", "true");
-  flag.textContent = COUNTRY_FLAGS[code];
+  flag.textContent = String.fromCodePoint(...code.split("").map((letter) => 127397 + letter.charCodeAt(0)));
   return flag;
 }
+
+function populateCountrySelectors() {
+  const countries = [...EUROPE_COUNTRIES].sort((a, b) => a.name.localeCompare(b.name, "fr"));
+  for (const selector of ["#country-filter", "#alert-country", "#custom-feed-country"]) {
+    const select = document.querySelector(selector);
+    if (!select) continue;
+    const existing = new Set([...select.options].map((option) => option.value));
+    for (const country of countries) {
+      if (existing.has(country.code)) continue;
+      const option = document.createElement("option");
+      option.value = country.code;
+      option.textContent = `${createCountryFlag(country.code)?.textContent || ""} ${country.name}`;
+      select.append(option);
+    }
+  }
+}
+
+populateCountrySelectors();
 
 function createPublisherMark(sourceId, sourceName, className = "") {
   const mark = document.createElement("span");
@@ -443,13 +457,24 @@ async function loadGeography() {
     if (!Array.isArray(communes) || departments.features?.length !== 96) {
       throw new Error("Le jeu de données ne contient pas les 96 départements métropolitains attendus.");
     }
-    const europe = europeResponse.ok ? await europeResponse.json() : null;
-    const hasEuropeBoundaries = Array.isArray(europe?.features)
-      && europe.features.length === Object.keys(COUNTRY_NAMES).length
-      && europe.features.every((feature) => feature?.properties && COUNTRY_NAMES[feature.properties.countryCode]);
-    if (!hasEuropeBoundaries) {
+    const localEurope = europeResponse.ok ? await europeResponse.json() : null;
+    let worldFeatures = [];
+    try {
+      const worldResponse = await fetch(EUROPE_BOUNDARIES_URL);
+      if (!worldResponse.ok) throw new Error(`GeoJSON mondial indisponible (${worldResponse.status})`);
+      const world = await worldResponse.json();
+      if (!Array.isArray(world?.features)) throw new Error("Format GeoJSON mondial invalide");
+      worldFeatures = world.features;
+    } catch (error) {
+      console.warn("Impossible de charger les contours européens complets ; les données locales restent disponibles.", error);
+    }
+    const europeFeatures = combineEuropeBoundaries(localEurope?.features, worldFeatures);
+    const hasEuropeBoundaries = europeFeatures.length > 0;
+    if (europeFeatures.length < COUNTRY_CODES.length) {
       mapDataWarning.hidden = false;
-      mapDataWarning.textContent = "Contours Europe indisponibles · la carte France reste accessible";
+      mapDataWarning.textContent = `Contours Europe partiels · ${europeFeatures.length}/${COUNTRY_CODES.length} pays · repères approximatifs pour les autres`;
+    } else {
+      mapDataWarning.hidden = true;
     }
     geographyIndex = createGeographyIndex(communes, departments);
     L.geoJSON(departments, {
@@ -465,7 +490,7 @@ async function loadGeography() {
       },
     }).addTo(franceLayer);
     if (hasEuropeBoundaries) {
-      L.geoJSON(europe, {
+      L.geoJSON({ type: "FeatureCollection", features: europeFeatures }, {
         style: countryStyle,
         onEachFeature(feature, layer) {
           const code = feature.properties.countryCode;
@@ -534,23 +559,24 @@ function enrichArticle(article, geography) {
 const archiveDays = new Map();
 
 async function loadArchiveDay(date) {
-  if (archiveDays.has(date) && archiveDays.get(date).status !== "error") return;
-  archiveDays.set(date, { status: "loading", articles: [] });
+  const key = `${date}:${state.country}`;
+  if (archiveDays.has(key) && archiveDays.get(key).status !== "error") return;
+  archiveDays.set(key, { status: "loading", articles: [] });
   renderArchiveStatus();
   try {
     const [response, geography] = await Promise.all([
-      fetch(`/api/archive?date=${encodeURIComponent(date)}`, { headers: { Accept: "application/json" } }),
+      fetch(`/api/archive?date=${encodeURIComponent(date)}${state.country === "all" ? "" : `&country=${encodeURIComponent(state.country)}`}`, { headers: { Accept: "application/json" } }),
       geographyPromise,
     ]);
     const payload = await response.json();
     if (!response.ok) throw new Error(payload.error || `Réponse inattendue (${response.status})`);
-    archiveDays.set(date, {
+    archiveDays.set(key, {
       status: "ready",
       articles: (payload.articles || []).map((article) => enrichArticle(article, geography)),
     });
   } catch (error) {
     console.error("Archive indisponible.", error);
-    archiveDays.set(date, { status: "error", articles: [] });
+    archiveDays.set(key, { status: "error", articles: [] });
   }
   if (state.selectedDate === date) render();
   else renderArchiveStatus();
@@ -559,11 +585,11 @@ async function loadArchiveDay(date) {
 function renderArchiveStatus() {
   const note = document.querySelector("#archive-status");
   if (!note) return;
-  const entry = state.selectedDate ? archiveDays.get(state.selectedDate) : null;
+  const entry = state.selectedDate ? archiveDays.get(`${state.selectedDate}:${state.country}`) : null;
   note.hidden = !entry;
   note.textContent = !entry ? ""
     : entry.status === "loading" ? "Recherche des articles archivés de ce jour…"
-      : entry.status === "error" ? "Aucun article archivé pour ce jour : la veille mémorise désormais chaque article vu, l’historique s’enrichit au fil des jours."
+      : entry.status === "error" ? "Archive indisponible pour ce jour. Les archives GNews et l’historique RSS dépendent de la date, du pays et des sources indexées."
         : `${entry.articles.length} article${entry.articles.length > 1 ? "s" : ""} archivé${entry.articles.length > 1 ? "s" : ""} pour ce jour.`;
 }
 
@@ -574,7 +600,7 @@ function getVisibleArticles({ ignoreCountry = false, fromSaved = false } = {}) {
   let sourceArticles = fromSaved ? [...savedArticles.values()] : state.articles;
   if (!fromSaved && state.selectedDate) {
     const known = new Set(sourceArticles.map((article) => article.link));
-    const archived = (archiveDays.get(state.selectedDate)?.articles || []).filter((article) => !known.has(article.link));
+    const archived = (archiveDays.get(`${state.selectedDate}:${state.country}`)?.articles || []).filter((article) => !known.has(article.link));
     sourceArticles = [...sourceArticles, ...archived];
   }
   return sourceArticles
@@ -659,11 +685,11 @@ function render() {
   renderDayCalendar();
   renderArchiveStatus();
   document.querySelector("#today-label").textContent = state.mapMode === "europe" ? "ÉDITION EUROPE" : "ÉDITION FRANCE";
-  document.querySelector("#map-title").textContent = state.mapMode === "europe" ? "Europe · pays pilotes" : "France métropolitaine";
+  document.querySelector("#map-title").textContent = state.mapMode === "europe" ? `Europe · ${EUROPE_COUNTRIES.length} pays suivis` : "France métropolitaine";
   mapElement.setAttribute("aria-label", state.mapMode === "europe"
-    ? "Carte des cinq pays pilotes ; couleurs et repères illustrent les lieux cités dans des articles."
+    ? `Carte de ${EUROPE_COUNTRIES.length} pays européens suivis ; contours et repères situent les mentions d’articles.`
     : "Carte interactive des départements métropolitains colorés selon les lieux cités dans les articles");
-  document.querySelector("#map-date").textContent = state.mapMode === "europe" ? "5 PAYS · MENTIONS D’ARTICLES" : "96 DÉPARTEMENTS · MENTIONS D’ARTICLES";
+  document.querySelector("#map-date").textContent = state.mapMode === "europe" ? `${EUROPE_COUNTRIES.length} PAYS · MENTIONS D’ARTICLES` : "96 DÉPARTEMENTS · MENTIONS D’ARTICLES";
   document.querySelector("#map-legend").textContent = state.mapMode === "europe"
     ? "Contours · repères de villes cités dans les articles"
     : "Départements colorés · repères communaux cliquables";
@@ -962,11 +988,11 @@ function renderTrends() {
     svg.append(makeSvgElement("path", {
       class: "trend-line",
       d: pathData,
-      stroke: COUNTRY_TREND_COLORS[code],
+      stroke: COUNTRY_TREND_COLORS.get(code),
     }));
     const entry = document.createElement("span");
     const marker = document.createElement("i");
-    marker.style.backgroundColor = COUNTRY_TREND_COLORS[code];
+    marker.style.backgroundColor = COUNTRY_TREND_COLORS.get(code);
     const total = values.reduce((sum, value) => sum + value, 0);
     entry.append(marker, createCountryLabel(code), document.createTextNode(` · ${total}`));
     legend.append(entry);
@@ -1471,6 +1497,21 @@ function renderEuropeMap(articles) {
       "country",
     ));
   }
+  for (const [code, group] of countries) {
+    if (countryLayers.has(code)) continue;
+    const center = EUROPE_COUNTRIES.find((country) => country.code === code)?.center;
+    if (!center) continue;
+    const color = countryColors.get(code) || "#777a70";
+    L.circleMarker(center, {
+      radius: 7,
+      color,
+      weight: 2,
+      fillColor: color,
+      fillOpacity: 0.9,
+    })
+      .bindPopup(createLocationPopup(COUNTRY_NAMES[code], [...group.articles.values()], "country-marker", code), { maxWidth: 360, minWidth: 240 })
+      .addTo(europeMarkerLayer);
+  }
   for (const group of cities.values()) {
     const articlesForCity = [...group.articles.values()];
     const marker = L.marker(group.place.coordinates, {
@@ -1501,7 +1542,9 @@ function createLocationPopup(name, articles, precision, countryCode = null) {
     : precision === "city"
       ? "Cette ville est citée dans un article ; le repère indique son centre approximatif."
       : precision === "country"
-        ? "Les articles citent ce pays ; la couleur indique uniquement la présence de couverture médiatique, pas un nombre ni une intensité d’événements."
+        ? "Le contour représente le pays suivi ; il indique une couverture médiatique associée, pas la localisation d’un événement."
+        : precision === "country-marker"
+          ? "Repère placé approximativement au centre du pays suivi ; il indique une couverture médiatique associée, pas la localisation d’un événement."
         : "La couleur distingue ce département parmi ceux cités dans les articles ; elle représente la couverture éditoriale, pas une intensité.";
   const list = document.createElement("ul");
   articles.forEach((article) => {
@@ -1705,14 +1748,19 @@ document.querySelector("#map-mode-controls").addEventListener("click", (event) =
   });
   render();
   if (map) {
-    const layers = state.mapMode === "europe" ? [...countryLayers.values()] : [...departmentLayers.values()];
-    if (layers.length) map.fitBounds(L.featureGroup(layers).getBounds().pad(state.mapMode === "europe" ? 0.08 : 0.04));
+    if (state.mapMode === "europe") {
+      map.fitBounds(EUROPE_COUNTRIES.map(({ center }) => center), { padding: [12, 12], maxZoom: 5 });
+    } else {
+      const layers = [...departmentLayers.values()];
+      if (layers.length) map.fitBounds(L.featureGroup(layers).getBounds().pad(0.04));
+    }
   }
 });
 
 document.querySelector("#country-filter").addEventListener("change", (event) => {
   state.country = event.target.value;
   updateShareUrl();
+  if (state.selectedDate) loadArchiveDay(state.selectedDate);
   render();
 });
 

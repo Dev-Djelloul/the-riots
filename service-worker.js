@@ -1,10 +1,11 @@
-const SHELL_CACHE = "veille-shell-v23";
+const SHELL_CACHE = "veille-shell-v25";
 const FEED_CACHE = "veille-feed-v2";
 const SHELL_FILES = [
   "/",
   "/index.html",
   "/styles.css",
   "/app.js",
+  "/europe-countries.js",
   "/geography.js",
   "/pwa.js",
   "/manifest.webmanifest",
@@ -82,6 +83,11 @@ self.addEventListener("fetch", (event) => {
   if (request.method !== "GET") return;
 
   const url = new URL(request.url);
+  if (url.origin === "https://raw.githubusercontent.com"
+    && url.pathname === "/johan/world.geo.json/master/countries.geo.json") {
+    event.respondWith(networkFirstAsset(request));
+    return;
+  }
   if (url.origin !== self.location.origin) return;
 
   if (url.pathname === "/api/veille") {
@@ -121,7 +127,7 @@ async function networkFirstFeed(request) {
 async function networkFirstAsset(request) {
   try {
     const response = await fetch(request);
-    if (response.ok && response.type === "basic") {
+    if (response.ok && ["basic", "cors"].includes(response.type)) {
       try {
         const cache = await caches.open(SHELL_CACHE);
         await cache.put(request, response.clone());

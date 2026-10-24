@@ -1,6 +1,6 @@
 # Veille
 
-Veille est une application web française de veille éditoriale. Elle agrège des articles provenant de flux RSS et Atom, relie les mentions géographiques aux départements et communes de France métropolitaine, et propose une vue de couverture européenne pour cinq pays pilotes.
+Veille est une application web française de veille éditoriale. Elle agrège des articles provenant de flux RSS et Atom, relie les mentions géographiques aux départements et communes de France métropolitaine, et suit les actualités de mobilisation dans 48 pays d’Europe.
 
 > Veille relaie des articles publiés par les médias référencés et attribue chaque contenu à sa source d’origine. Les catégories et regroupements sont générés automatiquement à partir des mots-clés ; la carte situe les lieux mentionnés dans les articles. La sélection dépend des flux disponibles et ne représente pas l’ensemble de la couverture médiatique. Manifestations et émeutes sont des catégories distinctes.
 
@@ -10,16 +10,16 @@ Veille est une application web française de veille éditoriale. Elle agrège de
 - Recherche, sélection des articles par jour au calendrier (avec raccourci « Aujourd’hui » et accès à tout l’historique disponible), filtre par sujet et tri chronologique.
 - Carte Leaflet interactive couvrant les 96 départements métropolitains et le référentiel de 34 746 communes.
 - Remplissage spectral des départements mentionnés et repères communaux cliquables qui présentent les articles associés.
-- Bascule France / Europe et filtre par pays pour la France, la Belgique, l’Espagne, l’Italie et l’Allemagne.
+- Bascule France / Europe et filtre par pays pour les 46 États membres du Conseil de l’Europe, ainsi que la Biélorussie et la Russie.
 - Drapeaux dans les vues et filtres par pays ; logos des médias (avec repli sur un monogramme coloré) dans la liste des sources et les articles, et aperçu d’image des articles quand le flux en fournit une.
 - Chronologie éditoriale regroupant les articles européens par date, ville citée et sujet détecté, avec le nombre de médias distincts.
-- Comparateur de couverture par pays pilote, comptant les articles et médias distincts reçus dans les flux ; les lignes filtrent la chronologie. Ce n’est pas un décompte d’événements.
+- Comparateur de couverture par pays, comptant les articles et médias distincts reçus dans les flux ; les lignes filtrent la chronologie. Ce n’est pas un décompte d’événements.
 - Liens partageables qui conservent la recherche, le jour sélectionné, le sujet, la vue France/Europe et le pays sélectionné.
 - Jusqu’à cinq flux RSS/Atom personnels sécurisés en HTTPS, enregistrés uniquement dans le navigateur et agrégés lors des actualisations ; les flux sont filtrés par les mots-clés de veille. Les flux personnalisés sont transmis en requête non mise en cache et les redirections ne sont pas suivies.
-- Graphique de tendances quotidiennes par pays pilote, filtrable par sujet et sur 7 ou 30 jours. Il s’appuie sur les articles actuellement disponibles, pas sur une archive exhaustive.
+- Graphique de tendances quotidiennes par pays, filtrable par sujet et sur 7 ou 30 jours. Il s’appuie sur les articles actuellement disponibles, pas sur une archive exhaustive.
 - Liste « À lire plus tard » persistante dans le navigateur, conservée localement même après la disparition d’un article des flux.
 - Alertes personnalisées par ville/mot-clé et pays facultatif, avec notifications navigateur sur action explicite. Les alertes se déclenchent lorsque Veille est ouverte et récupère de nouveaux articles ; elles ne fonctionnent pas en arrière-plan. Sur iPhone/iPad, les notifications web nécessitent d’ajouter Veille à l’écran d’accueil et de l’ouvrir depuis son icône.
-- Analyse des mots-clés français, néerlandais, espagnols, italiens et allemands ; titres et extraits affichés dans leur langue d’origine, sans traduction automatique.
+- Recherche quotidienne GNews par pays et dans les langues disponibles ; titres et extraits affichés dans leur langue d’origine, sans traduction automatique.
 - Fil visuel de jusqu’à six articles illustrés par une image fournie dans leur flux RSS.
 - Lecteurs vidéo officiels chargés au clic et liens de secours vers les chaînes ou sites des médias.
 - Bouton flottant « Retour vers le haut », disponible après avoir fait défiler la page.
@@ -57,9 +57,24 @@ Veille est une application web française de veille éditoriale. Elle agrège de
 | tagesschau (Allemagne) | `https://www.tagesschau.de/infoservices/alle-meldungen-100~rss2.xml` |
 | Deutsche Welle (Allemagne) | `https://rss.dw.com/xml/rss-de-all` |
 
-Les flux sont filtrés par mots-clés multilingues liés aux manifestations, rassemblements, tensions et dégradations. Les lieux européens sont associés uniquement lorsqu’un nom de ville ou de pays est repéré dans le titre ou l’extrait ; l’adresse d’un média ne sert jamais à déduire le pays de l’article. Le référentiel de villes est volontairement limité aux grandes villes du pilote et peut manquer des lieux. Le Parisien n’inclut pas systématiquement l’heure de publication ; sa date est estimée depuis le permalien et signalée dans l’interface. La durée de rétention dépend des éditeurs et ne forme pas une archive exhaustive.
+Les flux sont filtrés par mots-clés multilingues liés aux manifestations, rassemblements, tensions et dégradations. Les lieux européens sont associés uniquement lorsqu’un nom de ville ou de pays est repéré dans le titre ou l’extrait ; l’adresse d’un média ne sert jamais à déduire le pays de l’article. Le Parisien n’inclut pas systématiquement l’heure de publication ; sa date est estimée depuis le permalien et signalée dans l’interface. La durée de rétention dépend des éditeurs et ne forme pas une archive exhaustive.
 
 La chronologie européenne regroupe par journée, pays, ville citée et catégorie de mots-clés. Lorsqu’aucune ville n’est identifiée, l’article reste isolé et n’est pas fusionné avec d’autres actualités du pays. Le nombre affiché correspond aux médias distincts dans les flux suivis, et non au nombre d’événements. Une même information peut être reprise d’une dépêche commune.
+
+### Couverture européenne et archive
+
+Un Worker Cloudflare distinct interroge GNews une fois par jour pour chacun des 48 pays configurés (les 46 membres du Conseil de l’Europe, plus la Biélorussie et la Russie), puis conserve les résultats par pays dans le KV `HISTORY` pendant 400 jours. Quatre lots tournent à 02:00, 08:00, 14:00 et 20:00 UTC ; ensemble, ils collectent la journée précédente en quatre groupes de douze pays. Les articles sont consultables depuis le calendrier et l’archive. Cela représente jusqu’à 48 appels GNews par jour, auxquels peuvent s’ajouter les recherches d’archives déclenchées manuellement pour un pays sélectionné.
+
+La recherche utilise la langue locale quand elle est prise en charge par GNews, sinon des mots-clés anglais. L’étendue réelle dépend des médias indexés par GNews, des langues et pays acceptés par son API, de ses quotas et de la disponibilité de chaque requête : cette veille ne garantit donc pas un recensement exhaustif. La carte Europe affiche les contours des 48 pays suivis depuis le GeoJSON mondial de [johan/world.geo.json](https://github.com/johan/world.geo.json), issu de Natural Earth ; le navigateur conserve ce fichier en cache pour l’usage hors connexion. Les contours locaux des cinq pays initiaux restent le repli si la source mondiale est indisponible ; dans ce cas, la carte signale explicitement le nombre de frontières manquantes et affiche des repères approximatifs pour les pays concernés.
+
+Le Worker de collecte est configuré séparément de Pages (`wrangler.europe.toml`). Déployer le Worker puis lui ajouter le secret GNews déjà utilisé par Pages :
+
+```sh
+./node_modules/.bin/wrangler deploy --config wrangler.europe.toml
+./node_modules/.bin/wrangler secret put GNEWS_API_KEY --config wrangler.europe.toml
+```
+
+Le Worker et Pages doivent utiliser le même compte Cloudflare pour partager le KV `HISTORY`. Les journaux du Worker indiquent les pays dont la requête a échoué ; une collecte partielle reste accessible sans effacer les résultats des autres pays.
 
 ### Vidéos en direct
 
@@ -84,9 +99,11 @@ La section **Directs européens** intègre les lecteurs YouTube officiels de DW 
 - `app.js` gère l’interface, les articles, la carte et les lecteurs.
 - `geography.js` rapproche les articles des données géographiques.
 - `service-worker.js`, `manifest.webmanifest` et les icônes `icons/` fournissent les fonctions PWA.
-- `data/communes.json` et `data/departements.geojson` fournissent les référentiels cartographiques français ; `data/europe-countries.geojson` contient les contours généralisés des cinq pays pilotes.
+- `europe-countries.js` décrit les pays, mots-clés, langues et capitales de la veille européenne.
+- `workers/europe-collector.js` collecte chaque jour les archives GNews ; `wrangler.europe.toml` configure le Worker, le cron, Workers AI et le KV partagé.
+- `data/communes.json` et `data/departements.geojson` fournissent les référentiels cartographiques français ; `data/europe-countries.geojson` conserve les contours locaux de repli des cinq pays initiaux. La vue Europe complète ces limites avec les contours des 48 pays suivis.
 - `tests/` contient les tests de l’analyse RSS, des fonctionnalités sociales, de la géographie et du mode PWA hors connexion.
-- Les styles et la bibliothèque Leaflet sont chargés depuis des CDN ; ils ne sont pas disponibles hors connexion. Les données cartographiques locales sont mises en cache.
+- Les styles et la bibliothèque Leaflet sont chargés depuis des CDN ; ils ne sont pas disponibles hors connexion. Les données cartographiques locales et les contours européens distants sont mis en cache.
 
 ### Icônes et logos
 
@@ -94,7 +111,7 @@ Les icônes Facebook, Instagram, TikTok, Twitch et YouTube dans `icons/` ont ét
 
 Les pays sont identifiés par des drapeaux emoji. Les 26 médias RSS/Atom affichent leur icône ou logo (`icons/press/` : favicons et apple-touch-icons des sites, logos Wikimedia Commons pour RTVE, France Inter, Le Parisien, 20 Minutes et CNEWS), avec repli sur un monogramme coloré. Ce sont des repères d’interface ; les marques restent la propriété de leurs ayants droit.
 
-La carte utilise les tuiles [OpenStreetMap](https://www.openstreetmap.org/copyright). Les limites départementales généralisées à 1 000 m viennent du jeu [Contours administratifs](https://www.data.gouv.fr/datasets/contours-administratifs/), notamment basé sur Admin Express de l’IGN, sous Licence Ouverte Etalab 2.0. Le référentiel des communes vient de l’API Découpage Administratif (`geo.api.gouv.fr`). Les contours européens sont une représentation généralisée issue des limites [Natural Earth 1:110m](https://www.naturalearthdata.com/downloads/110m-cultural-vectors/) distribuées au format GeoJSON par [johan/world.geo.json](https://github.com/johan/world.geo.json) ; Natural Earth place ses données dans le domaine public. Ces données de pays ne montrent pas les subdivisions régionales. Les couleurs correspondent aux mentions dans les articles ; elles n’expriment pas l’intensité d’incidents.
+La carte utilise les tuiles [OpenStreetMap](https://www.openstreetmap.org/copyright). Les limites départementales généralisées à 1 000 m viennent du jeu [Contours administratifs](https://www.data.gouv.fr/datasets/contours-administratifs/), notamment basé sur Admin Express de l’IGN, sous Licence Ouverte Etalab 2.0. Le référentiel des communes vient de l’API Découpage Administratif (`geo.api.gouv.fr`). Les contours européens proviennent des limites [Natural Earth 1:110m](https://www.naturalearthdata.com/downloads/110m-cultural-vectors/) distribuées au format GeoJSON par [johan/world.geo.json](https://github.com/johan/world.geo.json) ; Natural Earth place ses données dans le domaine public. Ces limites généralisées couvrent les pays suivis, sans subdivisions régionales. Les couleurs correspondent aux mentions dans les articles ; elles n’expriment pas l’intensité d’incidents.
 
 ## Développement local
 
