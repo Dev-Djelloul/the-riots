@@ -362,7 +362,7 @@ h1 em, .about-dialog h2 em { color: var(--accent); font-weight: 500; }
 .visually-hidden { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; }
 .sort-button { display: grid; place-items: center; width: 28px; height: 28px; border: 1px solid #343730; background: transparent; color: #96988e; cursor: pointer; }
 .sort-button svg { width: 15px; fill: none; stroke: currentColor; stroke-width: 1.4; }
-.feed-list { display: grid; min-height: 0; flex: 1; overflow-y: auto; overscroll-behavior: contain; scrollbar-color: #44473e transparent; scrollbar-width: thin; }
+.feed-list { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: 18px; align-content: start; min-height: 0; flex: 1; overflow-y: auto; overscroll-behavior: contain; scrollbar-color: #44473e transparent; scrollbar-width: thin; }
 .event-card { position: relative; padding: 0 5px 0 12px; border-top: 1px solid var(--line-soft); border-left: 1px solid transparent; transition: background .18s, border-color .18s; }
 .event-card:hover, .event-card.selected { background: #1d1f1b; border-left-color: var(--accent); }
 .coverage-group { min-width: 0; }
@@ -490,5 +490,14 @@ h1 em, .about-dialog h2 em { color: var(--accent); font-weight: 500; }
 
 .publisher-mark.has-logo { background: #f4f1e8; padding: 2px; }
 .publisher-mark img { width: 100%; height: 100%; object-fit: contain; border-radius: inherit; }
-.article-preview { display: block; width: 100%; max-height: 150px; margin: 0 0 10px; border-radius: 3px; object-fit: cover; background: #1b1f1d; aspect-ratio: 16 / 9; }
+.coverage-group { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: 18px; align-content: start; grid-column: 1 / -1; }
+.coverage-group-heading, .coverage-summary { grid-column: 1 / -1; }
+.event-card.has-preview { display: grid; grid-template-columns: minmax(0, 1fr) minmax(130px, 42%); column-gap: 12px; align-items: start; }
+.event-card.has-preview > :not(.article-preview) { grid-column: 1; }
+.event-card.has-preview > .event-detail { grid-column: 1 / -1; }
+.article-preview { grid-column: 2; grid-row: 1 / span 3; display: block; width: 100%; height: auto; max-height: 220px; margin: 13px 0 10px; border-radius: 3px; object-fit: contain; object-position: top center; background: #1b1f1d; }
+@media (max-width: 760px) {
+  .feed-list, .coverage-group { grid-template-columns: 1fr; }
+  .event-card.has-preview { grid-template-columns: minmax(0, 1fr) minmax(110px, 38%); }
+}
 .channel-flag { font-size: 14px; }

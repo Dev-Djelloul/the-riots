@@ -1,4 +1,4 @@
-const SHELL_CACHE = "veille-shell-v10";
+const SHELL_CACHE = "veille-shell-v11";
 const FEED_CACHE = "veille-feed-v2";
 const SHELL_FILES = [
   "/",

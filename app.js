@@ -1029,7 +1029,8 @@ function createArticleCard(article) {
     preview.loading = "lazy";
     preview.decoding = "async";
     preview.referrerPolicy = "no-referrer";
-    preview.addEventListener("error", () => preview.remove(), { once: true });
+    preview.addEventListener("error", () => { preview.remove(); card.classList.remove("has-preview"); }, { once: true });
+    card.classList.add("has-preview");
     card.append(preview);
   }
 
