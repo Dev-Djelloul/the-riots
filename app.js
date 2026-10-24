@@ -589,7 +589,7 @@ function renderArchiveStatus() {
   note.hidden = !entry;
   note.textContent = !entry ? ""
     : entry.status === "loading" ? "Recherche des articles archivés de ce jour…"
-      : entry.status === "error" ? "Archive indisponible pour ce jour. Les archives GNews et l’historique RSS dépendent de la date, du pays et des sources indexées."
+      : entry.status === "error" ? "Impossible de joindre les archives pour ce jour. Réessaie plus tard ; les résultats dépendent des sources indexées."
         : `${entry.articles.length} article${entry.articles.length > 1 ? "s" : ""} archivé${entry.articles.length > 1 ? "s" : ""} pour ce jour.`;
 }
 

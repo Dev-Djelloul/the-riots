@@ -401,12 +401,42 @@ export function shiftDate(date, days) {
   return value.toISOString().slice(0, 10);
 }
 
-const GDELT_COUNTRIES = { France: "FR", Belgium: "BE", Spain: "ES", Italy: "IT", Germany: "DE" };
+const GDELT_COUNTRY_CODES = {
+  AL: "AL", AD: "AN", AM: "AM", AT: "AU", AZ: "AJ", BA: "BK", BE: "BE", BY: "BO",
+  BG: "BU", CH: "SZ", CY: "CY", CZ: "EZ", DE: "GM", DK: "DA", EE: "EN", ES: "SP",
+  FI: "FI", FR: "FR", GB: "UK", GE: "GG", GR: "GR", HR: "HR", HU: "HU", IE: "EI",
+  IS: "IC", IT: "IT", LI: "LS", LT: "LH", LU: "LU", LV: "LG", MC: "MN", MD: "MD",
+  ME: "MJ", MK: "MK", MT: "MT", NL: "NL", NO: "NO", PL: "PL", PT: "PO", RO: "RO",
+  RS: "RI", RU: "RS", SE: "SW", SI: "SI", SK: "LO", SM: "SM", TR: "TU", UA: "UP",
+};
+const GDELT_SOURCE_COUNTRIES = new Map([
+  ["Albania", "AL"], ["Andorra", "AD"], ["Armenia", "AM"], ["Austria", "AT"],
+  ["Azerbaijan", "AZ"], ["Bosnia", "BA"], ["Bosnia-Herzegovina", "BA"],
+  ["Bosnia and Herzegovina", "BA"],
+  ["Belgium", "BE"], ["Belarus", "BY"], ["Bulgaria", "BG"], ["Switzerland", "CH"],
+  ["Cyprus", "CY"], ["Czech Republic", "CZ"], ["Czechia", "CZ"], ["Germany", "DE"],
+  ["Denmark", "DK"], ["Estonia", "EE"], ["Spain", "ES"], ["Finland", "FI"],
+  ["France", "FR"], ["United Kingdom", "GB"], ["Georgia", "GE"], ["Greece", "GR"],
+  ["Croatia", "HR"], ["Hungary", "HU"], ["Ireland", "IE"], ["Iceland", "IS"],
+  ["Italy", "IT"], ["Liechtenstein", "LI"], ["Lithuania", "LT"], ["Luxembourg", "LU"],
+  ["Latvia", "LV"], ["Monaco", "MC"], ["Moldova", "MD"], ["Montenegro", "ME"],
+  ["North Macedonia", "MK"], ["Macedonia", "MK"], ["Macedonia, the former Yugoslav Republic of", "MK"], ["Malta", "MT"],
+  ["Netherlands", "NL"], ["Norway", "NO"], ["Poland", "PL"], ["Portugal", "PT"],
+  ["Romania", "RO"], ["Serbia", "RS"], ["Russia", "RU"], ["Sweden", "SE"],
+  ["Slovenia", "SI"], ["Slovakia", "SK"], ["San Marino", "SM"], ["Turkey", "TR"],
+  ["Türkiye", "TR"], ["Ukraine", "UA"],
+].map(([name, code]) => [normalize(name), code]));
 
-// Repli lorsque Google Actualités refuse les requêtes venant des serveurs.
-async function fetchGdeltDay(date) {
+// Codes de source GDELT (FIPS) par pays suivi ; ses résultats alimentent la recherche historique Europe.
+async function fetchGdeltDay(date, countryCodes = EUROPE_COUNTRIES.map(({ code }) => code)) {
   const compact = date.replaceAll("-", "");
-  const query = "(manifestation OR manifestants OR émeutes OR affrontements OR manifestación OR disturbios OR manifestazione OR scontri OR Demonstration OR Ausschreitungen OR betoging) (sourcecountry:FR OR sourcecountry:BE OR sourcecountry:SP OR sourcecountry:IT OR sourcecountry:GM)";
+  const countryFilters = countryCodes
+    .map((code) => GDELT_COUNTRY_CODES[code])
+    .filter(Boolean)
+    .map((code) => `sourcecountry:${code}`);
+  if (!countryFilters.length) return [];
+  const terms = "manifestation OR manifestants OR émeutes OR affrontements OR rassemblement OR protest OR demonstration OR strike OR riot OR unrest OR manifestación OR manifestantes OR disturbios OR huelga OR protesta OR manifestazione OR scontri OR sciopero OR Demonstration OR Ausschreitungen OR Streik OR betoging OR demonstratie OR staking OR διαδήλωση OR διαμαρτυρία OR απεργία OR protesto OR manifestação OR greve OR демонстрация OR забастовка OR protest OR demonstracja OR strajk OR demonstracija OR štrajk";
+  const query = `(${terms}) (${countryFilters.join(" OR ")})`;
   const url = `https://api.gdeltproject.org/api/v2/doc/doc?query=${encodeURIComponent(query)}&mode=artlist&maxrecords=250&format=json&sort=datedesc&startdatetime=${compact}000000&enddatetime=${compact}235959`;
   const response = await fetch(url, { headers: { Accept: "application/json" }, signal: AbortSignal.timeout(15000) });
   const text = await response.text();
@@ -419,8 +449,12 @@ async function fetchGdeltDay(date) {
     const link = safeArticleUrl(item.url, url);
     const title = cleanText(item.title || "");
     const match = /^(\d{4})(\d{2})(\d{2})T(\d{2})(\d{2})(\d{2})Z$/.exec(item.seendate || "");
-    const countryCode = GDELT_COUNTRIES[item.sourcecountry];
-    if (!link || !title || !match || !countryCode || seen.has(link)) continue;
+    const sourceCountry = cleanText(item.sourcecountry || "");
+    const countryCode = EUROPE_COUNTRIES.some((country) => country.code === sourceCountry)
+      ? sourceCountry
+      : GDELT_SOURCE_COUNTRIES.get(normalize(sourceCountry));
+    if (!countryCode || !countryCodes.includes(countryCode)) continue;
+    if (!link || !title || !match || seen.has(link)) continue;
     const normalized = normalize(title);
     const { relevant, candidate, matchedTerms, score } = assessRelevance(normalized);
     if (!(relevant || candidate)) continue;
@@ -527,7 +561,13 @@ async function fetchGnewsDay(date, apiKey, countryCodes = EUROPE_COUNTRIES.map((
 }
 
 // Les flux RSS des médias ne conservent que quelques jours ; les jours plus anciens passent par une recherche datée.
-export async function fetchArchiveDay(date, { ai, gnewsKey, countryCodes, gnewsOnly = false } = {}) {
+export async function fetchArchiveDay(date, {
+  ai,
+  gnewsKey,
+  countryCodes,
+  gnewsOnly = false,
+  gdeltOnly = false,
+} = {}) {
   if (gnewsKey) {
     const gnews = await fetchGnewsDay(date, gnewsKey, countryCodes);
     if (gnews.ok) {
@@ -544,6 +584,31 @@ export async function fetchArchiveDay(date, { ai, gnewsKey, countryCodes, gnewsO
     }
     if (gnewsOnly) {
       return { date, articles: [], available: 0, total: countryCodes?.length || GNEWS_QUERIES.length, errors: gnews.errors, provider: "gnews" };
+    }
+  }
+
+  if (gdeltOnly) {
+    try {
+      const rawArticles = await fetchGdeltDay(date, countryCodes);
+      const articles = (await resolveCandidates(rawArticles, ai))
+        .sort((a, b) => new Date(b.publishedAt) - new Date(a.publishedAt));
+      return {
+        date,
+        articles,
+        available: 1,
+        total: countryCodes?.length || EUROPE_COUNTRIES.length,
+        errors: [],
+        provider: "gdelt",
+      };
+    } catch (error) {
+      return {
+        date,
+        articles: [],
+        available: 0,
+        total: countryCodes?.length || EUROPE_COUNTRIES.length,
+        errors: [String(error).slice(0, 120)],
+        provider: "gdelt",
+      };
     }
   }
 
@@ -569,10 +634,12 @@ export async function fetchArchiveDay(date, { ai, gnewsKey, countryCodes, gnewsO
   let available = results.filter((result) => result.ok).length;
   let rawArticles = results.flatMap((result) => result.articles);
   const errors = results.filter((result) => result.error).map((result) => result.error);
+  let provider = "google-news-rss";
   if (available === 0) {
     try {
-      rawArticles = await fetchGdeltDay(date);
+      rawArticles = await fetchGdeltDay(date, countryCodes);
       available = 1;
+      provider = "gdelt";
     } catch (error) {
       errors.push(String(error).slice(0, 120));
     }
@@ -581,7 +648,7 @@ export async function fetchArchiveDay(date, { ai, gnewsKey, countryCodes, gnewsO
   const articles = (await resolveCandidates(rawArticles, ai))
     .filter((article) => article.publishedAt.slice(0, 10) >= shiftDate(date, -1) && article.publishedAt.slice(0, 10) <= shiftDate(date, 1))
     .sort((a, b) => new Date(b.publishedAt) - new Date(a.publishedAt));
-  return { date, articles, available, total: results.length, errors };
+  return { date, articles, available, total: results.length, errors, provider };
 }
 
 function parseArchiveFeed(xml, query, feed) {

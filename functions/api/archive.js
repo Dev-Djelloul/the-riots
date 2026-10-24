@@ -48,11 +48,9 @@ export async function onRequestGet({ request, env }) {
     articles = [...new Map([...articles, ...(Array.isArray(countryArticles) ? countryArticles : [])]
       .map((article) => [article.link || article.id, article])).values()];
   }
-  if (!articles.length && env?.HISTORY) {
+  if (!articles.length && env?.HISTORY && countryCode) {
     const days = await Promise.all([-1, 0, 1].map((offset) => readHistoryDay(env.HISTORY, shiftDate(date, offset))));
-    if (!collectedCountries) {
-      articles = days.flat().filter((article) => !countryCode || article.countryCode === countryCode);
-    }
+    if (!collectedCountries) articles = days.flat().filter((article) => article.countryCode === countryCode);
   }
   let result = {
     date,
@@ -64,19 +62,39 @@ export async function onRequestGet({ request, env }) {
     source: scheduledCountries ? "scheduled-collection" : "history",
   };
   const canQueryArchive = !Array.isArray(archivedDay) || Boolean(countryCode);
-  if (!articles.length && canQueryArchive && (!collectedCountries || (countryCode && !hasRequestedCountry))) {
+  const needsBackfill = countryCode
+    ? !hasRequestedCountry
+    : !Array.isArray(archivedDay) && scheduledCountries < EUROPE_COUNTRIES.length;
+  if (canQueryArchive && needsBackfill) {
+    const previouslyCollectedArticles = articles;
     result = {
       ...(await fetchArchiveDay(date, {
         ai: env?.AI,
         gnewsKey: countryCode ? env?.GNEWS_API_KEY : undefined,
         countryCodes: countryCode ? [countryCode] : undefined,
+        gdeltOnly: !countryCode,
       })),
       source: "external",
     };
+    if (result.available > 0 && previouslyCollectedArticles.length) {
+      result.articles = [...new Map([...previouslyCollectedArticles, ...result.articles]
+        .map((article) => [article.link || article.id, article])).values()];
+    } else if (result.available === 0 && previouslyCollectedArticles.length) {
+      result = {
+        ...result,
+        date,
+        articles: previouslyCollectedArticles,
+        available: collectedCountries,
+        total: countryCode ? 1 : EUROPE_COUNTRIES.length,
+        source: "history",
+      };
+    }
     const settled = Date.now() - parsed.getTime() > 3 * 24 * 60 * 60 * 1000;
-    if (env?.HISTORY && result.provider === "gnews" && settled && !result.errors?.length) {
+    if (env?.HISTORY && result.available > 0 && !result.errors?.length
+      && (result.provider === "gdelt" || (result.provider === "gnews" && settled))) {
       const key = countryCode ? `archive-country:${date}:${countryCode}` : archiveKey;
-      await env.HISTORY.put(key, JSON.stringify(result.articles), { expirationTtl: 400 * 24 * 60 * 60 }).catch(() => {});
+      const expirationTtl = settled ? 400 * 24 * 60 * 60 : 15 * 60;
+      await env.HISTORY.put(key, JSON.stringify(result.articles), { expirationTtl }).catch(() => {});
     }
   }
 

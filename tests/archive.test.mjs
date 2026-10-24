@@ -126,3 +126,63 @@ test("relit les résultats de la collecte européenne pays par pays depuis KV", 
   assert.equal(result.total, EUROPE_COUNTRIES.length);
   assert.equal(result.articles[0].countryCode, "GR");
 });
+
+test("recherche et mémorise une date ancienne pour tous les pays européens", async () => {
+  let calls = 0;
+  globalThis.fetch = async (input) => {
+    calls += 1;
+    const url = new URL(String(input));
+    assert.equal(url.hostname, "api.gdeltproject.org");
+    const query = url.searchParams.get("query");
+    assert.match(query, /sourcecountry:GR/);
+    assert.match(query, /sourcecountry:UK/);
+    assert.equal((query.match(/sourcecountry:/g) || []).length, EUROPE_COUNTRIES.length);
+    return Response.json({
+      articles: [
+        {
+          url: "https://example.test/athens",
+          title: "Protest in Athens, Greece",
+          seendate: "20260915T100000Z",
+          domain: "example.test",
+          sourcecountry: "Greece",
+        },
+        {
+          url: "https://example.test/london",
+          title: "Demonstration in London",
+          seendate: "20260915T110000Z",
+          domain: "example.test",
+          sourcecountry: "United Kingdom",
+        },
+      ],
+    });
+  };
+  const HISTORY = createKv();
+  const env = { HISTORY };
+
+  const firstResponse = await onRequestGet({ request: request("2026-09-15", ""), env });
+  assert.equal(firstResponse.status, 200);
+  const first = await firstResponse.json();
+  assert.equal(first.provider, "gdelt");
+  assert.equal(first.source, "external");
+  assert.equal(first.available, 1);
+  assert.equal(first.articles.length, 2);
+  assert.deepEqual(first.articles.map(({ countryCode }) => countryCode).sort(), ["GB", "GR"]);
+  assert.ok(HISTORY.store.has("archive:2026-09-15"));
+
+  const second = await (await onRequestGet({ request: request("2026-09-15", ""), env })).json();
+  assert.equal(second.source, "history");
+  assert.equal(second.articles.length, 2);
+  assert.equal(calls, 1);
+});
+
+test("renvoie une erreur explicite si aucune source ne répond à la recherche européenne", async () => {
+  globalThis.fetch = async () => new Response("indisponible", { status: 503 });
+  const response = await onRequestGet({
+    request: request("2026-09-15", ""),
+    env: { HISTORY: createKv() },
+  });
+  assert.equal(response.status, 503);
+  const result = await response.json();
+  assert.equal(result.provider, "gdelt");
+  assert.equal(result.available, 0);
+});
