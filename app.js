@@ -95,6 +95,14 @@ function createPublisherMark(sourceId, sourceName, className = "") {
     || words.slice(0, 2).map((word) => [...word][0]).join("").toLocaleUpperCase("fr");
   mark.style.setProperty("--publisher-color", identity?.color || "#626b73");
   mark.setAttribute("aria-hidden", "true");
+  if (identity && /^[a-z0-9-]+$/.test(sourceId)) {
+    const logo = document.createElement("img");
+    logo.src = `/icons/press/${sourceId}.png`;
+    logo.alt = "";
+    logo.loading = "lazy";
+    logo.decoding = "async";
+    logo.addEventListener("load", () => { mark.classList.add("has-logo"); mark.textContent = ""; mark.append(logo); }, { once: true });
+  }
   return mark;
 }
 
@@ -1012,6 +1020,18 @@ function createArticleCard(article) {
   place.append(...(flag ? [flag] : []), placeIcon, placeText);
   toggle.append(meta, title, place);
   card.append(toggle);
+
+  if (isSafeImageUrl(article.image)) {
+    const preview = document.createElement("img");
+    preview.className = "article-preview";
+    preview.src = article.image;
+    preview.alt = "";
+    preview.loading = "lazy";
+    preview.decoding = "async";
+    preview.referrerPolicy = "no-referrer";
+    preview.addEventListener("error", () => preview.remove(), { once: true });
+    card.append(preview);
+  }
 
   const excerpt = document.createElement("p");
   excerpt.className = "article-excerpt";
