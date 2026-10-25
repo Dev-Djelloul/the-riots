@@ -27,6 +27,20 @@ test("site-wide zoom is reset to 100 percent and French live streams use two col
   assert.match(stylesheet, /\.live-board:not\(\.europe-live-board\) \.live-stream-card\s*\{\s*grid-column:\s*span 6;/);
 });
 
+test("map supports touch gestures, keyboard and zoom/recenter controls", async () => {
+  const html = await readFile(new URL("index.html", root), "utf8");
+  const app = await readFile(new URL("app.js", root), "utf8");
+  const stylesheet = await readFile(new URL("styles.css", root), "utf8");
+
+  assert.match(app, /zoomControl:\s*false,\s*scrollWheelZoom:\s*true,\s*touchZoom:\s*true,\s*dragging:\s*true,\s*doubleClickZoom:\s*true,\s*keyboard:\s*true/s);
+  assert.match(app, /addButton\("\+", "Zoom avant"/);
+  assert.match(app, /addButton\("−", "Zoom arrière"/);
+  assert.match(app, /addButton\("⌂", "Recentrer sur la zone affichée", fitMapToCurrentArea\)/);
+  assert.match(html, /aria-describedby="map-gesture-hint"/);
+  assert.match(html, /PINCER À 2 DOIGTS · GLISSER POUR DÉPLACER/);
+  assert.match(stylesheet, /\.map-navigation-button:focus-visible/);
+});
+
 test("Agora translates recent articles with an owl icon and linked citations", async () => {
   const html = await readFile(new URL("index.html", root), "utf8");
   const app = await readFile(new URL("app.js", root), "utf8");
@@ -92,7 +106,7 @@ test("Agora translates recent articles with an owl icon and linked citations", a
   assert.match(api, /model: result\?\.model/);
   assert.match(app, /webSearch: agoraWebSearch\.checked/);
   assert.match(app, /archiveDate,/);
-  assert.match(worker, /veille-shell-v31/);
+  assert.match(worker, /veille-shell-v32/);
   assert.ok(worker.includes('"/favicon.ico"'));
   assert.ok(worker.includes('"/icons/owl.svg"'));
 });
@@ -166,7 +180,7 @@ test("personal alerts, saved articles and European coverage comparison are wired
   assert.match(app, /selectedStart = new Date\(`\$\{state\.selectedDate\}T00:00:00`\)/);
   assert.match(app, /navigator\.clipboard\.writeText/);
   assert.match(app, /function renderTrends\(\)/);
-  assert.match(serviceWorker, /veille-shell-v31/);
+  assert.match(serviceWorker, /veille-shell-v32/);
   assert.ok(serviceWorker.includes('"/europe-countries.js"'));
   assert.match(readme, /À lire plus tard/);
   assert.match(readme, /alertes personnalisées/i);
@@ -230,7 +244,7 @@ test("European live video cards point to official players and broadcasters", asy
   assert.match(html, /https:\/\/www\.vrt\.be\/vrtnws\/nl\/kijk\//);
   assert.match(html, /https:\/\/www\.raiplay\.it\/dirette\/rainews24/);
   assert.match(html, /https:\/\/www\.tagesschau\.de\/multimedia\/livestreams\//);
-  assert.match(serviceWorker, /veille-shell-v31/);
+  assert.match(serviceWorker, /veille-shell-v32/);
   assert.match(app, /card\.dataset\.type/);
   assert.match(html, /id="group-by"/);
   assert.match(app, /function renderGroupedFeed\(/);

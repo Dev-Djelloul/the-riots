@@ -10,6 +10,7 @@ Veille est une application web française de veille éditoriale. Elle agrège de
 - Recherche, sélection des articles par jour au calendrier (avec raccourci « Aujourd’hui » et accès à tout l’historique disponible), filtre par sujet et tri chronologique.
 - Carte Leaflet interactive couvrant les 96 départements métropolitains et le référentiel de 34 746 communes.
 - Remplissage spectral des départements mentionnés et repères communaux cliquables qui présentent les articles associés ; la commune indiquée est un lieu cité, pas nécessairement le lieu exact de l’incident.
+- Navigation cartographique au zoom tactile à deux doigts, déplacement par glissement, molette, double-clic, clavier, boutons de zoom et recentrage sur la zone France/Europe.
 - Bascule France / Europe et filtre par pays pour les 46 États membres du Conseil de l’Europe, ainsi que la Biélorussie et la Russie.
 - Drapeaux dans les vues et filtres par pays ; logos des médias (avec repli sur un monogramme coloré) dans la liste des sources et les articles, et aperçu d’image des articles quand le flux en fournit une.
 - Chronologie éditoriale regroupant les articles européens par date, ville citée et sujet détecté, avec le nombre de médias distincts.

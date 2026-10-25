@@ -314,6 +314,12 @@ h1 em, .about-dialog h2 em { color: var(--accent); font-weight: 500; }
 .mini-dot { width: 5px; height: 5px; border-radius: 50%; background: var(--accent); }
 .map-stage { position: relative; flex: 1; min-height: 0; overflow: hidden; margin-top: 5px; background: #070808; }
 .geographic-map { position: absolute; inset: 0; z-index: 0; width: 100%; height: 100%; background: #070808; }
+.map-gesture-hint { position: absolute; z-index: 500; right: 8px; bottom: 8px; padding: 5px 7px; border: 1px solid #343730; border-radius: 3px; background: #11120fd9; color: #b7b8ae; font: 7px var(--mono); letter-spacing: .04em; pointer-events: none; }
+.map-navigation-control { display: flex; flex-direction: column; overflow: hidden; border: 1px solid #343730 !important; border-radius: 4px; background: #11120ff0; box-shadow: 0 1px 5px #0008; }
+.map-navigation-button { display: block; width: 32px; height: 32px; padding: 0; border: 0; border-bottom: 1px solid #343730; background: transparent; color: #e0dfd7; cursor: pointer; font: 20px/30px var(--sans); text-align: center; touch-action: manipulation; }
+.map-navigation-button:last-child { border-bottom: 0; font-size: 17px; }
+.map-navigation-button:hover, .map-navigation-button:focus-visible { outline: none; background: #28231e; color: #f0c28f; }
+.map-navigation-button:focus-visible { box-shadow: inset 0 0 0 2px #d3a878; }
 .map-empty { position: absolute; z-index: 1000; top: 50%; left: 50%; width: min(90%, 290px); transform: translate(-50%, -50%); padding: 12px; background: #141713e8; color: #c7c7bd; text-align: center; font: 10px/1.6 var(--mono); pointer-events: none; }
 .map-empty span { color: #85877e; font: 9px/1.5 var(--sans); }
 .map-tile-warning { position: absolute; z-index: 800; top: 8px; right: 8px; max-width: 240px; padding: 7px 9px; background: #17110fe8; color: #ff9ba2; font: 8px var(--mono); }
@@ -322,7 +328,6 @@ h1 em, .about-dialog h2 em { color: var(--accent); font-weight: 500; }
 .map-panel .leaflet-tile-pane { filter: invert(1) hue-rotate(180deg) brightness(.7) contrast(.9); }
 .map-panel .leaflet-control-attribution { background: #090a0bd9; color: #a4a69e; font-size: 9px; }
 .map-panel .leaflet-control-attribution a { color: #d1d1c8; }
-.map-panel .leaflet-control-zoom a { border-color: #343730; background: #11120ff0; color: #e0dfd7; }
 .map-panel .leaflet-popup-content-wrapper, .map-panel .leaflet-popup-tip { background: #1b1e19; color: #e7e4dc; box-shadow: 0 3px 18px #0008; }
 .map-panel .leaflet-popup-content { min-width: 190px; max-width: 340px; margin: 12px 14px; font-size: 11px; }
 .map-popup strong { display: block; color: #ddb18b; font: 500 12px var(--mono); }

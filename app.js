@@ -408,7 +408,14 @@ const emptyState = document.querySelector("#empty-state");
 const refreshButton = document.querySelector("#refresh-button");
 const L = window.L;
 const map = window.L
-  ? L.map(mapElement, { scrollWheelZoom: false }).fitBounds([[41.2, -5.5], [51.3, 9.8]], { padding: [12, 12] })
+  ? L.map(mapElement, {
+    zoomControl: false,
+    scrollWheelZoom: true,
+    touchZoom: true,
+    dragging: true,
+    doubleClickZoom: true,
+    keyboard: true,
+  }).fitBounds([[41.2, -5.5], [51.3, 9.8]], { padding: [12, 12] })
   : null;
 const communeMarkerLayer = map ? L.layerGroup().addTo(map) : null;
 const franceLayer = map ? L.layerGroup().addTo(map) : null;
@@ -425,6 +432,27 @@ let geographyPromise = Promise.resolve(null);
 let mapDataWarningMode = "none";
 
 if (map) {
+  const navigationControl = L.control({ position: "topright" });
+  navigationControl.onAdd = () => {
+    const control = L.DomUtil.create("div", "leaflet-bar map-navigation-control");
+    const addButton = (label, title, onClick) => {
+      const button = L.DomUtil.create("button", "map-navigation-button", control);
+      button.type = "button";
+      button.textContent = label;
+      button.title = title;
+      button.setAttribute("aria-label", title);
+      L.DomEvent.disableClickPropagation(button);
+      L.DomEvent.on(button, "click", (event) => {
+        L.DomEvent.preventDefault(event);
+        onClick();
+      });
+    };
+    addButton("+", "Zoom avant", () => map.zoomIn());
+    addButton("−", "Zoom arrière", () => map.zoomOut());
+    addButton("⌂", "Recentrer sur la zone affichée", fitMapToCurrentArea);
+    return control;
+  };
+  navigationControl.addTo(map);
   L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
     maxZoom: 19,
     attribution: '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer">OpenStreetMap</a> contributors',
@@ -644,6 +672,17 @@ function getVisibleArticles({ ignoreCountry = false, fromSaved = false } = {}) {
       const delta = Date.parse(b.publishedAt) - Date.parse(a.publishedAt);
       return state.newestFirst ? delta : -delta;
     });
+}
+
+function fitMapToCurrentArea() {
+  if (!map) return;
+  if (state.mapMode === "europe") {
+    map.fitBounds(EUROPE_COUNTRIES.map(({ center }) => center), { padding: [12, 12], maxZoom: 5 });
+    return;
+  }
+  const layers = [...departmentLayers.values()];
+  if (layers.length) map.fitBounds(L.featureGroup(layers).getBounds().pad(0.04));
+  else map.fitBounds([[41.2, -5.5], [51.3, 9.8]], { padding: [12, 12] });
 }
 
 function render() {
@@ -1816,14 +1855,7 @@ document.querySelector("#map-mode-controls").addEventListener("click", (event) =
     item.setAttribute("aria-pressed", String(active));
   });
   render();
-  if (map) {
-    if (state.mapMode === "europe") {
-      map.fitBounds(EUROPE_COUNTRIES.map(({ center }) => center), { padding: [12, 12], maxZoom: 5 });
-    } else {
-      const layers = [...departmentLayers.values()];
-      if (layers.length) map.fitBounds(L.featureGroup(layers).getBounds().pad(0.04));
-    }
-  }
+  fitMapToCurrentArea();
 });
 
 document.querySelector("#country-filter").addEventListener("change", (event) => {
