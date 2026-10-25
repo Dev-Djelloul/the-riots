@@ -25,6 +25,28 @@ test("site-wide zoom is reset to 100 percent and French live streams use two col
   assert.match(stylesheet, /\.live-board:not\(\.europe-live-board\) \.live-stream-card\s*\{\s*grid-column:\s*span 6;/);
 });
 
+test("Agora translates recent articles with an owl icon and linked citations", async () => {
+  const html = await readFile(new URL("index.html", root), "utf8");
+  const app = await readFile(new URL("app.js", root), "utf8");
+  const stylesheet = await readFile(new URL("styles.css", root), "utf8");
+  const worker = await readFile(new URL("service-worker.js", root), "utf8");
+  const api = await readFile(new URL("functions/api/agora.js", root), "utf8");
+
+  assert.match(html, /id="agora-open"[^>]*aria-label="Ouvrir Agora/);
+  assert.match(html, /id="agora-dialog"[^>]*aria-labelledby="agora-title"/);
+  assert.match(html, /id="agora-messages"[^>]*role="log"/);
+  assert.match(html, /class="agora-owl-bubble"/);
+  assert.match(app, /fetch\("\/api\/agora"/);
+  assert.match(app, /\.slice\(0,\s*12\)/);
+  assert.match(app, /target = "_blank";\s*link\.rel = "noopener noreferrer";/);
+  assert.match(stylesheet, /\.agora-trigger\s*\{[^}]*position:\s*fixed;/s);
+  assert.match(api, /Tu es Agora/);
+  assert.match(api, /MAX_ARTICLES = 12/);
+  assert.match(api, /N’invente jamais de référence/);
+  assert.match(api, /MAX_BODY_BYTES/);
+  assert.match(worker, /veille-shell-v26/);
+});
+
 test("coverage feed spans the page below the full-width map", async () => {
   const stylesheet = await readFile(new URL("styles.css", root), "utf8");
 
@@ -94,7 +116,7 @@ test("personal alerts, saved articles and European coverage comparison are wired
   assert.match(app, /selectedStart = new Date\(`\$\{state\.selectedDate\}T00:00:00`\)/);
   assert.match(app, /navigator\.clipboard\.writeText/);
   assert.match(app, /function renderTrends\(\)/);
-  assert.match(serviceWorker, /veille-shell-v25/);
+  assert.match(serviceWorker, /veille-shell-v26/);
   assert.ok(serviceWorker.includes('"/europe-countries.js"'));
   assert.match(readme, /À lire plus tard/);
   assert.match(readme, /alertes personnalisées/i);
@@ -158,7 +180,7 @@ test("European live video cards point to official players and broadcasters", asy
   assert.match(html, /https:\/\/www\.vrt\.be\/vrtnws\/nl\/kijk\//);
   assert.match(html, /https:\/\/www\.raiplay\.it\/dirette\/rainews24/);
   assert.match(html, /https:\/\/www\.tagesschau\.de\/multimedia\/livestreams\//);
-  assert.match(serviceWorker, /veille-shell-v25/);
+  assert.match(serviceWorker, /veille-shell-v26/);
   assert.match(app, /card\.dataset\.type/);
   assert.match(html, /id="group-by"/);
   assert.match(app, /function renderGroupedFeed\(/);

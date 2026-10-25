@@ -570,6 +570,15 @@
         <svg viewBox="0 0 20 20" aria-hidden="true"><path d="m4 9 6-6 6 6M10 3v14"></path></svg>
         <span>Haut</span>
       </button>
+      <button class="agora-trigger" id="agora-open" type="button" aria-label="Ouvrir Agora, l’assistant de veille" title="Parler à Agora">
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <path class="agora-owl-bubble" d="m7.1 5.7-.4-2.3 3 1.8a8 8 0 0 1 4.6 0l3-1.8-.4 2.3a7.5 7.5 0 0 1 2.6 5.8 7.4 7.4 0 0 1-7.5 7.4H9.3L5 21v-4.5a7.4 7.4 0 0 1-2.5-5A7.5 7.5 0 0 1 7.1 5.7Z"></path>
+          <circle cx="9" cy="11" r="1.7"></circle>
+          <circle cx="15" cy="11" r="1.7"></circle>
+          <path d="m10.7 14.1 1.3 1.4 1.3-1.4"></path>
+        </svg>
+        <span>Agora</span>
+      </button>
     </div>
 
     <dialog class="about-dialog" id="about-dialog">
@@ -580,6 +589,33 @@
       <p>Cette sélection de flux ne peut pas être exhaustive : des médias, publications sans RSS et contenus sociaux peuvent la compléter, et la durée d’archivage dépend de chaque éditeur. Le flux du Parisien n’inclut pas l’heure de publication ; sa date est estimée d’après l’URL et signalée comme telle. Les catégories et regroupements sont automatiques et fondés sur les mots-clés des articles. La carte France couvre les 96 départements métropolitains ; la vue Europe affiche les contours généralisés des 48 pays suivis. Si le jeu de contours mondial n’est pas accessible, les limites disponibles sont indiquées et les autres pays sont signalés par des repères approximatifs. Les lieux affichés sont ceux mentionnés dans les articles ; les repères de villes indiquent leur centre approximatif. Les couleurs montrent la répartition de la couverture éditoriale, sans classement d’intensité. Manifestations et émeutes sont des catégories distinctes.</p>
       <div class="dialog-rule"></div>
       <span class="dialog-foot">INFORMER · SOURCER · CONTEXTUALISER</span>
+    </dialog>
+    <dialog class="agora-dialog" id="agora-dialog" aria-labelledby="agora-title" aria-describedby="agora-disclaimer">
+      <header class="agora-header">
+        <div class="agora-heading">
+          <span class="agora-avatar" aria-hidden="true">
+            <svg viewBox="0 0 24 24"><path d="m7.1 5.7-.4-2.3 3 1.8a8 8 0 0 1 4.6 0l3-1.8-.4 2.3a7.5 7.5 0 0 1 2.6 5.8 7.4 7.4 0 0 1-7.5 7.4H9.3L5 21v-4.5a7.4 7.4 0 0 1-2.5-5A7.5 7.5 0 0 1 7.1 5.7Z"></path><circle cx="9" cy="11" r="1.7"></circle><circle cx="15" cy="11" r="1.7"></circle><path d="m10.7 14.1 1.3 1.4 1.3-1.4"></path></svg>
+          </span>
+          <div>
+            <span class="section-kicker">L’ASSISTANT DE VEILLE</span>
+            <h2 id="agora-title">Agora</h2>
+          </div>
+        </div>
+        <div class="agora-header-actions">
+          <button id="agora-refresh" type="button" aria-label="Résumer à nouveau les derniers articles" title="Nouvelle synthèse">↻</button>
+          <button class="dialog-close" id="agora-close" type="button" aria-label="Fermer Agora">×</button>
+        </div>
+      </header>
+      <p class="agora-intro" id="agora-disclaimer">Je traduis et résume les articles récents chargés par Veille. Mes réponses s’appuient uniquement sur ces sources ; vérifie toujours les articles originaux.</p>
+      <div class="agora-messages" id="agora-messages" role="log" aria-live="polite" aria-relevant="additions"></div>
+      <form class="agora-form" id="agora-form">
+        <label class="visually-hidden" for="agora-question">Question à Agora</label>
+        <textarea id="agora-question" name="question" maxlength="500" rows="2" placeholder="Pose une question sur les derniers événements…" required></textarea>
+        <button id="agora-send" type="submit" aria-label="Envoyer la question">
+          <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M3 10 17 3l-4 14-3-6-7-1Zm7 1 7-8"></path></svg>
+        </button>
+      </form>
+      <div class="agora-footer"><span id="agora-context-count">En attente des derniers articles</span><span>OpenRouter · Réponses IA</span></div>
     </dialog>
     <script
       src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"

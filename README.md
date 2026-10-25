@@ -19,6 +19,7 @@ Veille est une application web française de veille éditoriale. Elle agrège de
 - Graphique de tendances quotidiennes par pays, filtrable par sujet et sur 7 ou 30 jours. Il s’appuie sur les articles actuellement disponibles, pas sur une archive exhaustive.
 - Liste « À lire plus tard » persistante dans le navigateur, conservée localement même après la disparition d’un article des flux.
 - Alertes personnalisées par ville/mot-clé et pays facultatif, avec notifications navigateur sur action explicite. Les alertes se déclenchent lorsque Veille est ouverte et récupère de nouveaux articles ; elles ne fonctionnent pas en arrière-plan. Sur iPhone/iPad, les notifications web nécessitent d’ajouter Veille à l’écran d’accueil et de l’ouvrir depuis son icône.
+- Agora, assistant IA de veille qui traduit les articles récents, en fait une synthèse ou répond à une question à partir des 12 articles les plus récents chargés ; chaque réponse peut renvoyer aux sources citées. Les réponses passent par OpenRouter et nécessitent le secret Cloudflare Pages `OPENROUTER_API_KEY`. Agora ne consulte ni le Web ni une archive et peut se tromper : les articles originaux restent la référence.
 - Recherche quotidienne GNews par pays et dans les langues disponibles ; titres et extraits affichés dans leur langue d’origine, sans traduction automatique.
 - Fil visuel de jusqu’à six articles illustrés par une image fournie dans leur flux RSS.
 - Lecteurs vidéo officiels chargés au clic et liens de secours vers les chaînes ou sites des médias.
@@ -76,6 +77,8 @@ Le Worker de collecte est configuré séparément de Pages (`wrangler.europe.tom
 
 Le Worker et Pages doivent utiliser le même compte Cloudflare pour partager le KV `HISTORY`. Les journaux du Worker indiquent les pays dont la requête a échoué ; une collecte partielle reste accessible sans effacer les résultats des autres pays.
 
+Pour activer Agora en production, ajouter la clé OpenRouter aux secrets du projet Pages `the-riots` via `wrangler pages secret put OPENROUTER_API_KEY --project-name the-riots` ; Wrangler la demande de façon interactive. Ne la place pas dans le dépôt, une commande contenant sa valeur ou le navigateur.
+
 ### Vidéos en direct
 
 Les lecteurs des chaînes suivantes ne sont créés qu’après un clic :
@@ -96,6 +99,7 @@ La section **Directs européens** intègre les lecteurs YouTube officiels de DW 
 - `functions/api/veille.js` récupère les flux RSS et Atom, repère les mots-clés et les lieux côté serveur.
 - `functions/api/social.js` expose les statuts des plateformes et, si configuré, les recherches de chaînes Twitch en direct.
 - `functions/api/veille.js` filtre les articles par règles (termes sûrs, termes ambigus avec contexte, exclusions). Les cas ambigus (jusqu’à 20 par requête) sont tranchés par Workers AI via le binding `AI` déclaré dans `wrangler.toml` ; sans binding ou en cas d’erreur, ils sont écartés.
+- `functions/api/agora.js` transmet à OpenRouter (`openai/gpt-4o-mini`) un lot limité d’articles récents fourni par l’interface et restitue les références vers leurs sources d’origine ; la clé reste un secret côté serveur et l’endpoint valide l’origine, les URL, la taille du corps et le nombre d’articles.
 - `app.js` gère l’interface, les articles, la carte et les lecteurs.
 - `geography.js` rapproche les articles des données géographiques.
 - `service-worker.js`, `manifest.webmanifest` et les icônes `icons/` fournissent les fonctions PWA.

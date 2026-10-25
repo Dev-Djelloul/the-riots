@@ -2187,6 +2187,119 @@ aboutDialog.addEventListener("click", (event) => {
   if (event.target === aboutDialog) aboutDialog.close();
 });
 
+const agoraDialog = document.querySelector("#agora-dialog");
+const agoraMessages = document.querySelector("#agora-messages");
+const agoraQuestion = document.querySelector("#agora-question");
+const agoraSend = document.querySelector("#agora-send");
+const agoraRefresh = document.querySelector("#agora-refresh");
+const agoraContextCount = document.querySelector("#agora-context-count");
+const agoraConversation = [];
+let agoraBusy = false;
+
+function addAgoraMessage(role, text, sources = [], error = false) {
+  const message = document.createElement("div");
+  message.className = `agora-message ${role}${error ? " error" : ""}`;
+  message.textContent = text;
+  if (sources.length) {
+    const sourceList = document.createElement("div");
+    sourceList.className = "agora-message-sources";
+    for (const source of sources) {
+      const link = document.createElement("a");
+      link.href = source.link;
+      link.target = "_blank";
+      link.rel = "noopener noreferrer";
+      link.textContent = `[${source.reference}] ${source.sourceName} · ${source.title}`;
+      sourceList.append(link);
+    }
+    message.append(sourceList);
+  }
+  agoraMessages.append(message);
+  agoraMessages.scrollTop = agoraMessages.scrollHeight;
+  return message;
+}
+
+async function askAgora(question = "") {
+  if (agoraBusy) return;
+  const articles = [...state.articles]
+    .filter((article) => article.title && article.link && Number.isFinite(Date.parse(article.publishedAt)))
+    .sort((a, b) => Date.parse(b.publishedAt) - Date.parse(a.publishedAt))
+    .slice(0, 12)
+    .map((article) => ({
+      title: article.title,
+      description: article.description || "",
+      link: article.link,
+      publishedAt: article.publishedAt,
+      sourceName: article.sourceName,
+      country: COUNTRY_NAMES[article.countryCode] || (article.countryCode === "FR" ? "France" : ""),
+      city: (article.location?.places || []).slice(0, 3).map((place) => place.name).join(", "),
+    }));
+  agoraContextCount.textContent = `${articles.length} article${articles.length === 1 ? "" : "s"} récent${articles.length === 1 ? "" : "s"} transmis`;
+  if (!articles.length) {
+    addAgoraMessage("assistant", "Je n’ai pas encore reçu d’articles à traduire. Actualise les flux Veille puis réessaie.", [], true);
+    return;
+  }
+
+  const userQuestion = question.trim();
+  if (userQuestion) addAgoraMessage("user", userQuestion);
+  const loading = addAgoraMessage("assistant", "Je lis les derniers articles…");
+  loading.classList.add("agora-loading");
+  agoraBusy = true;
+  agoraSend.disabled = true;
+  agoraRefresh.disabled = true;
+  agoraQuestion.disabled = true;
+  try {
+    const response = await fetch("/api/agora", {
+      method: "POST",
+      headers: { Accept: "application/json", "Content-Type": "application/json" },
+      body: JSON.stringify({
+        articles,
+        question: userQuestion,
+        conversation: agoraConversation.slice(-6).map(({ role, content }) => ({ role, content: content.slice(0, 1_200) })),
+      }),
+    });
+    const payload = await response.json();
+    if (!response.ok) throw new Error(payload.error || `Réponse inattendue (${response.status})`);
+    loading.remove();
+    addAgoraMessage("assistant", payload.answer, Array.isArray(payload.sources) ? payload.sources : []);
+    if (userQuestion) agoraConversation.push({ role: "user", content: userQuestion });
+    agoraConversation.push({ role: "assistant", content: payload.answer });
+    if (agoraConversation.length > 12) agoraConversation.splice(0, agoraConversation.length - 12);
+  } catch (error) {
+    loading.remove();
+    console.error("Agora n’a pas pu préparer la réponse.", error);
+    addAgoraMessage("assistant", error.message || "Agora n’a pas pu préparer la réponse. Réessaie dans un instant.", [], true);
+  } finally {
+    agoraBusy = false;
+    agoraSend.disabled = false;
+    agoraRefresh.disabled = false;
+    agoraQuestion.disabled = false;
+    agoraQuestion.focus();
+  }
+}
+
+document.querySelector("#agora-open").addEventListener("click", () => {
+  agoraDialog.showModal();
+  if (agoraMessages.childElementCount === 0) askAgora();
+  else agoraQuestion.focus();
+});
+document.querySelector("#agora-close").addEventListener("click", () => agoraDialog.close());
+agoraDialog.addEventListener("click", (event) => {
+  if (event.target === agoraDialog) agoraDialog.close();
+});
+agoraRefresh.addEventListener("click", () => {
+  if (agoraBusy) return;
+  agoraConversation.length = 0;
+  agoraMessages.replaceChildren();
+  askAgora();
+});
+document.querySelector("#agora-form").addEventListener("submit", (event) => {
+  event.preventDefault();
+  const question = agoraQuestion.value.trim();
+  if (!question || agoraBusy) return;
+  agoraQuestion.value = "";
+  askAgora(question);
+});
+
 document.addEventListener("keydown", (event) => {
   if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "k") {
     event.preventDefault();
