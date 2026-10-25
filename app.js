@@ -2194,6 +2194,10 @@ const agoraSend = document.querySelector("#agora-send");
 const agoraRefresh = document.querySelector("#agora-refresh");
 const agoraQuickPrompts = document.querySelector("#agora-quick-prompts");
 const agoraContextCount = document.querySelector("#agora-context-count");
+const agoraWebSearch = document.querySelector("#agora-web-search");
+const agoraArchiveToggle = document.querySelector("#agora-archive-toggle");
+const agoraArchiveDate = document.querySelector("#agora-archive-date");
+const agoraModelName = document.querySelector("#agora-model-name");
 const agoraConversation = [];
 let agoraBusy = false;
 
@@ -2240,62 +2244,82 @@ function addAgoraMessage(role, text, sources = [], error = false) {
 }
 
 function appendAgoraInline(container, text, sourcesByReference) {
-  const tokens = /\*\*([^*\n]{1,300})\*\*|__([^_\n]{1,300})__|\*(?!\s)([^*\n]+?)\*(?!\*)|_([^_\n]+?)_|\[(\d{1,2})\]/g;
+  const tokens = /\[([^\]\n]{1,200})\]\((https?:\/\/[^)\s]{1,2000})\)|\*\*([^*\n]{1,300})\*\*|__([^_\n]{1,300})__|\*(?!\s)([^*\n]+?)\*(?!\*)|_([^_\n]+?)_|\[(\d{1,2})\]/g;
   let cursor = 0;
   for (const match of text.matchAll(tokens)) {
     container.append(document.createTextNode(text.slice(cursor, match.index).replace(/[*_`]/g, "")));
-    const emphasized = match[1] || match[2] || match[3] || match[4];
-    if (emphasized) {
-      const highlight = document.createElement("strong");
-      highlight.className = "agora-press-highlight";
-      highlight.textContent = emphasized;
-      container.append(highlight);
-    } else {
-      const source = sourcesByReference.get(Number(match[5]));
-      if (!source) {
-        container.append(document.createTextNode(match[0]));
-      } else {
-        const citation = document.createElement("span");
-        citation.className = "agora-citation";
-        const reference = document.createElement("a");
-        reference.className = "agora-citation-link";
-        reference.href = source.link;
-        reference.target = "_blank";
-        reference.rel = "noopener noreferrer";
-        reference.textContent = `[${source.reference}]`;
-        reference.setAttribute("aria-label", `Ouvrir l’article ${source.title} dans un nouvel onglet`);
-
-        const preview = document.createElement("span");
-        preview.className = "agora-citation-preview";
-        if (source.image) {
-          const imageLink = document.createElement("a");
-          imageLink.href = source.link;
-          imageLink.target = "_blank";
-          imageLink.rel = "noopener noreferrer";
-          imageLink.tabIndex = -1;
-          const image = document.createElement("img");
-          image.src = source.image;
-          image.alt = `Aperçu de l’article « ${source.title} »`;
-          image.loading = "lazy";
-          image.referrerPolicy = "no-referrer";
-          imageLink.append(image);
-          preview.append(imageLink);
+    if (match[1] && match[2]) {
+      try {
+        const url = new URL(match[2]);
+        if (["http:", "https:"].includes(url.protocol) && !url.username && !url.password) {
+          const link = document.createElement("a");
+          link.className = "agora-web-link";
+          link.href = url.href;
+          link.target = "_blank";
+          link.rel = "noopener noreferrer";
+          link.textContent = match[1];
+          container.append(link);
+        } else {
+          container.append(document.createTextNode(match[1]));
         }
-        const meta = document.createElement("span");
-        meta.className = "agora-preview-source";
-        meta.textContent = source.sourceName;
-        const titleLink = document.createElement("a");
-        titleLink.className = "agora-preview-title";
-        titleLink.href = source.link;
-        titleLink.target = "_blank";
-        titleLink.rel = "noopener noreferrer";
-        titleLink.textContent = source.title;
-        preview.append(meta, titleLink);
-        citation.append(reference, preview);
-        citation.addEventListener("pointerenter", () => positionAgoraPreview(citation, preview));
-        citation.addEventListener("focusin", () => positionAgoraPreview(citation, preview));
-        container.append(citation);
+      } catch {
+        container.append(document.createTextNode(match[1]));
       }
+    } else {
+      const emphasized = match[3] || match[4] || match[5] || match[6];
+      if (emphasized) {
+        const highlight = document.createElement("strong");
+        highlight.className = "agora-press-highlight";
+        highlight.textContent = emphasized;
+        container.append(highlight);
+      } else {
+        const source = sourcesByReference.get(Number(match[7]));
+        if (!source) {
+          container.append(document.createTextNode(match[0]));
+        } else {
+          const citation = document.createElement("span");
+          citation.className = "agora-citation";
+          const reference = document.createElement("a");
+          reference.className = "agora-citation-link";
+          reference.href = source.link;
+          reference.target = "_blank";
+          reference.rel = "noopener noreferrer";
+          reference.textContent = `[${source.reference}]`;
+          reference.setAttribute("aria-label", `Ouvrir l’article ${source.title} dans un nouvel onglet`);
+
+          const preview = document.createElement("span");
+          preview.className = "agora-citation-preview";
+          if (source.image) {
+            const imageLink = document.createElement("a");
+            imageLink.href = source.link;
+            imageLink.target = "_blank";
+            imageLink.rel = "noopener noreferrer";
+            imageLink.tabIndex = -1;
+            const image = document.createElement("img");
+            image.src = source.image;
+            image.alt = `Aperçu de l’article « ${source.title} »`;
+            image.loading = "lazy";
+            image.referrerPolicy = "no-referrer";
+            imageLink.append(image);
+            preview.append(imageLink);
+          }
+          const meta = document.createElement("span");
+          meta.className = "agora-preview-source";
+          meta.textContent = source.sourceName;
+          const titleLink = document.createElement("a");
+          titleLink.className = "agora-preview-title";
+          titleLink.href = source.link;
+          titleLink.target = "_blank";
+          titleLink.rel = "noopener noreferrer";
+          titleLink.textContent = source.title;
+          preview.append(meta, titleLink);
+          citation.append(reference, preview);
+          citation.addEventListener("pointerenter", () => positionAgoraPreview(citation, preview));
+          citation.addEventListener("focusin", () => positionAgoraPreview(citation, preview));
+          container.append(citation);
+        }
+      }
+    }
     }
     cursor = match.index + match[0].length;
   }
@@ -2316,6 +2340,7 @@ function positionAgoraPreview(citation, preview) {
 
 async function askAgora(question = "") {
   if (agoraBusy) return;
+  const archiveDate = agoraArchiveToggle.checked ? agoraArchiveDate.value : "";
   const articles = [...state.articles]
     .filter((article) => article.title && article.link && Number.isFinite(Date.parse(article.publishedAt)))
     .sort((a, b) => Date.parse(b.publishedAt) - Date.parse(a.publishedAt))
@@ -2331,14 +2356,19 @@ async function askAgora(question = "") {
       city: (article.location?.places || []).slice(0, 3).map((place) => place.name).join(", "),
     }));
   agoraContextCount.textContent = `${articles.length} article${articles.length === 1 ? "" : "s"} récent${articles.length === 1 ? "" : "s"} transmis`;
-  if (!articles.length) {
-    addAgoraMessage("assistant", "Je n’ai pas encore reçu d’articles à traduire. Actualise les flux Veille puis réessaie.", [], true);
+  if (!articles.length && !archiveDate && !agoraWebSearch.checked) {
+    addAgoraMessage("assistant", "Je n’ai pas encore reçu d’articles à traduire. Actualise les flux Veille ou choisis une date d’archive puis réessaie.", [], true);
+    return;
+  }
+  if (agoraArchiveToggle.checked && !archiveDate) {
+    addAgoraMessage("assistant", "Choisis une date précise pour consulter les archives.", [], true);
+    agoraArchiveDate.focus();
     return;
   }
 
   const userQuestion = question.trim();
   if (userQuestion) addAgoraMessage("user", userQuestion);
-  const loading = addAgoraMessage("assistant", "Je lis les derniers articles…");
+  const loading = addAgoraMessage("assistant", archiveDate ? `Je consulte les articles et l’archive du ${archiveDate}…` : "Je lis les derniers articles…");
   loading.classList.add("agora-loading");
   agoraBusy = true;
   agoraSend.disabled = true;
@@ -2352,6 +2382,8 @@ async function askAgora(question = "") {
       body: JSON.stringify({
         articles,
         question: userQuestion,
+        webSearch: agoraWebSearch.checked,
+        archiveDate,
         conversation: agoraConversation.slice(-6).map(({ role, content }) => ({ role, content: content.slice(0, 1_200) })),
       }),
     });
@@ -2359,6 +2391,7 @@ async function askAgora(question = "") {
     if (!response.ok) throw new Error(payload.error || `Réponse inattendue (${response.status})`);
     loading.remove();
     addAgoraMessage("assistant", payload.answer, Array.isArray(payload.sources) ? payload.sources : []);
+    if (typeof payload.model === "string") agoraModelName.textContent = payload.model;
     if (userQuestion) agoraConversation.push({ role: "user", content: userQuestion });
     agoraConversation.push({ role: "assistant", content: payload.answer });
     if (agoraConversation.length > 12) agoraConversation.splice(0, agoraConversation.length - 12);
@@ -2377,6 +2410,7 @@ async function askAgora(question = "") {
 }
 
 document.querySelector("#agora-open").addEventListener("click", () => {
+  if (!agoraArchiveDate.value && state.selectedDate) agoraArchiveDate.value = state.selectedDate;
   agoraDialog.showModal();
   if (agoraMessages.childElementCount === 0) askAgora();
   else agoraQuestion.focus();
@@ -2402,6 +2436,13 @@ agoraQuickPrompts.addEventListener("click", (event) => {
   const button = event.target.closest("[data-agora-prompt]");
   if (!button || agoraBusy) return;
   askAgora(button.dataset.agoraPrompt);
+});
+agoraArchiveToggle.addEventListener("change", () => {
+  agoraArchiveDate.disabled = !agoraArchiveToggle.checked;
+  if (agoraArchiveToggle.checked && !agoraArchiveDate.value && state.selectedDate) {
+    agoraArchiveDate.value = state.selectedDate;
+  }
+  if (agoraArchiveToggle.checked) agoraArchiveDate.focus();
 });
 
 document.addEventListener("keydown", (event) => {

@@ -601,7 +601,12 @@
           <button class="dialog-close" id="agora-close" type="button" aria-label="Fermer Agora">×</button>
         </div>
       </header>
-      <p class="agora-intro" id="agora-disclaimer">Je traduis et résume les articles récents chargés par Veille. Mes réponses s’appuient uniquement sur ces sources ; vérifie toujours les articles originaux.</p>
+      <p class="agora-intro" id="agora-disclaimer">Pose une question libre, demande une recherche Web ou sélectionne une date d’archive. Les résultats sont sourcés ; vérifie toujours les articles originaux.</p>
+      <div class="agora-research-options">
+        <label class="agora-research-toggle"><input id="agora-web-search" type="checkbox" checked><span>Recherche Web</span><small>peut entraîner des frais OpenRouter</small></label>
+        <label class="agora-research-toggle"><input id="agora-archive-toggle" type="checkbox"><span>Consulter une archive</span></label>
+        <label class="agora-archive-date"><span class="visually-hidden">Date à consulter dans les archives</span><input id="agora-archive-date" type="date" disabled></label>
+      </div>
       <div class="agora-messages" id="agora-messages" role="log" aria-live="polite" aria-relevant="additions"></div>
       <div class="agora-quick-prompts" id="agora-quick-prompts" role="group" aria-label="Suggestions de questions">
         <button type="button" data-agora-prompt="Fais un briefing des cinq principaux événements, en français, avec les sources.">Briefing express</button>
@@ -617,7 +622,7 @@
           <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M3 10 17 3l-4 14-3-6-7-1Zm7 1 7-8"></path></svg>
         </button>
       </form>
-      <div class="agora-footer"><span id="agora-context-count">En attente des derniers articles</span><a href="https://openrouter.ai/openai/gpt-4o-mini" target="_blank" rel="noopener noreferrer" aria-label="Voir le modèle GPT-4o mini sur OpenRouter">OpenRouter · GPT-4o mini ↗</a></div>
+      <div class="agora-footer"><span id="agora-context-count">En attente des derniers articles</span><span class="agora-model"><span id="agora-model-name">Modèle choisi automatiquement</span> · <a href="https://openrouter.ai/" target="_blank" rel="noopener noreferrer" aria-label="Découvrir les modèles sur OpenRouter">OpenRouter ↗</a></span></div>
     </dialog>
     <script
       src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"

@@ -459,6 +459,12 @@ h1 em, .about-dialog h2 em { color: var(--accent); font-weight: 500; }
 .agora-header-actions button:hover { border-color: #514b40; background: #25251f; color: #f0c7a1; }
 .agora-dialog .dialog-close { position: static; font-size: 23px; }
 .agora-intro { margin: 0; padding: 10px 18px; border-bottom: 1px solid #282a24; color: #999b90; font-size: 10px; line-height: 1.5; }
+.agora-research-options { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; padding: 9px 18px; border-bottom: 1px solid #282a24; background: #171814; }
+.agora-research-toggle { display: inline-flex; align-items: center; gap: 6px; color: #c7c1b3; cursor: pointer; font-size: 9px; }
+.agora-research-toggle input { accent-color: #d4a878; }
+.agora-research-toggle small { color: #77786f; font: 8px var(--mono); }
+.agora-archive-date input { width: 126px; padding: 4px 6px; border: 1px solid #454238; border-radius: 4px; background: #1d1e19; color: #ddd5c7; color-scheme: dark; font: 9px var(--mono); }
+.agora-archive-date input:disabled { opacity: .45; }
 .agora-messages { display: flex; flex: 1; flex-direction: column; gap: 12px; min-height: 180px; max-height: 48vh; overflow-y: auto; padding: 15px 18px; scrollbar-color: #51483b #171815; scrollbar-width: thin; }
 .agora-message { max-width: 92%; padding: 10px 12px; border: 1px solid #30322c; border-radius: 5px 12px 12px 12px; background: #1b1d18; color: #d5d4cb; font-size: 11px; line-height: 1.6; white-space: pre-wrap; overflow-wrap: anywhere; }
 .agora-message.assistant > p { margin: 0 0 8px; }
@@ -467,6 +473,8 @@ h1 em, .about-dialog h2 em { color: var(--accent); font-weight: 500; }
 .agora-response-list { display: grid; gap: 7px; margin: 2px 0 9px; padding-left: 20px; }
 .agora-response-list li { padding-left: 2px; }
 .agora-response-spacer { height: 5px; margin: 0; }
+.agora-web-link { color: #9cc9e0; text-decoration-color: #58788a; text-underline-offset: 2px; }
+.agora-web-link:hover, .agora-web-link:focus-visible { color: #d8f0ff; text-decoration-color: currentColor; }
 .agora-message.user { align-self: end; border-color: #514333; border-radius: 12px 5px 12px 12px; background: #29241d; color: #ead5bd; }
 .agora-message.assistant { align-self: start; }
 .agora-message.error { border-color: #60383a; color: #ff9ba2; }
@@ -500,8 +508,10 @@ h1 em, .about-dialog h2 em { color: var(--accent); font-weight: 500; }
 .agora-form button:disabled, .agora-header-actions button:disabled { cursor: wait; opacity: .55; }
 .agora-form button svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; }
 .agora-footer { display: flex; justify-content: space-between; gap: 10px; padding: 9px 18px 12px; color: #73766d; font: 8px var(--mono); }
-.agora-footer > a { color: #b7a48e; text-align: right; text-decoration-color: #635444; text-underline-offset: 2px; }
-.agora-footer > a:hover, .agora-footer > a:focus-visible { color: #f0c28f; text-decoration-color: currentColor; }
+.agora-model { text-align: right; }
+.agora-model > span { color: #929083; }
+.agora-model a { color: #b7a48e; text-decoration-color: #635444; text-underline-offset: 2px; }
+.agora-model a:hover, .agora-model a:focus-visible { color: #f0c28f; text-decoration-color: currentColor; }
 
 @media (max-width: 1120px) {
   .app-shell { padding: 0 28px; }

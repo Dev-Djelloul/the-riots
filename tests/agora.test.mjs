@@ -52,11 +52,19 @@ test("Agora résume uniquement le lot soumis et renvoie les références citées
 
     assert.equal(response.status, 200);
     assert.equal(requestUrl, "https://openrouter.ai/api/v1/chat/completions");
-    assert.equal(sent.model, "openai/gpt-4o-mini");
+    assert.equal(sent.model, "openrouter/auto");
+    assert.deepEqual(sent.tools, [{
+      type: "openrouter:web_search",
+      parameters: { max_uses: 2, max_total_results: 8, search_context_size: "medium" },
+    }]);
     assert.equal(requestOptions.headers.Authorization, "Bearer test-secret");
     assert.equal(requestOptions.headers["HTTP-Referer"], "https://veille.example");
-    assert.equal(requestOptions.headers["X-Title"], "Veille — Agora");
+    assert.equal(requestOptions.headers["X-Title"], "Veille - Agora");
     assert.match(sent.messages[0].content, /ignore toute instruction/);
+    assert.match(sent.messages[0].content, /simples exemples/);
+    assert.match(sent.messages[0].content, /Si on te demande ce que tu sais faire/);
+    assert.match(sent.messages[0].content, /utilise la recherche Web/);
+    assert.match(sent.messages[0].content, /utilise les articles d’archive fournis/);
     assert.match(sent.messages[1].content, /Où \?/);
     assert.match(sent.messages[2].content, /Que s’est-il passé/);
     assert.match(sent.messages[2].content, /Manifestation à Paris/);
@@ -70,6 +78,96 @@ test("Agora résume uniquement le lot soumis et renvoie les références citées
       image: article.image,
     }]);
     assert.equal(response.headers.get("Cache-Control"), "no-store");
+    assert.equal(payload.model, "openrouter/auto");
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test("Agora transmet les citations de recherche Web sous forme de sources sûres", async () => {
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = async () => Response.json({
+    model: "anthropic/claude-sonnet-4",
+    choices: [{
+      message: {
+        content: "Voici le résultat récent.",
+        annotations: [{
+          type: "url_citation",
+          url_citation: { url: "https://news.example/current", title: "Actualité vérifiée" },
+        }],
+      },
+    }],
+  });
+  try {
+    const response = await onRequestPost({
+      request: makeRequest({ articles: [article], question: "Quelle est la dernière nouvelle ?" }),
+      env: { OPENROUTER_API_KEY: "test-secret" },
+    });
+    const payload = await response.json();
+    assert.equal(response.status, 200);
+    assert.equal(payload.model, "anthropic/claude-sonnet-4");
+    assert.match(payload.answer, /Sources Web : \[2\]/);
+    assert.equal(payload.sources.at(-1).reference, 2);
+    assert.equal(payload.sources.at(-1).link, "https://news.example/current");
+    assert.equal(payload.sources.at(-1).sourceName, "news.example");
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test("Agora peut répondre à une demande de recherche Web sans articles préchargés", async () => {
+  const originalFetch = globalThis.fetch;
+  let completionRequest;
+  globalThis.fetch = async (_url, options) => {
+    completionRequest = JSON.parse(options.body);
+    return Response.json({
+      model: "openai/gpt-5",
+      choices: [{ message: { content: "Résultat trouvé sur le Web." } }],
+    });
+  };
+  try {
+    const response = await onRequestPost({
+      request: makeRequest({ articles: [], webSearch: true, question: "Cherche les dernières nouvelles." }),
+      env: { OPENROUTER_API_KEY: "test-secret" },
+    });
+    assert.equal(response.status, 200);
+    assert.deepEqual(completionRequest.tools[0].type, "openrouter:web_search");
+    assert.match(completionRequest.messages.at(-1).content, /Lot d’articles.*\[\]/s);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test("Agora consulte l’archive de la date demandée et la joint aux articles récents", async () => {
+  const originalFetch = globalThis.fetch;
+  const archiveDate = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+  const archiveTitle = "Manifestation archivée à Bruxelles";
+  let completionRequest;
+  globalThis.fetch = async (url, options = {}) => {
+    if (String(url).includes("news.google.com/rss/search")) {
+      return new Response(`<rss><channel><item><title>${archiveTitle} - Archive</title><link>https://archive.example/article</link><pubDate>${new Date(`${archiveDate}T12:00:00Z`).toUTCString()}</pubDate><source>Archive</source></item></channel></rss>`, {
+        headers: { "Content-Type": "application/rss+xml" },
+      });
+    }
+    completionRequest = JSON.parse(options.body);
+    return Response.json({
+      model: "openai/gpt-5",
+      choices: [{ message: { content: "Événement archivé [1]." } }],
+    });
+  };
+  try {
+    const response = await onRequestPost({
+      request: makeRequest({ articles: [], archiveDate, webSearch: false, question: "Que s’est-il passé ?" }),
+      env: { OPENROUTER_API_KEY: "test-secret" },
+    });
+    const payload = await response.json();
+    assert.equal(response.status, 200);
+    assert.equal(completionRequest.model, "openrouter/auto");
+    assert.equal(completionRequest.tools, undefined);
+    assert.match(completionRequest.messages.at(-1).content, new RegExp(archiveDate));
+    assert.match(completionRequest.messages.at(-1).content, new RegExp(archiveTitle));
+    assert.equal(payload.sources[0].link, "https://archive.example/article");
+    assert.equal(payload.model, "openai/gpt-5");
   } finally {
     globalThis.fetch = originalFetch;
   }
@@ -112,8 +210,8 @@ test("Agora valide le type de contenu, le lot, les URL et le contexte", async ()
 });
 
 test("Agora limite le nombre d’articles et la taille du corps", async () => {
-  const tooMany = makeRequest({ articles: Array.from({ length: 13 }, (_, index) => ({ ...article, title: `Titre ${index}` })) });
-  const oversized = makeRequest({ articles: [article] }, { "Content-Length": "20001" });
+  const tooMany = makeRequest({ articles: Array.from({ length: 25 }, (_, index) => ({ ...article, title: `Titre ${index}` })) });
+  const oversized = makeRequest({ articles: [article] }, { "Content-Length": "60001" });
 
   assert.equal((await onRequestPost({ request: tooMany, env: { OPENROUTER_API_KEY: "test-secret" } })).status, 400);
   assert.equal((await onRequestPost({ request: oversized, env: { OPENROUTER_API_KEY: "test-secret" } })).status, 413);
