@@ -1,5 +1,12 @@
 const LOCATION_CUES = new Set(["a", "au", "aux", "dans", "en"]);
 const COMMON_WORD_COMMUNES = new Set(["vue", "nice", "orange", "sens", "romans", "gap", "bar", "vie", "belle", "salles", "celles", "marche", "arc", "vire", "long", "chat", "mars"]);
+const EVENT_TERMS = [
+  "manifestation", "manifestant", "rassemblement", "cortege", "mobilisation", "greve",
+  "emeute", "affrontement", "heurts", "tension", "violence", "degradation", "incendie",
+  "protest", "demonstration", "strike", "riot", "clash", "unrest",
+  "disturbio", "huelga", "manifestacion", "protesta", "sciopero", "scontri",
+  "manifestazione", "streik", "ausschreitungen", "krawalle", "betoging", "demonstratie",
+];
 
 function normalizeName(value) {
   return value.toLocaleLowerCase("fr")
@@ -34,6 +41,11 @@ function hasTitleDatelineCue(text, name) {
     .map((part) => part.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"))
     .join("[\\s'’`-]+");
   return new RegExp(`^\\s*${escapedName}\\s*(?:[:,—–-])`, "u").test(text);
+}
+
+function hasEventBeforePlace(tokens, start) {
+  const prefix = tokens.slice(Math.max(0, start - 12), start).join(" ");
+  return EVENT_TERMS.some((term) => prefix.includes(normalizeName(term)));
 }
 
 function createNameIndex(entries) {
@@ -107,6 +119,9 @@ function findMentions(text, nameIndex, isTitle, isDepartment = false, field = "d
           text: text.trim().slice(0, 280),
           signal: hasCue ? "location-cue" : "title-dateline",
           confidence: hasCue ? "medium" : "low",
+          role: hasCue && hasEventBeforePlace(tokens, start)
+            ? "event-candidate"
+            : "mentioned",
         },
       });
       break;
@@ -137,8 +152,12 @@ function resolveMentions(mentions, departmentMentions) {
       ambiguousEvidence.push(mention.evidence);
       continue;
     }
-    if (!places.some((place) => place.code === matches[0].code)) {
-      places.push({ ...matches[0], evidence: mention.evidence });
+    const existingIndex = places.findIndex((place) => place.code === matches[0].code);
+    const { role, ...evidence } = mention.evidence;
+    if (existingIndex === -1) {
+      places.push({ ...matches[0], role, evidence });
+    } else if (places[existingIndex].role !== "event-candidate" && role === "event-candidate") {
+      places[existingIndex] = { ...matches[0], role, evidence };
     }
   }
   return { places, ambiguousNames, ambiguousEvidence };
@@ -168,13 +187,14 @@ export function locateArticle(article, geography) {
     return {
       precision: "commune",
       role: "mentioned",
-      places: communes.places.map(({ evidence, ...place }) => ({
+      places: communes.places.map(({ evidence, role, ...place }) => ({
         code: place.code,
         name: place.name,
         countryCode: "FR",
         departmentCode: place.departmentCode,
         precision: "commune",
         coordinates: place.coordinates,
+        role,
         confidence: evidence.confidence,
         evidence,
       })),
@@ -186,12 +206,13 @@ export function locateArticle(article, geography) {
     return {
       precision: "department",
       role: "mentioned",
-      places: departmentPlaces.map(({ evidence, ...place }) => ({
+      places: departmentPlaces.map(({ evidence, role, ...place }) => ({
         code: place.code,
         name: place.name,
         countryCode: "FR",
         departmentCode: place.code,
         precision: "department",
+        role,
         confidence: evidence.confidence,
         evidence,
       })),

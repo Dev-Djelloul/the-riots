@@ -32,6 +32,7 @@ test("repère une commune citée dans le titre et une commune dans l’extrait",
     departmentCode: "16",
     precision: "commune",
     coordinates: [45.6458, 0.145],
+    role: "event-candidate",
     confidence: "medium",
     evidence: {
       field: "title",
@@ -41,12 +42,14 @@ test("repère une commune citée dans le titre et une commune dans l’extrait",
     },
   });
   assert.equal(titleLocation.role, "mentioned");
+  assert.equal(titleLocation.places[0].role, "event-candidate");
 
   const excerptLocation = locateArticle({
     title: "Des tensions après un rassemblement",
     description: "La manifestation a rassemblé plusieurs personnes à Carcassonne.",
   }, geography);
   assert.equal(excerptLocation.places[0].name, "Carcassonne");
+  assert.equal(excerptLocation.places[0].role, "event-candidate");
 });
 
 test("utilise une mention de département sans inventer une commune", () => {
@@ -56,6 +59,7 @@ test("utilise une mention de département sans inventer une commune", () => {
   assert.equal(location.places[0].name, "Rhône");
   assert.equal(location.places[0].evidence.field, "title");
   assert.equal(location.places[0].evidence.text, "Tensions dans le Rhône");
+  assert.equal(location.places[0].role, "event-candidate");
 });
 
 test("signale les homonymes et peut les lever avec le département", () => {
@@ -96,6 +100,25 @@ test("ne prend pas une ville citée comme sujet pour le lieu d’un événement"
   assert.equal(dateline.places[0].name, "Nantes");
   assert.equal(dateline.places[0].confidence, "low");
   assert.equal(dateline.places[0].evidence.signal, "title-dateline");
+  assert.equal(dateline.places[0].role, "mentioned");
+});
+
+test("distingue une ville simplement citée d’un indice de lieu d’événement", () => {
+  const location = locateArticle({
+    title: "Une réunion municipale à Nantes",
+    description: "Une manifestation est annoncée dans une autre ville.",
+  }, geography);
+  assert.equal(location.places[0].name, "Nantes");
+  assert.equal(location.places[0].role, "mentioned");
+});
+
+test("préfère l’indice événementiel du texte à une mention antérieure de la même commune", () => {
+  const location = locateArticle({
+    title: "Nantes : le conseil municipal annonce un débat",
+    description: "Une manifestation a lieu à Nantes.",
+  }, geography);
+  assert.equal(location.places[0].role, "event-candidate");
+  assert.equal(location.places[0].evidence.field, "description");
 });
 
 test("attribue une teinte distincte du spectre à chaque département concerné", () => {

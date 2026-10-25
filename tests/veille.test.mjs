@@ -67,7 +67,7 @@ test("analyse un flux Atom VRT et localise une manifestation à Bruxelles", asyn
     countryCode: "BE",
     coordinates: [50.8503, 4.3517],
     precision: "city",
-    role: "mentioned",
+    role: "event-candidate",
     confidence: "medium",
     evidence: {
       field: "title",
@@ -94,6 +94,22 @@ test("n’infère pas une ville européenne depuis un nom en tête de titre sans
   const article = payload.articles.find((item) => item.link === "https://media.example/nice-club");
   assert.ok(article);
   assert.equal(article.city, null);
+});
+
+test("ne confond pas une dateline avec le lieu d’une manifestation située ailleurs", async () => {
+  globalThis.fetch = async (input) => {
+    if (!String(input).includes("franceinfo.fr")) return new Response("<rss><channel></channel></rss>");
+    return new Response(
+      `<rss><channel><item><title>Berlin : les ministres réagissent aux manifestations à Paris</title><link>https://media.example/berlin-paris</link><pubDate>${now}</pubDate></item></channel></rss>`,
+      { status: 200 },
+    );
+  };
+  const response = await onRequestGet();
+  const payload = await response.json();
+  const article = payload.articles.find((item) => item.link === "https://media.example/berlin-paris");
+  assert.ok(article);
+  assert.equal(article.city, "Paris");
+  assert.equal(article.placeMention.role, "event-candidate");
 });
 
 test("classe des titres espagnols, italiens et allemands avec leur ville et pays", async () => {
@@ -123,6 +139,7 @@ test("classe des titres espagnols, italiens et allemands avec leur ville et pays
     assert.equal(article.placeMention.name, city);
     assert.equal(article.placeMention.countryCode, countryCode);
     assert.equal(article.placeMention.evidence.field, "title");
+    assert.equal(article.placeMention.role, "event-candidate");
   }
 });
 

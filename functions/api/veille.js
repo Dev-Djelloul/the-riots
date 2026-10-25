@@ -495,6 +495,12 @@ const GNEWS_SUPPORTED_LANGUAGES = new Set([
   "ml", "mr", "nl", "no", "pt", "ru", "sv", "ta", "te", "th", "tr", "uk", "vi", "zh",
 ]);
 const EUROPE_WIDE_QUERY = "protest OR demonstration OR strike OR riot OR unrest";
+const PLACE_EVENT_TERMS = [
+  "manifestation", "manifestant", "rassemblement", "cortège", "mobilisation", "grève",
+  "émeute", "affrontement", "heurts", "protest", "demonstration", "strike", "riot",
+  "disturbio", "huelga", "manifestación", "protesta", "sciopero", "scontri",
+  "manifestazione", "streik", "ausschreitungen", "krawalle", "betoging", "demonstratie",
+];
 const GNEWS_QUERIES = EUROPE_COUNTRIES.map(({ code, lang, query }) => ({
   lang: GNEWS_SUPPORTED_LANGUAGES.has(lang) ? lang : "en",
   country: code.toLowerCase(),
@@ -848,6 +854,7 @@ function findMatchedCity(title, description) {
   const entries = ALL_CITIES.flatMap((city) => [city.name, ...(city.aliases || [])]
     .map((name) => ({ city, name, normalizedName: normalize(name) })))
     .sort((a, b) => b.normalizedName.length - a.normalizedName.length);
+  let fallback = null;
   for (const [text, isTitle] of [[title, true], [description, false]]) {
     const normalized = normalize(text);
     for (const entry of entries) {
@@ -858,45 +865,58 @@ function findMatchedCity(title, description) {
       const hasLocationCue = ["a", "au", "aux", "en", "in", "near", "bei", "naar", "w", "we", "v", "ve", "i", "pa", "στη", "στην", "στο", "σε", "u", "na", "do", "em"].includes(lastWord)
         || ["in der", "in den", "in het"].some((cue) => normalized.slice(0, index).trim().endsWith(cue));
       if (hasLocationCue) {
-        return {
+        const match = {
           ...entry.city,
           evidence: {
             field: isTitle ? "title" : "description",
             text: text.trim().slice(0, 280),
             signal: "location-cue",
             confidence: "medium",
+            role: hasLocationCue && hasEventBeforePlace(normalized, index)
+              ? "event-candidate"
+              : "mentioned",
           },
         };
+        if (match.evidence.role === "event-candidate") return match;
+        fallback ||= match;
+        continue;
       }
       const escapedName = entry.name.split(/\s+/)
         .map((part) => part.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"))
         .join("\\s+");
       if (isTitle && index === 0 && new RegExp(`^\\s*${escapedName}\\s*(?:[:,—–-])`, "u").test(text)) {
-        return {
+        fallback ||= {
           ...entry.city,
           evidence: {
             field: "title",
             text: text.trim().slice(0, 280),
             signal: "title-dateline",
             confidence: "low",
+            role: "mentioned",
           },
         };
       }
     }
   }
-  return null;
+  return fallback;
+}
+
+function hasEventBeforePlace(text, index) {
+  const prefix = text.slice(Math.max(0, index - 100), index).replace(/^.*[.!?;:]/s, "");
+  return PLACE_EVENT_TERMS.some((term) => prefix.includes(normalize(term)));
 }
 
 function createPlaceMention(city) {
+  const { role, ...evidence } = city.evidence;
   return {
     name: city.name,
     region: city.region || null,
     countryCode: city.countryCode || null,
     coordinates: city.position,
     precision: "city",
-    role: "mentioned",
+    role,
     confidence: city.evidence.confidence,
-    evidence: city.evidence,
+    evidence,
   };
 }
 

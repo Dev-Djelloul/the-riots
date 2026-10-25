@@ -581,7 +581,11 @@ function countryStyle(feature) {
 function enrichArticle(article, geography) {
   let location = geography ? locateArticle(article, geography) : { precision: "unknown", places: [] };
   if (article.placeMention) {
-    location = { precision: article.placeMention.precision || "city", role: "mentioned", places: [article.placeMention] };
+    location = {
+      precision: article.placeMention.precision || "city",
+      role: article.placeMention.role || "mentioned",
+      places: [article.placeMention],
+    };
   } else if (!location.places.length && article.countryCode && article.countryCode !== "FR") {
     location = { precision: "country", role: "coverage", places: [] };
   } else if (location.places.length) {
@@ -1431,11 +1435,17 @@ function createArticleCard(article) {
   const location = article.location || { precision: "unknown", places: [] };
   const placeNames = location.places.map((place) => place.name).join(", ");
   placeText.textContent = location.precision === "commune"
-    ? `Commune citée : ${placeNames}`
+    ? location.places.some((place) => place.role === "event-candidate")
+      ? `Événement probablement situé à : ${placeNames}`
+      : `Commune citée, événement non confirmé : ${placeNames}`
     : location.precision === "department"
-      ? `Département cité : ${placeNames}`
+      ? location.places.some((place) => place.role === "event-candidate")
+        ? `Événement probablement situé dans : ${placeNames}`
+        : `Département cité, événement non confirmé : ${placeNames}`
       : location.precision === "city"
-        ? `Ville citée : ${placeNames} · ${COUNTRY_NAMES[article.countryCode] || ""}`
+        ? location.places.some((place) => place.role === "event-candidate")
+          ? `Événement probablement situé à : ${placeNames} · ${COUNTRY_NAMES[article.countryCode] || ""}`
+          : `Ville citée, événement non confirmé : ${placeNames} · ${COUNTRY_NAMES[article.countryCode] || ""}`
         : location.precision === "country"
           ? `${article.countryCodeBasis === "publisher-country" ? "Pays du média" : article.countryCodeBasis === "archive-query" || article.countryCodeBasis === "search-country" ? "Pays de recherche" : "Pays associé"} : ${COUNTRY_NAMES[article.countryCode] || "Europe"}`
       : location.precision === "ambiguous"
@@ -1503,7 +1513,10 @@ function createArticleCard(article) {
       const locationEvidence = document.createElement("p");
       locationEvidence.className = "article-disclaimer";
       const confidence = place.confidence === "medium" ? "contexte moyen" : "dateline à confirmer";
-      locationEvidence.textContent = `Lieu mentionné, événement non confirmé (${confidence}) · repère au centre approximatif de la ville. Passage : « ${place.evidence.text} »`;
+      const locationStatus = place.role === "event-candidate"
+        ? "Indice de lieu d’événement à vérifier"
+        : "Lieu mentionné, événement non confirmé";
+      locationEvidence.textContent = `${locationStatus} (${confidence}) · repère au centre approximatif de la ville. Passage : « ${place.evidence.text} »`;
       detail.append(tags, locationEvidence, disclaimer);
     } else {
       detail.append(tags, disclaimer);
@@ -1535,6 +1548,7 @@ function renderMap(articles) {
 
   for (const article of articles) {
     for (const place of article.location?.places || []) {
+      if (place.role !== "event-candidate") continue;
       const department = geographyIndex?.departmentByCode.get(place.departmentCode);
       const departmentName = place.precision === "department" ? place.name : department?.name;
       if (departmentName) {
@@ -1598,6 +1612,7 @@ function renderEuropeMap(articles) {
     country.articles.set(article.id, article);
     countries.set(article.countryCode, country);
     for (const place of article.location?.places || []) {
+      if (place.role !== "event-candidate") continue;
       if (!place.coordinates) continue;
       const countryCode = place.countryCode || article.countryCode;
       if (!countryCode) continue;
@@ -1660,9 +1675,9 @@ function createLocationPopup(name, articles, precision, countryCode = null) {
   else heading.textContent = `${name} · ${articles.length} article${articles.length === 1 ? "" : "s"}`;
   const note = document.createElement("p");
   note.textContent = precision === "commune"
-    ? "La commune est citée dans le titre ou l’extrait ; cela ne confirme pas qu’elle soit le lieu de l’événement."
+    ? "Les repères correspondent à des indices textuels associant l’événement à la commune ; ils restent à vérifier et indiquent le centre approximatif."
     : precision === "city"
-      ? "Cette ville est mentionnée dans le texte ; le repère indique son centre approximatif, pas nécessairement le lieu de l’événement."
+      ? "Les repères correspondent à des indices textuels associant l’événement à la ville ; ils restent à vérifier et indiquent son centre approximatif."
       : precision === "country"
         ? "Le contour représente le pays suivi ; il indique une couverture médiatique associée, pas la localisation d’un événement."
         : precision === "country-marker"
@@ -1681,7 +1696,7 @@ function createLocationPopup(name, articles, precision, countryCode = null) {
     if (place?.evidence) {
       const evidence = document.createElement("small");
       evidence.className = "map-popup-evidence";
-      evidence.textContent = `Mention dans le ${place.evidence.field === "title" ? "titre" : "extrait"} : « ${place.evidence.text} »`;
+      evidence.textContent = `Indice dans le ${place.evidence.field === "title" ? "titre" : "extrait"} : « ${place.evidence.text} »`;
       item.append(evidence);
     }
     list.append(item);
