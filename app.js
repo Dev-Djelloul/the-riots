@@ -2200,22 +2200,60 @@ let agoraBusy = false;
 function addAgoraMessage(role, text, sources = [], error = false) {
   const message = document.createElement("div");
   message.className = `agora-message ${role}${error ? " error" : ""}`;
-  const sourcesByReference = new Map(sources.map((source) => [source.reference, source]));
-  const formatted = role === "assistant" && !error
-    ? text.matchAll(/\*\*([^*\n]{1,300})\*\*|\[(\d{1,2})\]/g)
-    : [];
+  if (role !== "assistant" || error) {
+    message.textContent = text;
+  } else {
+    const sourcesByReference = new Map(sources.map((source) => [source.reference, source]));
+    let list = null;
+    for (const line of text.replace(/\r\n?/g, "\n").split("\n")) {
+      const heading = line.match(/^\s{0,3}#{1,6}\s+(.+?)\s*#*\s*$/);
+      const numbered = line.match(/^\s*\d+[.)]\s+(.+)$/);
+      const bulleted = line.match(/^\s*[-*+]\s+(.+)$/);
+      if (heading) {
+        list = null;
+        const element = document.createElement("h3");
+        element.className = "agora-response-heading";
+        appendAgoraInline(element, heading[1], sourcesByReference);
+        message.append(element);
+      } else if (numbered || bulleted) {
+        const type = numbered ? "ol" : "ul";
+        if (!list || list.tagName.toLowerCase() !== type) {
+          list = document.createElement(type);
+          list.className = "agora-response-list";
+          message.append(list);
+        }
+        const item = document.createElement("li");
+        appendAgoraInline(item, (numbered || bulleted)[1], sourcesByReference);
+        list.append(item);
+      } else {
+        list = null;
+        const paragraph = document.createElement("p");
+        if (line.trim()) appendAgoraInline(paragraph, line.trim(), sourcesByReference);
+        else paragraph.className = "agora-response-spacer";
+        message.append(paragraph);
+      }
+    }
+  }
+  agoraMessages.append(message);
+  agoraMessages.scrollTop = agoraMessages.scrollHeight;
+  return message;
+}
+
+function appendAgoraInline(container, text, sourcesByReference) {
+  const tokens = /\*\*([^*\n]{1,300})\*\*|__([^_\n]{1,300})__|\*(?!\s)([^*\n]+?)\*(?!\*)|_([^_\n]+?)_|\[(\d{1,2})\]/g;
   let cursor = 0;
-  for (const match of formatted) {
-    message.append(document.createTextNode(text.slice(cursor, match.index)));
-    if (match[1]) {
+  for (const match of text.matchAll(tokens)) {
+    container.append(document.createTextNode(text.slice(cursor, match.index).replace(/[*_`]/g, "")));
+    const emphasized = match[1] || match[2] || match[3] || match[4];
+    if (emphasized) {
       const highlight = document.createElement("strong");
       highlight.className = "agora-press-highlight";
-      highlight.textContent = match[1];
-      message.append(highlight);
+      highlight.textContent = emphasized;
+      container.append(highlight);
     } else {
-      const source = sourcesByReference.get(Number(match[2]));
+      const source = sourcesByReference.get(Number(match[5]));
       if (!source) {
-        message.append(document.createTextNode(match[0]));
+        container.append(document.createTextNode(match[0]));
       } else {
         const citation = document.createElement("span");
         citation.className = "agora-citation";
@@ -2256,15 +2294,12 @@ function addAgoraMessage(role, text, sources = [], error = false) {
         citation.append(reference, preview);
         citation.addEventListener("pointerenter", () => positionAgoraPreview(citation, preview));
         citation.addEventListener("focusin", () => positionAgoraPreview(citation, preview));
-        message.append(citation);
+        container.append(citation);
       }
     }
     cursor = match.index + match[0].length;
   }
-  message.append(document.createTextNode(text.slice(cursor)));
-  agoraMessages.append(message);
-  agoraMessages.scrollTop = agoraMessages.scrollHeight;
-  return message;
+  container.append(document.createTextNode(text.slice(cursor).replace(/[*_`]/g, "")));
 }
 
 function positionAgoraPreview(citation, preview) {

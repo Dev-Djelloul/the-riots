@@ -39,21 +39,29 @@ test("Agora translates recent articles with an owl icon and linked citations", a
   assert.equal((html.match(/src="\/icons\/owl\.svg"/g) || []).length, 2);
   assert.equal(owl.trim(), '<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 24 24" fill="#000000"><g fill="none" stroke="#000000" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"><ellipse cx="12" cy="9" rx="8" ry="7"/><path d="M12 9a4 4 0 1 1 8 0v12h-4C9.4 21 4 15.6 4 9a4 4 0 1 1 8 0v1M8 9h.01M16 9h.01"/><path d="M20 21a3.9 3.9 0 1 1 0-7.8m-10 6.2V22m4-1.15V22"/></g></svg>');
   assert.match(html, /data-agora-prompt="Fais un briefing/);
+  assert.match(html, /href="https:\/\/openrouter\.ai\/openai\/gpt-4o-mini"[^>]*target="_blank"[^>]*rel="noopener noreferrer"[^>]*>OpenRouter · GPT-4o mini/);
   assert.match(app, /fetch\("\/api\/agora"/);
   assert.match(app, /\.slice\(0,\s*12\)/);
   assert.match(app, /agora-citation-preview/);
   assert.match(app, /positionAgoraPreview/);
   assert.match(app, /className = "agora-press-highlight"/);
+  assert.match(app, /replace\(\/\[\*_`\]\/g, ""\)/);
+  assert.match(app, /agora-response-heading/);
+  assert.match(stylesheet, /\.agora-response-heading\s*\{/);
   assert.match(app, /data-agora-prompt/);
   assert.match(stylesheet, /\.agora-trigger\s*\{[^}]*position:\s*fixed;/s);
   assert.match(stylesheet, /\.agora-press-highlight\s*\{/);
+  for (const color of ["#e7b76f", "#79bde0", "#72c6a4", "#e58b8b", "#b69be7"]) {
+    assert.ok(stylesheet.includes(color), `Expected a distinct suggestion color ${color}`);
+  }
+  assert.match(stylesheet, /--prompt-color\) 34%, #1d1e19/);
   assert.match(stylesheet, /\.agora-citation:hover \.agora-citation-preview/);
   assert.match(api, /Tu es Agora/);
   assert.match(api, /MAX_ARTICLES = 12/);
   assert.match(api, /N’invente jamais de référence/);
   assert.match(api, /image: articles\[reference - 1\]\.image/);
   assert.match(api, /MAX_BODY_BYTES/);
-  assert.match(worker, /veille-shell-v27/);
+  assert.match(worker, /veille-shell-v28/);
   assert.ok(worker.includes('"/icons/owl.svg"'));
 });
 
@@ -126,7 +134,7 @@ test("personal alerts, saved articles and European coverage comparison are wired
   assert.match(app, /selectedStart = new Date\(`\$\{state\.selectedDate\}T00:00:00`\)/);
   assert.match(app, /navigator\.clipboard\.writeText/);
   assert.match(app, /function renderTrends\(\)/);
-  assert.match(serviceWorker, /veille-shell-v27/);
+  assert.match(serviceWorker, /veille-shell-v28/);
   assert.ok(serviceWorker.includes('"/europe-countries.js"'));
   assert.match(readme, /À lire plus tard/);
   assert.match(readme, /alertes personnalisées/i);
@@ -190,7 +198,7 @@ test("European live video cards point to official players and broadcasters", asy
   assert.match(html, /https:\/\/www\.vrt\.be\/vrtnws\/nl\/kijk\//);
   assert.match(html, /https:\/\/www\.raiplay\.it\/dirette\/rainews24/);
   assert.match(html, /https:\/\/www\.tagesschau\.de\/multimedia\/livestreams\//);
-  assert.match(serviceWorker, /veille-shell-v27/);
+  assert.match(serviceWorker, /veille-shell-v28/);
   assert.match(app, /card\.dataset\.type/);
   assert.match(html, /id="group-by"/);
   assert.match(app, /function renderGroupedFeed\(/);

@@ -461,6 +461,12 @@ h1 em, .about-dialog h2 em { color: var(--accent); font-weight: 500; }
 .agora-intro { margin: 0; padding: 10px 18px; border-bottom: 1px solid #282a24; color: #999b90; font-size: 10px; line-height: 1.5; }
 .agora-messages { display: flex; flex: 1; flex-direction: column; gap: 12px; min-height: 180px; max-height: 48vh; overflow-y: auto; padding: 15px 18px; scrollbar-color: #51483b #171815; scrollbar-width: thin; }
 .agora-message { max-width: 92%; padding: 10px 12px; border: 1px solid #30322c; border-radius: 5px 12px 12px 12px; background: #1b1d18; color: #d5d4cb; font-size: 11px; line-height: 1.6; white-space: pre-wrap; overflow-wrap: anywhere; }
+.agora-message.assistant > p { margin: 0 0 8px; }
+.agora-message.assistant > p:last-child { margin-bottom: 0; }
+.agora-response-heading { margin: 8px 0 5px; color: #e8bd8e; font: 600 11px/1.5 var(--sans); }
+.agora-response-list { display: grid; gap: 7px; margin: 2px 0 9px; padding-left: 20px; }
+.agora-response-list li { padding-left: 2px; }
+.agora-response-spacer { height: 5px; margin: 0; }
 .agora-message.user { align-self: end; border-color: #514333; border-radius: 12px 5px 12px 12px; background: #29241d; color: #ead5bd; }
 .agora-message.assistant { align-self: start; }
 .agora-message.error { border-color: #60383a; color: #ff9ba2; }
@@ -475,8 +481,13 @@ h1 em, .about-dialog h2 em { color: var(--accent); font-weight: 500; }
 .agora-preview-title { display: block; padding: 2px 10px 10px; color: #e5e1d7; font-size: 11px; line-height: 1.4; text-decoration: none; }
 .agora-preview-title:hover, .agora-preview-title:focus-visible { color: #f0c28f; text-decoration: underline; }
 .agora-quick-prompts { display: flex; flex-wrap: wrap; gap: 6px; padding: 9px 14px 7px; }
-.agora-quick-prompts button { padding: 5px 8px; border: 1px solid #454238; border-radius: 999px; background: #1d1e19; color: #c5ad91; cursor: pointer; font: 8px var(--mono); }
-.agora-quick-prompts button:hover, .agora-quick-prompts button:focus-visible { border-color: #9b7958; background: #2b261f; color: #fff0de; }
+.agora-quick-prompts button { padding: 6px 9px; border: 1px solid color-mix(in srgb, var(--prompt-color) 76%, #454238); border-radius: 999px; background: color-mix(in srgb, var(--prompt-color) 34%, #1d1e19); color: color-mix(in srgb, var(--prompt-color) 72%, #fff); cursor: pointer; font: 8px var(--mono); transition: background .18s ease, border-color .18s ease, transform .18s ease; }
+.agora-quick-prompts button:nth-child(1) { --prompt-color: #e7b76f; }
+.agora-quick-prompts button:nth-child(2) { --prompt-color: #79bde0; }
+.agora-quick-prompts button:nth-child(3) { --prompt-color: #72c6a4; }
+.agora-quick-prompts button:nth-child(4) { --prompt-color: #e58b8b; }
+.agora-quick-prompts button:nth-child(5) { --prompt-color: #b69be7; }
+.agora-quick-prompts button:hover, .agora-quick-prompts button:focus-visible { transform: translateY(-1px); border-color: var(--prompt-color); background: color-mix(in srgb, var(--prompt-color) 28%, #1d1e19); color: #fff; }
 .agora-quick-prompts button:disabled { cursor: wait; opacity: .55; }
 .agora-loading { display: inline-flex; align-items: center; gap: 8px; color: #c6a681; }
 .agora-loading::before { width: 7px; height: 7px; border-radius: 50%; background: #d8a67d; content: ""; animation: breathe 1s ease-in-out infinite alternate; }
@@ -489,7 +500,8 @@ h1 em, .about-dialog h2 em { color: var(--accent); font-weight: 500; }
 .agora-form button:disabled, .agora-header-actions button:disabled { cursor: wait; opacity: .55; }
 .agora-form button svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; }
 .agora-footer { display: flex; justify-content: space-between; gap: 10px; padding: 9px 18px 12px; color: #73766d; font: 8px var(--mono); }
-.agora-footer > span:last-child { text-align: right; }
+.agora-footer > a { color: #b7a48e; text-align: right; text-decoration-color: #635444; text-underline-offset: 2px; }
+.agora-footer > a:hover, .agora-footer > a:focus-visible { color: #f0c28f; text-decoration-color: currentColor; }
 
 @media (max-width: 1120px) {
   .app-shell { padding: 0 28px; }
