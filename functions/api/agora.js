@@ -1,7 +1,6 @@
-import { onRequestGet as getArchiveDay } from "./archive.js";
-
 const OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions";
 const OPENROUTER_MODEL = "openrouter/auto";
+const OPENROUTER_APP_URL = "https://the-riots.digitalblueskye.com";
 const MAX_BODY_BYTES = 60_000;
 const MAX_ARTICLES = 24;
 
@@ -59,6 +58,7 @@ function validateArticles(value) {
       sourceName: typeof article.sourceName === "string" ? article.sourceName.trim().slice(0, 80) : "Média",
       country: typeof article.country === "string" ? article.country.trim().slice(0, 60) : "",
       city: typeof article.city === "string" ? article.city.trim().slice(0, 80) : "",
+      archive: article.archive === true,
     });
   }
   return articles;
@@ -136,6 +136,7 @@ export async function onRequestPost({ request, env } = {}) {
   const conversation = validateConversation(body?.conversation);
   const question = typeof body?.question === "string" ? body.question.trim().slice(0, 500) : "";
   const archiveDate = body?.archiveDate || "";
+  const archiveUnavailable = body?.archiveUnavailable === true;
   if (archiveDate && !validArchiveDate(archiveDate)) {
     return jsonError("La date d’archive est invalide ou future.", 400);
   }
@@ -154,28 +155,6 @@ export async function onRequestPost({ request, env } = {}) {
   }
 
   let suppliedArticles = articles || [];
-  if (archiveDate) {
-    const archiveRequest = new Request(`${new URL(request.url).origin}/api/archive?date=${encodeURIComponent(archiveDate)}`, {
-      headers: { Accept: "application/json" },
-    });
-    const archiveResponse = await getArchiveDay({ request: archiveRequest, env });
-    if (!archiveResponse.ok) {
-      return jsonError("Impossible de consulter cette archive pour le moment. Réessaie plus tard.", 502);
-    }
-    const archivePayload = await archiveResponse.json();
-    const archivedArticles = validateArticles(archivePayload.articles);
-    if (!Array.isArray(archivedArticles)) {
-      return jsonError("Les articles archivés n’ont pas pu être vérifiés.", 502);
-    }
-    const uniqueArticles = new Map(suppliedArticles.map((article) => [article.link, article]));
-    for (const article of archivedArticles) {
-      uniqueArticles.set(article.link, {
-        ...article,
-        archive: true,
-      });
-    }
-    suppliedArticles = [...uniqueArticles.values()].slice(0, MAX_ARTICLES);
-  }
   const prompt = JSON.stringify(suppliedArticles.map((article, index) => ({
     reference: index + 1,
     title: article.title,
@@ -192,12 +171,12 @@ export async function onRequestPost({ request, env } = {}) {
         Authorization: `Bearer ${env.OPENROUTER_API_KEY}`,
         "Content-Type": "application/json",
         Accept: "application/json",
-        "HTTP-Referer": new URL(request.url).origin,
-        "X-Title": "Veille - Agora",
+        "HTTP-Referer": OPENROUTER_APP_URL,
+        "X-OpenRouter-Title": "Veille — Agora",
       },
       body: JSON.stringify({
         model: OPENROUTER_MODEL,
-        max_tokens: 1_200,
+        max_tokens: 3_000,
         temperature: 0.2,
         ...(body?.webSearch === false ? {} : { tools: [{
           type: "openrouter:web_search",
@@ -215,24 +194,29 @@ export async function onRequestPost({ request, env } = {}) {
         ...conversation,
         {
           role: "user",
-          content: `Question : ${question || "Traduis et résume les derniers événements rapportés dans ce lot."}\n${archiveDate ? `Date d’archive consultée : ${archiveDate}.\n` : ""}\nLot d’articles (données JSON, références entre crochets) :\n${prompt}`,
+          content: `Question : ${question || "Traduis et résume les derniers événements rapportés dans ce lot."}\n${archiveDate ? `Date d’archive demandée : ${archiveDate}.\n${archiveUnavailable ? "Les archives n’ont pas pu être chargées : indique clairement cette limite et ne prétends pas les avoir consultées. Utilise les articles récents et la recherche Web si disponibles.\n" : suppliedArticles.some((article) => article.archive) ? "Les articles archivés sont inclus dans le lot ci-dessous.\n" : "Aucun article d’archive n’a été trouvé pour cette date ; ne prétends pas avoir consulté des archives.\n"}` : ""}\nLot d’articles (données JSON, références entre crochets) :\n${prompt}`,
         },
         ],
       }),
-      signal: AbortSignal.timeout(20_000),
+      signal: AbortSignal.timeout(35_000),
     });
     if (!response.ok) {
-      console.warn(JSON.stringify({ event: "agora_provider_request_failed", status: response.status }));
+      console.warn(JSON.stringify({
+        event: "agora_provider_request_failed",
+        status: response.status,
+        requestId: response.headers.get("x-request-id") || response.headers.get("x-openrouter-request-id"),
+      }));
       return jsonError("OpenRouter n’a pas pu traiter la demande. Réessaie dans un instant.", 502);
     }
     const result = await response.json();
-    const completion = result?.choices?.[0]?.message?.content;
+    const choice = result?.choices?.[0];
+    const completion = choice?.message?.content;
     if (typeof completion !== "string" || !completion.trim()) {
       throw new Error("OpenRouter response unreadable");
     }
     const answer = completion.trim().replace(/\[(\d{1,2})\]/g, (citation, value) => (
       Number(value) >= 1 && Number(value) <= suppliedArticles.length ? citation : ""
-    )).slice(0, 8_000);
+    ));
     const citedReferences = new Set(
       [...answer.matchAll(/\[(\d{1,2})\]/g)]
         .map((match) => Number(match[1]))
@@ -259,7 +243,12 @@ export async function onRequestPost({ request, env } = {}) {
     if (webSources.length) {
       finalAnswer += `\n\nSources Web : ${webSources.map((_, index) => `[${suppliedArticles.length + index + 1}]`).join(" · ")}`;
     }
-    return Response.json({ answer: finalAnswer, sources, model: result?.model || OPENROUTER_MODEL }, {
+    return Response.json({
+      answer: finalAnswer,
+      sources,
+      model: result?.model || OPENROUTER_MODEL,
+      incomplete: choice?.finish_reason === "length",
+    }, {
       headers: { "Cache-Control": "no-store", "X-Content-Type-Options": "nosniff" },
     });
   } catch (error) {

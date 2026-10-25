@@ -1,4 +1,4 @@
-const SHELL_CACHE = "veille-shell-v29";
+const SHELL_CACHE = "veille-shell-v30";
 const FEED_CACHE = "veille-feed-v2";
 const SHELL_FILES = [
   "/",
@@ -9,6 +9,7 @@ const SHELL_FILES = [
   "/geography.js",
   "/pwa.js",
   "/manifest.webmanifest",
+  "/favicon.ico",
   "/icons/veille.svg",
   "/icons/owl.svg",
   "/icons/veille-192.png",

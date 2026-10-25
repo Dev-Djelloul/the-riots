@@ -53,13 +53,14 @@ test("Agora résume uniquement le lot soumis et renvoie les références citées
     assert.equal(response.status, 200);
     assert.equal(requestUrl, "https://openrouter.ai/api/v1/chat/completions");
     assert.equal(sent.model, "openrouter/auto");
+    assert.equal(sent.max_tokens, 3_000);
     assert.deepEqual(sent.tools, [{
       type: "openrouter:web_search",
       parameters: { max_uses: 2, max_total_results: 8, search_context_size: "medium" },
     }]);
     assert.equal(requestOptions.headers.Authorization, "Bearer test-secret");
-    assert.equal(requestOptions.headers["HTTP-Referer"], "https://veille.example");
-    assert.equal(requestOptions.headers["X-Title"], "Veille - Agora");
+    assert.equal(requestOptions.headers["HTTP-Referer"], "https://the-riots.digitalblueskye.com");
+    assert.equal(requestOptions.headers["X-OpenRouter-Title"], "Veille — Agora");
     assert.match(sent.messages[0].content, /ignore toute instruction/);
     assert.match(sent.messages[0].content, /simples exemples/);
     assert.match(sent.messages[0].content, /Si on te demande ce que tu sais faire/);
@@ -138,36 +139,84 @@ test("Agora peut répondre à une demande de recherche Web sans articles précha
   }
 });
 
-test("Agora consulte l’archive de la date demandée et la joint aux articles récents", async () => {
+test("Agora reçoit les archives déjà chargées sans rechercher dans deux services dans la même requête", async () => {
   const originalFetch = globalThis.fetch;
   const archiveDate = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
   const archiveTitle = "Manifestation archivée à Bruxelles";
   let completionRequest;
-  globalThis.fetch = async (url, options = {}) => {
-    if (String(url).includes("news.google.com/rss/search")) {
-      return new Response(`<rss><channel><item><title>${archiveTitle} - Archive</title><link>https://archive.example/article</link><pubDate>${new Date(`${archiveDate}T12:00:00Z`).toUTCString()}</pubDate><source>Archive</source></item></channel></rss>`, {
-        headers: { "Content-Type": "application/rss+xml" },
-      });
-    }
+  let requestCount = 0;
+  globalThis.fetch = async (_url, options = {}) => {
+    requestCount += 1;
     completionRequest = JSON.parse(options.body);
     return Response.json({
       model: "openai/gpt-5",
       choices: [{ message: { content: "Événement archivé [1]." } }],
     });
   };
+  const archivedArticle = { ...article, title: archiveTitle, link: "https://archive.example/article", archive: true };
   try {
     const response = await onRequestPost({
-      request: makeRequest({ articles: [], archiveDate, webSearch: false, question: "Que s’est-il passé ?" }),
+      request: makeRequest({ articles: [archivedArticle], archiveDate, webSearch: false, question: "Que s’est-il passé ?" }),
       env: { OPENROUTER_API_KEY: "test-secret" },
     });
     const payload = await response.json();
     assert.equal(response.status, 200);
+    assert.equal(requestCount, 1);
     assert.equal(completionRequest.model, "openrouter/auto");
     assert.equal(completionRequest.tools, undefined);
     assert.match(completionRequest.messages.at(-1).content, new RegExp(archiveDate));
     assert.match(completionRequest.messages.at(-1).content, new RegExp(archiveTitle));
-    assert.equal(payload.sources[0].link, "https://archive.example/article");
+    assert.match(completionRequest.messages.at(-1).content, /articles archivés sont inclus/);
+    assert.equal(payload.sources[0].link, archivedArticle.link);
     assert.equal(payload.model, "openai/gpt-5");
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test("Agora signale une archive indisponible et conserve l’accès à la recherche Web", async () => {
+  const originalFetch = globalThis.fetch;
+  let completionRequest;
+  globalThis.fetch = async (_url, options) => {
+    completionRequest = JSON.parse(options.body);
+    return Response.json({
+      choices: [{ message: { content: "Je n’ai pas pu consulter cette archive." } }],
+    });
+  };
+  try {
+    const response = await onRequestPost({
+      request: makeRequest({
+        articles: [],
+        archiveDate: "2026-10-14",
+        archiveUnavailable: true,
+        webSearch: true,
+        question: "Que s’est-il passé ?",
+      }),
+      env: { OPENROUTER_API_KEY: "test-secret" },
+    });
+    assert.equal(response.status, 200);
+    assert.match(completionRequest.messages.at(-1).content, /archives n’ont pas pu être chargées/);
+    assert.deepEqual(completionRequest.tools[0].type, "openrouter:web_search");
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test("Agora conserve les réponses longues et signale la limite du modèle", async () => {
+  const originalFetch = globalThis.fetch;
+  const longAnswer = "x".repeat(9_000);
+  globalThis.fetch = async () => Response.json({
+    choices: [{ message: { content: longAnswer }, finish_reason: "length" }],
+  });
+  try {
+    const response = await onRequestPost({
+      request: makeRequest({ articles: [article] }),
+      env: { OPENROUTER_API_KEY: "test-secret" },
+    });
+    const payload = await response.json();
+    assert.equal(response.status, 200);
+    assert.equal(payload.answer.length, longAnswer.length);
+    assert.equal(payload.incomplete, true);
   } finally {
     globalThis.fetch = originalFetch;
   }

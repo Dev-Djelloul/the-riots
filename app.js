@@ -2325,6 +2325,20 @@ function appendAgoraInline(container, text, sourcesByReference) {
   container.append(document.createTextNode(text.slice(cursor).replace(/[*_`]/g, "")));
 }
 
+function toAgoraArticle(article) {
+  return {
+    title: article.title,
+    description: article.description || "",
+    link: article.link,
+    image: article.image || null,
+    publishedAt: article.publishedAt,
+    sourceName: article.sourceName,
+    country: COUNTRY_NAMES[article.countryCode] || (article.countryCode === "FR" ? "France" : ""),
+    city: (article.location?.places || []).slice(0, 3).map((place) => place.name).join(", "),
+    ...(article.archive ? { archive: true } : {}),
+  };
+}
+
 function positionAgoraPreview(citation, preview) {
   const bounds = citation.getBoundingClientRect();
   const width = Math.min(300, window.innerWidth - 24);
@@ -2340,22 +2354,13 @@ function positionAgoraPreview(citation, preview) {
 async function askAgora(question = "") {
   if (agoraBusy) return;
   const archiveDate = agoraArchiveToggle.checked ? agoraArchiveDate.value : "";
-  const articles = [...state.articles]
+  const recentArticles = [...state.articles]
     .filter((article) => article.title && article.link && Number.isFinite(Date.parse(article.publishedAt)))
     .sort((a, b) => Date.parse(b.publishedAt) - Date.parse(a.publishedAt))
     .slice(0, 12)
-    .map((article) => ({
-      title: article.title,
-      description: article.description || "",
-      link: article.link,
-      image: article.image || null,
-      publishedAt: article.publishedAt,
-      sourceName: article.sourceName,
-      country: COUNTRY_NAMES[article.countryCode] || (article.countryCode === "FR" ? "France" : ""),
-      city: (article.location?.places || []).slice(0, 3).map((place) => place.name).join(", "),
-    }));
-  agoraContextCount.textContent = `${articles.length} article${articles.length === 1 ? "" : "s"} récent${articles.length === 1 ? "" : "s"} transmis`;
-  if (!articles.length && !archiveDate && !agoraWebSearch.checked) {
+    .map(toAgoraArticle);
+  agoraContextCount.textContent = `${recentArticles.length} article${recentArticles.length === 1 ? "" : "s"} récent${recentArticles.length === 1 ? "" : "s"} transmis`;
+  if (!recentArticles.length && !archiveDate && !agoraWebSearch.checked) {
     addAgoraMessage("assistant", "Je n’ai pas encore reçu d’articles à traduire. Actualise les flux Veille ou choisis une date d’archive puis réessaie.", [], true);
     return;
   }
@@ -2367,7 +2372,7 @@ async function askAgora(question = "") {
 
   const userQuestion = question.trim();
   if (userQuestion) addAgoraMessage("user", userQuestion);
-  const loading = addAgoraMessage("assistant", archiveDate ? `Je consulte les articles et l’archive du ${archiveDate}…` : "Je lis les derniers articles…");
+  const loading = addAgoraMessage("assistant", archiveDate ? `Je recherche l’archive du ${archiveDate}…` : "Je lis les derniers articles…");
   loading.classList.add("agora-loading");
   agoraBusy = true;
   agoraSend.disabled = true;
@@ -2375,6 +2380,33 @@ async function askAgora(question = "") {
   agoraQuickPrompts.querySelectorAll("button").forEach((button) => { button.disabled = true; });
   agoraQuestion.disabled = true;
   try {
+    let archiveUnavailable = false;
+    let archiveArticles = [];
+    if (archiveDate) {
+      try {
+        const archiveResponse = await fetch(`/api/archive?date=${encodeURIComponent(archiveDate)}`, {
+          headers: { Accept: "application/json" },
+          signal: AbortSignal.timeout(24_000),
+        });
+        const archivePayload = await archiveResponse.json();
+        if (!archiveResponse.ok) throw new Error(archivePayload.error || `Réponse inattendue (${archiveResponse.status})`);
+        archiveUnavailable = archivePayload.available === 0;
+        archiveArticles = Array.isArray(archivePayload.articles)
+          ? archivePayload.articles
+            .filter((article) => article.title && article.link && Number.isFinite(Date.parse(article.publishedAt)))
+            .map((article) => toAgoraArticle(enrichArticle(article, state.geography)))
+          : [];
+      } catch (error) {
+        archiveUnavailable = true;
+        console.warn("Archive indisponible pour Agora.", error);
+      }
+    }
+    const articles = [...new Map([
+      ...archiveArticles,
+      ...recentArticles.filter((article) => !archiveArticles.some((archived) => archived.link === article.link)),
+    ].map((article) => [article.link, article])).values()].slice(0, 24);
+    agoraContextCount.textContent = `${archiveArticles.length} article${archiveArticles.length === 1 ? "" : "s"} d’archive · ${recentArticles.length} récent${recentArticles.length === 1 ? "" : "s"}`;
+    loading.textContent = "Agora analyse les sources…";
     const response = await fetch("/api/agora", {
       method: "POST",
       headers: { Accept: "application/json", "Content-Type": "application/json" },
@@ -2383,13 +2415,27 @@ async function askAgora(question = "") {
         question: userQuestion,
         webSearch: agoraWebSearch.checked,
         archiveDate,
+        archiveUnavailable,
         conversation: agoraConversation.slice(-6).map(({ role, content }) => ({ role, content: content.slice(0, 1_200) })),
       }),
     });
-    const payload = await response.json();
-    if (!response.ok) throw new Error(payload.error || `Réponse inattendue (${response.status})`);
+    let payload;
+    try {
+      payload = await response.json();
+    } catch {
+      throw new Error(`Le serveur Agora a renvoyé une réponse illisible (HTTP ${response.status}). Réessaie dans un instant.`);
+    }
+    if (!response.ok) {
+      throw new Error(payload?.error || `Agora est indisponible (HTTP ${response.status}). Réessaie dans un instant.`);
+    }
+    if (typeof payload?.answer !== "string" || !payload.answer.trim()) {
+      throw new Error("Agora a renvoyé une réponse vide. Réessaie dans un instant.");
+    }
     loading.remove();
     addAgoraMessage("assistant", payload.answer, Array.isArray(payload.sources) ? payload.sources : []);
+    if (payload.incomplete) {
+      addAgoraMessage("assistant", "La réponse a atteint la limite de génération et peut être incomplète. Demande « continue » pour la suite.", [], true);
+    }
     if (typeof payload.model === "string") agoraModelName.textContent = payload.model;
     if (userQuestion) agoraConversation.push({ role: "user", content: userQuestion });
     agoraConversation.push({ role: "assistant", content: payload.answer });

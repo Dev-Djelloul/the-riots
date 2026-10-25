@@ -7,6 +7,7 @@ const root = new URL("../", import.meta.url);
 
 test("PWA manifest points to an existing scalable app icon", async () => {
   const manifest = JSON.parse(await readFile(new URL("manifest.webmanifest", root), "utf8"));
+  const favicon = await readFile(new URL("favicon.ico", root));
 
   assert.equal(manifest.name, "Veille — événements en France et en Europe");
   assert.equal(manifest.start_url, "/");
@@ -14,6 +15,7 @@ test("PWA manifest points to an existing scalable app icon", async () => {
   assert.equal(manifest.display, "standalone");
   assert.equal(manifest.icons[0].sizes, "any");
   assert.equal(manifest.icons[0].purpose, "any maskable");
+  assert.deepEqual([...favicon.subarray(0, 4)], [0, 0, 1, 0]);
   await readFile(new URL(manifest.icons[0].src.slice(1), root), "utf8");
 });
 
@@ -39,6 +41,11 @@ test("Agora translates recent articles with an owl icon and linked citations", a
   assert.match(html, /id="agora-web-search" type="checkbox" checked/);
   assert.match(html, /id="agora-archive-toggle" type="checkbox"/);
   assert.match(html, /id="agora-archive-date" type="date" disabled/);
+  assert.doesNotMatch(html, /peut entraîner des frais OpenRouter/);
+  assert.ok(html.indexOf('id="agora-web-search"') < html.indexOf('id="agora-archive-toggle"'));
+  assert.ok(html.indexOf('id="agora-archive-toggle"') < html.indexOf('id="agora-archive-date"'));
+  assert.match(html, /rel="icon" href="\/favicon\.ico"/);
+  assert.match(html, /property="og:image" content="https:\/\/the-riots\.digitalblueskye\.com\/icons\/veille-512\.png"/);
   assert.match(html, /id="agora-model-name"/);
   assert.match(html, /href="https:\/\/openrouter\.ai\/"[^>]*>OpenRouter ↗/);
   assert.doesNotMatch(html, /openrouter\.ai\/openai\/gpt-4o-mini/);
@@ -47,6 +54,7 @@ test("Agora translates recent articles with an owl icon and linked citations", a
   assert.match(html, /data-agora-prompt="Fais un briefing/);
   assert.match(html, /class="agora-model"[^>]*>[\s\S]*id="agora-model-name"[\s\S]*href="https:\/\/openrouter\.ai\/"/);
   assert.match(app, /fetch\("\/api\/agora"/);
+  assert.match(app, /fetch\(`\/api\/archive\?date=/);
   assert.match(app, /\.slice\(0,\s*12\)/);
   assert.match(app, /agora-citation-preview/);
   assert.match(app, /positionAgoraPreview/);
@@ -70,11 +78,16 @@ test("Agora translates recent articles with an owl icon and linked citations", a
   assert.match(api, /MAX_BODY_BYTES/);
   assert.match(api, /openrouter\/auto/);
   assert.match(api, /openrouter:web_search/);
-  assert.match(api, /getArchiveDay/);
+  assert.doesNotMatch(api, /getArchiveDay/);
+  assert.match(api, /X-OpenRouter-Title/);
+  assert.match(api, /OPENROUTER_APP_URL/);
+  assert.match(api, /max_tokens:\s*3_000/);
+  assert.match(api, /incomplete:\s*choice\?\.finish_reason === "length"/);
   assert.match(api, /model: result\?\.model/);
   assert.match(app, /webSearch: agoraWebSearch\.checked/);
   assert.match(app, /archiveDate,/);
-  assert.match(worker, /veille-shell-v29/);
+  assert.match(worker, /veille-shell-v30/);
+  assert.ok(worker.includes('"/favicon.ico"'));
   assert.ok(worker.includes('"/icons/owl.svg"'));
 });
 
@@ -147,7 +160,7 @@ test("personal alerts, saved articles and European coverage comparison are wired
   assert.match(app, /selectedStart = new Date\(`\$\{state\.selectedDate\}T00:00:00`\)/);
   assert.match(app, /navigator\.clipboard\.writeText/);
   assert.match(app, /function renderTrends\(\)/);
-  assert.match(serviceWorker, /veille-shell-v29/);
+  assert.match(serviceWorker, /veille-shell-v30/);
   assert.ok(serviceWorker.includes('"/europe-countries.js"'));
   assert.match(readme, /À lire plus tard/);
   assert.match(readme, /alertes personnalisées/i);
@@ -211,7 +224,7 @@ test("European live video cards point to official players and broadcasters", asy
   assert.match(html, /https:\/\/www\.vrt\.be\/vrtnws\/nl\/kijk\//);
   assert.match(html, /https:\/\/www\.raiplay\.it\/dirette\/rainews24/);
   assert.match(html, /https:\/\/www\.tagesschau\.de\/multimedia\/livestreams\//);
-  assert.match(serviceWorker, /veille-shell-v29/);
+  assert.match(serviceWorker, /veille-shell-v30/);
   assert.match(app, /card\.dataset\.type/);
   assert.match(html, /id="group-by"/);
   assert.match(app, /function renderGroupedFeed\(/);
