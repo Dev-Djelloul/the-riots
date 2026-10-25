@@ -2320,7 +2320,6 @@ function appendAgoraInline(container, text, sourcesByReference) {
         }
       }
     }
-    }
     cursor = match.index + match[0].length;
   }
   container.append(document.createTextNode(text.slice(cursor).replace(/[*_`]/g, "")));
