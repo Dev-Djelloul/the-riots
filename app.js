@@ -995,6 +995,8 @@ function renderGroupedFeed(articles, mode) {
   feed.replaceChildren(...sections);
 }
 
+let articleHighlightTimer;
+
 function openArticleInFeed(articleId) {
   map?.closePopup();
   state.showSaved = false;
@@ -1007,8 +1009,15 @@ function openArticleInFeed(articleId) {
 
   requestAnimationFrame(() => {
     const behavior = window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth";
+    card.classList.remove("map-target-highlight");
+    void card.offsetWidth;
+    card.classList.add("map-target-highlight");
     card.scrollIntoView({ behavior, block: "center" });
     card.querySelector(".event-summary")?.focus({ preventScroll: true });
+    window.clearTimeout(articleHighlightTimer);
+    articleHighlightTimer = window.setTimeout(() => {
+      card.classList.remove("map-target-highlight");
+    }, 4500);
   });
 }
 

@@ -46,6 +46,8 @@ test("map supports touch gestures, keyboard and zoom/recenter controls", async (
   assert.match(app, /function openArticleInFeed\(articleId\)/);
   assert.match(app, /state\.selected = articleId;\s*render\(\)/);
   assert.match(app, /candidate\.dataset\.articleId === articleId/);
+  assert.match(app, /card\.classList\.add\("map-target-highlight"\)/);
+  assert.match(app, /window\.setTimeout\(\(\) => \{\s*card\.classList\.remove\("map-target-highlight"\);/);
   assert.match(app, /card\.scrollIntoView\(\{ behavior, block: "center" \}\)/);
   assert.match(app, /card\.querySelector\("\.event-summary"\)\?\.focus\(\{ preventScroll: true \}\)/);
   assert.match(app, /card\.dataset\.articleId = article\.id/);
@@ -58,6 +60,9 @@ test("map supports touch gestures, keyboard and zoom/recenter controls", async (
   assert.match(app, /preview\.style\.setProperty\("--preview-center-x"/);
   assert.match(app, /preview\.style\.setProperty\("--preview-max-height"/);
   assert.match(stylesheet, /\.map-hover-preview\s*\{[^}]*position:\s*fixed;[^}]*pointer-events:\s*none;/);
+  assert.match(stylesheet, /\.event-card\.map-target-highlight\s*\{[^}]*outline:\s*2px solid #e7bd78;[^}]*box-shadow:/);
+  assert.match(stylesheet, /\.event-card\.map-target-highlight::before\s*\{[^}]*content:\s*"ARTICLE DE LA CARTE";/);
+  assert.match(stylesheet, /@keyframes article-target-pulse/);
   assert.doesNotMatch(html, /map-gesture-hint|PINCER À 2 DOIGTS · GLISSER POUR DÉPLACER/);
   assert.doesNotMatch(stylesheet, /\.map-gesture-hint/);
   assert.match(stylesheet, /\.map-navigation-button:focus-visible/);

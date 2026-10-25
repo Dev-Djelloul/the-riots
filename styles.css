@@ -405,6 +405,13 @@ h1 em, .about-dialog h2 em { color: var(--accent); font-weight: 500; }
 .feed-list { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: 18px; align-content: start; min-height: 0; max-height: 150vh; flex: none; overflow-y: auto; overscroll-behavior: contain; scrollbar-color: #44473e transparent; scrollbar-width: thin; }
 .event-card { position: relative; padding: 0 5px 0 12px; border-top: 1px solid var(--line-soft); border-left: 1px solid transparent; transition: background .18s, border-color .18s; }
 .event-card:hover, .event-card.selected { background: #1d1f1b; border-left-color: var(--accent); }
+.event-card.map-target-highlight { z-index: 1; outline: 2px solid #e7bd78; outline-offset: 2px; background: color-mix(in srgb, #e7bd78 22%, #1b1d19); box-shadow: 0 0 0 5px #e7bd7826, 0 0 30px #e7bd7866; animation: article-target-pulse 1s ease-in-out 4; }
+.event-card.map-target-highlight::before { position: absolute; top: -10px; left: 14px; z-index: 2; padding: 3px 7px; border: 1px solid #e7bd78; border-radius: 2px; background: #e7bd78; color: #17140f; content: "ARTICLE DE LA CARTE"; font: 600 8px var(--mono); letter-spacing: .08em; }
+.event-card.map-target-highlight .event-title { color: #ffe0a4; }
+@keyframes article-target-pulse {
+  0%, 100% { box-shadow: 0 0 0 5px #e7bd7826, 0 0 30px #e7bd7866; }
+  50% { box-shadow: 0 0 0 9px #e7bd7840, 0 0 42px #e7bd78aa; }
+}
 .coverage-group { min-width: 0; }
 .coverage-group-heading { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 12px; padding: 14px 5px 0 12px; border-top: 1px solid var(--line); color: #e2c4a4; font: 11px var(--mono); }
 .coverage-group-heading strong { display: inline-flex; align-items: center; flex: 1 1 auto; flex-wrap: wrap; gap: 6px; min-width: 0; font-size: 14px; font-weight: 600; letter-spacing: .01em; }
