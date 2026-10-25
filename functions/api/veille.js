@@ -502,10 +502,10 @@ const PLACE_EVENT_TERMS = [
   "manifestazione", "streik", "ausschreitungen", "krawalle", "betoging", "demonstratie",
 ];
 const GNEWS_QUERIES = EUROPE_COUNTRIES.map(({ code, lang, query }) => ({
-  lang: GNEWS_SUPPORTED_LANGUAGES.has(lang) ? lang : "en",
+  lang: GNEWS_SUPPORTED_LANGUAGES.has(lang) ? lang : null,
   country: code.toLowerCase(),
   countryCode: code,
-  q: GNEWS_SUPPORTED_LANGUAGES.has(lang) ? query : EUROPE_WIDE_QUERY,
+  q: query,
 }));
 
 // Archive par jour via l’API GNews (clé GNEWS_API_KEY, jamais exposée au navigateur).
@@ -566,8 +566,9 @@ async function fetchGnewsDay(date, apiKey, countryCodes = EUROPE_COUNTRIES.map((
           region: matchedCity?.region || null,
           position: matchedCity?.position || null,
           placeMention: matchedCity ? createPlaceMention(matchedCity) : null,
-          countryCode: detectedCountry || query.countryCode,
-          countryCodeBasis: matchedCity ? "place-mention" : mentionedCountry ? "country-mention" : "search-country",
+          countryCode: detectedCountry || null,
+          countryCodeBasis: matchedCity ? "place-mention" : mentionedCountry ? "country-mention" : "unlocated",
+          searchCountryCode: query.countryCode === "GLOBAL" ? null : query.countryCode,
         });
       }
       return { ok: true, articles };
@@ -599,7 +600,10 @@ export async function fetchArchiveDay(date, {
   if (gnewsKey && !gdeltOnly) {
     const gnews = await fetchGnewsDay(date, gnewsKey, countryCodes);
     if (gnews.ok) {
-      const articles = (await resolveCandidates(gnews.articles, ai))
+      const resolvedArticles = await resolveCandidates(gnews.articles, ai);
+      const articles = (countryCodes?.length
+        ? resolvedArticles.filter((article) => countryCodes.includes(article.countryCode))
+        : resolvedArticles)
         .sort((a, b) => new Date(b.publishedAt) - new Date(a.publishedAt));
       return {
         date,

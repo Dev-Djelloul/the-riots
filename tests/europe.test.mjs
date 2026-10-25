@@ -80,7 +80,7 @@ test("recherche les articles grecs en grec et situe Athènes", async () => {
   }
 });
 
-test("retombe sur des mots-clés anglais pour une langue non prise en charge", async () => {
+test("conserve les mots-clés locaux sans filtre de langue non prise en charge", async () => {
   const originalFetch = globalThis.fetch;
   let url;
   globalThis.fetch = async (input) => {
@@ -90,8 +90,9 @@ test("retombe sur des mots-clés anglais pour une langue non prise en charge", a
   try {
     await fetchArchiveDay("2026-10-01", { gnewsKey: "test-key", countryCodes: ["PL"] });
     assert.equal(url.searchParams.get("country"), "pl");
-    assert.equal(url.searchParams.get("lang"), "en");
-    assert.match(url.searchParams.get("q"), /protest/);
+    assert.equal(url.searchParams.get("lang"), null);
+    assert.match(url.searchParams.get("q"), /demonstracja/);
+    assert.match(url.searchParams.get("q"), /zamieszki/);
   } finally {
     globalThis.fetch = originalFetch;
   }

@@ -1,6 +1,20 @@
 import { fetchArchiveDay, readHistoryDay, shiftDate } from "./veille.js";
 import { EUROPE_COUNTRIES } from "../../europe-countries.js";
 
+function clearSearchCountryLocation(article) {
+  if (!article || article.countryCodeBasis !== "search-country") return article;
+  return {
+    ...article,
+    searchCountryCode: article.searchCountryCode || article.countryCode || null,
+    countryCode: null,
+    countryCodeBasis: "unlocated",
+  };
+}
+
+function normalizeCachedArticles(value) {
+  return Array.isArray(value) ? value.map(clearSearchCountryLocation) : null;
+}
+
 export async function onRequestGet({ request, env }) {
   const params = new URL(request.url).searchParams;
   const date = params.get("date") || "";
@@ -23,8 +37,11 @@ export async function onRequestGet({ request, env }) {
   // Un jour déjà récupéré chez GNews est relu depuis KV : il ne consomme plus de quota.
   const archiveKey = `archive:${date}`;
   const archivedDay = env?.HISTORY ? await env.HISTORY.get(archiveKey, "json").catch(() => null) : null;
-  let articles = Array.isArray(archivedDay)
-    ? countryCode ? archivedDay.filter((article) => article.countryCode === countryCode) : archivedDay
+  const normalizedArchivedDay = Array.isArray(archivedDay)
+    ? archivedDay.map(clearSearchCountryLocation)
+    : archivedDay;
+  let articles = Array.isArray(normalizedArchivedDay)
+    ? countryCode ? normalizedArchivedDay.filter((article) => article.countryCode === countryCode) : normalizedArchivedDay
     : [];
   let collectedCountries = 0;
   let hasRequestedCountry = false;
@@ -33,23 +50,30 @@ export async function onRequestGet({ request, env }) {
     const codes = countryCode ? [countryCode] : EUROPE_COUNTRIES.map(({ code }) => code);
     const collectedDays = await Promise.all(codes.map(async (code) => [
       code,
-      await env.HISTORY.get(`coverage:${date}:${code}`, "json").catch(() => null),
+      normalizeCachedArticles(await env.HISTORY.get(`coverage:${date}:${code}`, "json").catch(() => null)),
     ]));
     scheduledCountries = collectedDays.filter(([, countryDay]) => Array.isArray(countryDay)).length;
     let manualDay = null;
     if (countryCode && !scheduledCountries) {
-      manualDay = await env.HISTORY.get(`archive-country:${date}:${countryCode}`, "json").catch(() => null);
+      manualDay = normalizeCachedArticles(
+        await env.HISTORY.get(`archive-country:${date}:${countryCode}`, "json").catch(() => null),
+      );
     }
     collectedCountries = scheduledCountries || Number(Array.isArray(manualDay));
     hasRequestedCountry = Boolean(scheduledCountries || Array.isArray(manualDay));
     const countryArticles = countryCode
       ? scheduledCountries ? collectedDays[0][1] : manualDay
       : collectedDays.flatMap(([, countryDay]) => Array.isArray(countryDay) ? countryDay : []);
-    articles = [...new Map([...articles, ...(Array.isArray(countryArticles) ? countryArticles : [])]
+    const scopedCountryArticles = countryCode && Array.isArray(countryArticles)
+      ? countryArticles.filter((article) => article.countryCode === countryCode)
+      : countryArticles;
+    articles = [...new Map([...articles, ...(Array.isArray(scopedCountryArticles) ? scopedCountryArticles : [])]
       .map((article) => [article.link || article.id, article])).values()];
   }
   if (!articles.length && env?.HISTORY && countryCode) {
-    const days = await Promise.all([-1, 0, 1].map((offset) => readHistoryDay(env.HISTORY, shiftDate(date, offset))));
+    const historyDays = await Promise.all([-1, 0, 1]
+      .map((offset) => readHistoryDay(env.HISTORY, shiftDate(date, offset))));
+    const days = historyDays.map((day) => day.map(clearSearchCountryLocation));
     if (!collectedCountries) articles = days.flat().filter((article) => article.countryCode === countryCode);
   }
   let result = {

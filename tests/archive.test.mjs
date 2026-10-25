@@ -300,3 +300,70 @@ test("utilise une recherche GNews mondiale de repli et écarte les articles hors
   assert.equal(calls, 2);
   assert.ok(HISTORY.store.has("archive:2026-09-15"));
 });
+
+test("la recherche tchèque conserve ses mots-clés locaux et ne localise pas les articles étrangers", async () => {
+  let calls = 0;
+  globalThis.fetch = async (input) => {
+    calls += 1;
+    const url = new URL(String(input));
+    assert.equal(url.hostname, "gnews.io");
+    assert.equal(url.searchParams.get("country"), "cz");
+    assert.equal(url.searchParams.get("lang"), null);
+    assert.match(url.searchParams.get("q"), /demonstrace/);
+    assert.doesNotMatch(url.searchParams.get("q"), /demonstration OR strike/);
+    return gnewsResponse([
+      {
+        title: "Mumbai Airport Mosque Row: Kirit Somaiya, BJP Workers Taken Into Custody",
+        description: "A protest near Terminal 2 in Mumbai, India.",
+        url: "https://example.test/mumbai",
+        publishedAt: "2026-09-15T10:00:00Z",
+        source: { name: "Example India" },
+      },
+      {
+        title: "Demonstration in Prague over public services",
+        description: "Protesters gathered in the Czech capital.",
+        url: "https://example.test/prague",
+        publishedAt: "2026-09-15T11:00:00Z",
+        source: { name: "Example Czechia" },
+      },
+    ]);
+  };
+  const HISTORY = createKv();
+
+  const response = await onRequestGet({
+    request: request("2026-09-15", "CZ"),
+    env: { HISTORY, GNEWS_API_KEY: "secret" },
+  });
+  const result = await response.json();
+  const localArticle = result.articles.find((article) => article.link === "https://example.test/prague");
+
+  assert.equal(response.status, 200);
+  assert.equal(result.provider, "gnews");
+  assert.equal(calls, 1);
+  assert.equal(result.articles.some((article) => article.link === "https://example.test/mumbai"), false);
+  assert.ok(localArticle);
+  assert.equal(localArticle.countryCode, "CZ");
+  assert.equal(localArticle.countryCodeBasis, "place-mention");
+});
+
+test("retire la fausse localisation des anciennes entrées de collecte en cache", async () => {
+  const HISTORY = createKv();
+  HISTORY.store.set("coverage:2026-09-15:CZ", JSON.stringify([{
+    id: "old-india-article",
+    title: "Protest in Mumbai, India",
+    link: "https://example.test/old-india",
+    publishedAt: "2026-09-15T10:00:00Z",
+    countryCode: "CZ",
+    countryCodeBasis: "search-country",
+  }]));
+
+  const response = await onRequestGet({
+    request: request("2026-09-15", "CZ"),
+    env: { HISTORY },
+  });
+  const result = await response.json();
+
+  assert.equal(response.status, 200);
+  assert.equal(result.source, "scheduled-collection");
+  assert.equal(result.articles.length, 0);
+});
