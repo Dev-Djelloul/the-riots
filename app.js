@@ -467,6 +467,7 @@ if (map) {
   });
   map.on("popupclose", ({ popup }) => {
     if (activeMapPopup === popup) activeMapPopup = null;
+    hideMapPopupPreview();
   });
   map.on("resize", () => {
     if (activeMapPopup) fitPopupToMap(activeMapPopup);
@@ -506,6 +507,32 @@ function fitPopupToMap(popup) {
     articleList.removeAttribute("aria-label");
   }
   popup.update();
+}
+
+function showMapPopupPreview(imageUrl) {
+  if (!isSafeImageUrl(imageUrl)) return;
+  hideMapPopupPreview();
+
+  const mapBounds = map.getContainer().getBoundingClientRect();
+  const preview = document.createElement("div");
+  preview.className = "map-hover-preview";
+  preview.setAttribute("aria-hidden", "true");
+  const image = document.createElement("img");
+  image.src = imageUrl;
+  image.alt = "";
+  image.decoding = "async";
+  image.referrerPolicy = "no-referrer";
+  image.addEventListener("error", () => preview.remove(), { once: true });
+  preview.append(image);
+  preview.style.setProperty("--preview-center-x", `${mapBounds.left + mapBounds.width / 2}px`);
+  preview.style.setProperty("--preview-center-y", `${mapBounds.top + mapBounds.height * 0.68}px`);
+  preview.style.setProperty("--preview-max-width", `${Math.max(0, Math.min(520, window.innerWidth - 32, mapBounds.width - 32))}px`);
+  preview.style.setProperty("--preview-max-height", `${Math.max(0, Math.min(360, window.innerHeight - 32, mapBounds.height - 32))}px`);
+  document.body.append(preview);
+}
+
+function hideMapPopupPreview() {
+  document.querySelector(".map-hover-preview")?.remove();
 }
 
 async function loadGeography() {
@@ -1746,18 +1773,14 @@ function createLocationPopup(name, articles, precision, countryCode = null) {
     });
     item.append(link);
     if (isSafeImageUrl(article.image)) {
-      const preview = document.createElement("img");
-      preview.className = "map-popup-preview";
-      preview.src = article.image;
-      preview.alt = "";
-      preview.loading = "lazy";
-      preview.decoding = "async";
-      preview.referrerPolicy = "no-referrer";
-      preview.addEventListener("error", () => preview.remove(), { once: true });
-      const prioritizePreview = () => { preview.loading = "eager"; };
-      link.addEventListener("mouseenter", prioritizePreview, { once: true });
-      link.addEventListener("focus", prioritizePreview, { once: true });
-      item.append(preview);
+      link.addEventListener("pointerenter", () => showMapPopupPreview(article.image));
+      link.addEventListener("pointerleave", () => {
+        if (document.activeElement !== link) hideMapPopupPreview();
+      });
+      link.addEventListener("focus", () => showMapPopupPreview(article.image));
+      link.addEventListener("blur", () => {
+        if (!link.matches(":hover")) hideMapPopupPreview();
+      });
     }
     const place = article.location?.places?.find((candidate) => normalizePlace(candidate.name) === normalizePlace(name));
     if (place?.evidence) {

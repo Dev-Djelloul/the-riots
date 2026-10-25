@@ -338,8 +338,8 @@ h1 em, .about-dialog h2 em { color: var(--accent); font-weight: 500; }
 .map-popup li::marker { color: #d8a67d; }
 .map-popup a { color: #e7e4dc; line-height: 1.4; text-decoration-color: #7a6b58; }
 .map-popup a:hover { color: #f3c299; }
-.map-popup-preview { display: none; width: min(100%, 240px); max-height: 140px; margin: 6px 0 2px; border: 1px solid #343730; border-radius: 3px; background: #11120f; object-fit: contain; object-position: left center; }
-.map-popup li:hover .map-popup-preview, .map-popup li:focus-within .map-popup-preview { display: block; }
+.map-hover-preview { position: fixed; z-index: 1200; top: var(--preview-center-y); left: var(--preview-center-x); display: grid; place-items: center; width: fit-content; max-width: var(--preview-max-width); max-height: var(--preview-max-height); padding: 6px; transform: translate(-50%, -50%); border: 1px solid #5a5142; border-radius: 5px; background: #11120ff2; box-shadow: 0 8px 30px #000c; pointer-events: none; }
+.map-hover-preview img { display: block; width: auto; max-width: 100%; height: auto; max-height: var(--preview-max-height); border-radius: 2px; object-fit: contain; }
 .map-popup-evidence { display: block; margin-top: 3px; color: #a5a79c; font-size: 9px; line-height: 1.45; }
 .leaflet-interactive { transition: fill-opacity .2s ease, stroke-width .2s ease; }
 .map-footer { display: flex; justify-content: space-between; gap: 10px; padding-top: 12px; border-top: 1px solid var(--line); color: #777a70; font-size: 8px; }

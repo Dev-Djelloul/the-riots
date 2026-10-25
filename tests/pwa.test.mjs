@@ -51,10 +51,13 @@ test("map supports touch gestures, keyboard and zoom/recenter controls", async (
   assert.match(app, /card\.dataset\.articleId = article\.id/);
   assert.match(app, /preview\.loading = state\.selected === article\.id \? "eager" : "lazy"/);
   assert.match(app, /link\.addEventListener\("click", \(event\) => \{\s*event\.preventDefault\(\);\s*openArticleInFeed\(article\.id\);/);
-  assert.match(app, /if \(isSafeImageUrl\(article\.image\)\) \{\s*const preview = document\.createElement\("img"\);\s*preview\.className = "map-popup-preview";/);
-  assert.match(app, /link\.addEventListener\("mouseenter", prioritizePreview, \{ once: true \}\)/);
-  assert.match(app, /link\.addEventListener\("focus", prioritizePreview, \{ once: true \}\)/);
-  assert.match(stylesheet, /\.map-popup li:hover \.map-popup-preview, \.map-popup li:focus-within \.map-popup-preview \{ display: block; \}/);
+  assert.match(app, /if \(isSafeImageUrl\(article\.image\)\) \{\s*link\.addEventListener\("pointerenter", \(\) => showMapPopupPreview\(article\.image\)\)/);
+  assert.match(app, /link\.addEventListener\("pointerenter", \(\) => showMapPopupPreview\(article\.image\)\)/);
+  assert.match(app, /link\.addEventListener\("focus", \(\) => showMapPopupPreview\(article\.image\)\)/);
+  assert.match(app, /preview\.className = "map-hover-preview"/);
+  assert.match(app, /preview\.style\.setProperty\("--preview-center-x"/);
+  assert.match(app, /preview\.style\.setProperty\("--preview-max-height"/);
+  assert.match(stylesheet, /\.map-hover-preview\s*\{[^}]*position:\s*fixed;[^}]*pointer-events:\s*none;/);
   assert.doesNotMatch(html, /map-gesture-hint|PINCER À 2 DOIGTS · GLISSER POUR DÉPLACER/);
   assert.doesNotMatch(stylesheet, /\.map-gesture-hint/);
   assert.match(stylesheet, /\.map-navigation-button:focus-visible/);
