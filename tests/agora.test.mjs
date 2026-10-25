@@ -94,7 +94,12 @@ test("Agora transmet les citations de recherche Web sous forme de sources sûres
         content: "Voici le résultat récent.",
         annotations: [{
           type: "url_citation",
-          url_citation: { url: "https://news.example/current", title: "Actualité vérifiée" },
+          url_citation: {
+            url: "https://news.example/current",
+            title: "Actualité vérifiée",
+            content: "Un extrait de l’article fourni par la recherche Web.",
+            image: "https://news.example/current.jpg",
+          },
         }],
       },
     }],
@@ -111,6 +116,9 @@ test("Agora transmet les citations de recherche Web sous forme de sources sûres
     assert.equal(payload.sources.at(-1).reference, 2);
     assert.equal(payload.sources.at(-1).link, "https://news.example/current");
     assert.equal(payload.sources.at(-1).sourceName, "news.example");
+    assert.equal(payload.sources.at(-1).description, "Un extrait de l’article fourni par la recherche Web.");
+    assert.equal(payload.sources.at(-1).image, "https://news.example/current.jpg");
+    assert.equal(payload.sources.at(-1).kind, "web");
   } finally {
     globalThis.fetch = originalFetch;
   }

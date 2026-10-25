@@ -107,5 +107,7 @@ test("configure le collecteur quotidien sans remplacer les limites cartographiqu
   assert.match(worker, /REQUEST_GAP_MS = 1_100/);
   assert.match(app, /COUNTRY_BOUNDARY_CODES = new Set\(\["BE", "DE", "ES", "FR", "IT"\]\)/);
   assert.match(app, /combineEuropeBoundaries\(localEurope\?\.features, worldFeatures\)/);
-  assert.match(app, /Contours Europe partiels/);
+  assert.match(app, /Contours européens incomplets/);
+  assert.doesNotMatch(app, /Contours Europe partiels · \d+\/\d+ pays · repères approximatifs/);
+  assert.match(await readFile(new URL("../styles.css", import.meta.url), "utf8"), /\.map-result-count--europe\s*\{[^}]*color:\s*#e7bd78;/);
 });

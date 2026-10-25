@@ -52,11 +52,15 @@ test("Agora translates recent articles with an owl icon and linked citations", a
   assert.equal((html.match(/src="\/icons\/owl\.svg"/g) || []).length, 2);
   assert.equal(owl.trim(), '<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 24 24" fill="#000000"><g fill="none" stroke="#000000" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"><ellipse cx="12" cy="9" rx="8" ry="7"/><path d="M12 9a4 4 0 1 1 8 0v12h-4C9.4 21 4 15.6 4 9a4 4 0 1 1 8 0v1M8 9h.01M16 9h.01"/><path d="M20 21a3.9 3.9 0 1 1 0-7.8m-10 6.2V22m4-1.15V22"/></g></svg>');
   assert.match(html, /data-agora-prompt="Fais un briefing/);
+  assert.match(html, /aria-label="Briefing express des principaux événements"/);
+  assert.match(html, /aria-label="Traduire les titres des articles non francophones"/);
   assert.match(html, /class="agora-model"[^>]*>[\s\S]*id="agora-model-name"[\s\S]*href="https:\/\/openrouter\.ai\/"/);
   assert.match(app, /fetch\("\/api\/agora"/);
   assert.match(app, /fetch\(`\/api\/archive\?date=/);
   assert.match(app, /\.slice\(0,\s*12\)/);
   assert.match(app, /agora-citation-preview/);
+  assert.match(app, /source\.kind === "web" \? " agora-citation-preview--web"/);
+  assert.match(app, /className = "agora-preview-description"/);
   assert.match(app, /positionAgoraPreview/);
   assert.match(app, /className = "agora-press-highlight"/);
   assert.match(app, /className = "agora-web-link"/);
@@ -71,6 +75,8 @@ test("Agora translates recent articles with an owl icon and linked citations", a
   }
   assert.match(stylesheet, /--prompt-color\) 34%, #1d1e19/);
   assert.match(stylesheet, /\.agora-citation:hover \.agora-citation-preview/);
+  assert.match(stylesheet, /\.agora-quick-prompts\s*\{[^}]*flex-wrap:\s*nowrap;[^}]*overflow-x:\s*auto;/);
+  assert.match(stylesheet, /\.map-result-count--europe\s*\{[^}]*color:\s*#e7bd78;/);
   assert.match(api, /Tu es Agora/);
   assert.match(api, /MAX_ARTICLES = 24/);
   assert.match(api, /N’invente jamais de référence/);

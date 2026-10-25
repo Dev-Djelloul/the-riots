@@ -100,13 +100,17 @@ function safeWebCitation(value) {
   try {
     const url = new URL(value.url);
     if (!["http:", "https:"].includes(url.protocol) || url.username || url.password) return null;
+    const description = [value.content, value.description, value.snippet]
+      .find((candidate) => typeof candidate === "string" && candidate.trim());
     return {
       title: typeof value.title === "string" && value.title.trim()
         ? value.title.trim().slice(0, 300)
         : url.hostname,
       link: url.href,
       sourceName: url.hostname,
-      image: null,
+      image: safeImageUrl(value.image || value.image_url || value.thumbnail),
+      description: description ? description.trim().slice(0, 500) : "",
+      kind: "web",
     };
   } catch {
     return null;
@@ -231,7 +235,11 @@ export async function onRequestPost({ request, env } = {}) {
     }));
     const webSources = (result?.choices?.[0]?.message?.annotations || [])
       .filter((annotation) => annotation?.type === "url_citation")
-      .map((annotation) => safeWebCitation(annotation.url_citation))
+      .map((annotation) => safeWebCitation({
+        ...annotation.url_citation,
+        content: annotation.url_citation?.content || annotation.content,
+        image: annotation.url_citation?.image || annotation.image,
+      }))
       .filter(Boolean)
       .filter((source, index, values) => values.findIndex((candidate) => candidate.link === source.link) === index)
       .slice(0, 8);

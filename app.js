@@ -474,7 +474,7 @@ async function loadGeography() {
     const hasEuropeBoundaries = europeFeatures.length > 0;
     if (europeFeatures.length < COUNTRY_CODES.length) {
       mapDataWarningMode = "europe";
-      mapDataWarning.textContent = `Contours Europe partiels · ${europeFeatures.length}/${COUNTRY_CODES.length} pays · repères approximatifs pour les autres`;
+      mapDataWarning.textContent = "Contours européens incomplets";
     } else {
       mapDataWarningMode = "none";
     }
@@ -2288,7 +2288,7 @@ function appendAgoraInline(container, text, sourcesByReference) {
           reference.setAttribute("aria-label", `Ouvrir l’article ${source.title} dans un nouvel onglet`);
 
           const preview = document.createElement("span");
-          preview.className = "agora-citation-preview";
+          preview.className = `agora-citation-preview${source.kind === "web" ? " agora-citation-preview--web" : ""}`;
           if (source.image) {
             const imageLink = document.createElement("a");
             imageLink.href = source.link;
@@ -2305,7 +2305,7 @@ function appendAgoraInline(container, text, sourcesByReference) {
           }
           const meta = document.createElement("span");
           meta.className = "agora-preview-source";
-          meta.textContent = source.sourceName;
+          meta.textContent = source.kind === "web" ? `Recherche Web · ${source.sourceName}` : source.sourceName;
           const titleLink = document.createElement("a");
           titleLink.className = "agora-preview-title";
           titleLink.href = source.link;
@@ -2313,6 +2313,12 @@ function appendAgoraInline(container, text, sourcesByReference) {
           titleLink.rel = "noopener noreferrer";
           titleLink.textContent = source.title;
           preview.append(meta, titleLink);
+          if (source.description) {
+            const description = document.createElement("span");
+            description.className = "agora-preview-description";
+            description.textContent = source.description;
+            preview.append(description);
+          }
           citation.append(reference, preview);
           citation.addEventListener("pointerenter", () => positionAgoraPreview(citation, preview));
           citation.addEventListener("focusin", () => positionAgoraPreview(citation, preview));

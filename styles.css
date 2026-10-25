@@ -337,7 +337,7 @@ h1 em, .about-dialog h2 em { color: var(--accent); font-weight: 500; }
 .leaflet-interactive { transition: fill-opacity .2s ease, stroke-width .2s ease; }
 .map-footer { display: flex; justify-content: space-between; gap: 10px; padding-top: 12px; border-top: 1px solid var(--line); color: #777a70; font-size: 8px; }
 .map-footer a { color: #a4a69e; text-decoration-color: #696b63; white-space: nowrap; }
-.map-result-count--europe { flex: none; padding: 6px 8px; border: 1px solid #69383b; border-radius: 3px; background: #221516; color: #ff9ba2; font-weight: 500; }
+.map-result-count--europe { flex: none; padding: 6px 8px; border: 1px solid #8a693d; border-radius: 3px; background: #282116; color: #e7bd78; font-weight: 600; }
 
 .feed-panel { grid-column: 1 / -1; grid-row: 2; display: flex; flex-direction: column; min-width: 0; min-height: 600px; max-height: none; overflow: visible; padding: 22px 24px 0; border-top: 1px solid var(--line); }
 .feed-heading { align-items: start; margin-bottom: 14px; }
@@ -486,10 +486,13 @@ h1 em, .about-dialog h2 em { color: var(--accent); font-weight: 500; }
 .agora-citation:hover .agora-citation-preview, .agora-citation:focus-within .agora-citation-preview { display: block; }
 .agora-citation-preview img { display: block; width: 100%; max-height: 160px; object-fit: cover; background: #24251f; }
 .agora-preview-source { display: block; padding: 9px 10px 2px; color: #c9a27e; font: 8px var(--mono); letter-spacing: .06em; text-transform: uppercase; }
+.agora-citation-preview--web .agora-preview-source { color: #d8ad70; }
 .agora-preview-title { display: block; padding: 2px 10px 10px; color: #e5e1d7; font-size: 11px; line-height: 1.4; text-decoration: none; }
 .agora-preview-title:hover, .agora-preview-title:focus-visible { color: #f0c28f; text-decoration: underline; }
-.agora-quick-prompts { display: flex; flex-wrap: wrap; gap: 6px; padding: 9px 14px 7px; }
-.agora-quick-prompts button { padding: 6px 9px; border: 1px solid color-mix(in srgb, var(--prompt-color) 76%, #454238); border-radius: 999px; background: color-mix(in srgb, var(--prompt-color) 34%, #1d1e19); color: color-mix(in srgb, var(--prompt-color) 72%, #fff); cursor: pointer; font: 8px var(--mono); transition: background .18s ease, border-color .18s ease, transform .18s ease; }
+.agora-preview-description { display: block; padding: 0 10px 10px; color: #b8b8ad; font-size: 10px; line-height: 1.5; }
+.agora-quick-prompts { display: flex; flex: none; flex-wrap: nowrap; gap: 5px; overflow-x: auto; padding: 7px 14px 5px; scrollbar-width: none; }
+.agora-quick-prompts::-webkit-scrollbar { display: none; }
+.agora-quick-prompts button { flex: none; padding: 4px 7px; border: 1px solid color-mix(in srgb, var(--prompt-color) 76%, #454238); border-radius: 999px; background: color-mix(in srgb, var(--prompt-color) 34%, #1d1e19); color: color-mix(in srgb, var(--prompt-color) 72%, #fff); cursor: pointer; font: 7px var(--mono); white-space: nowrap; transition: background .18s ease, border-color .18s ease, transform .18s ease; }
 .agora-quick-prompts button:nth-child(1) { --prompt-color: #e7b76f; }
 .agora-quick-prompts button:nth-child(2) { --prompt-color: #79bde0; }
 .agora-quick-prompts button:nth-child(3) { --prompt-color: #72c6a4; }
