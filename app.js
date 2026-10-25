@@ -580,14 +580,17 @@ function countryStyle(feature) {
 
 function enrichArticle(article, geography) {
   let location = geography ? locateArticle(article, geography) : { precision: "unknown", places: [] };
-  if (article.countryCode && article.countryCode !== "FR") {
-    location = article.city && article.position
-      ? { precision: "city", places: [{ name: article.city, precision: "city", coordinates: article.position }] }
-      : { precision: "country", places: [] };
+  if (article.placeMention) {
+    location = { precision: article.placeMention.precision || "city", role: "mentioned", places: [article.placeMention] };
+  } else if (!location.places.length && article.countryCode && article.countryCode !== "FR") {
+    location = { precision: "country", role: "coverage", places: [] };
+  } else if (location.places.length) {
+    location = { ...location, role: "mentioned" };
   }
   return {
     ...article,
     countryCode: article.countryCode || (location.places.length ? "FR" : null),
+    countryCodeBasis: article.countryCodeBasis || (article.countryCode ? "legacy-association" : null),
     location,
   };
 }
@@ -1434,7 +1437,7 @@ function createArticleCard(article) {
       : location.precision === "city"
         ? `Ville citée : ${placeNames} · ${COUNTRY_NAMES[article.countryCode] || ""}`
         : location.precision === "country"
-          ? `Pays cité : ${COUNTRY_NAMES[article.countryCode] || "Europe"}`
+          ? `${article.countryCodeBasis === "publisher-country" ? "Pays du média" : article.countryCodeBasis === "archive-query" || article.countryCodeBasis === "search-country" ? "Pays de recherche" : "Pays associé"} : ${COUNTRY_NAMES[article.countryCode] || "Europe"}`
       : location.precision === "ambiguous"
         ? `Lieu ambigu, non cartographié : ${location.label}`
         : "Lieu non identifié dans le titre ou l’extrait";
@@ -1495,7 +1498,16 @@ function createArticleCard(article) {
     const disclaimer = document.createElement("p");
     disclaimer.className = "article-disclaimer";
     disclaimer.textContent = "Catégorie attribuée automatiquement selon les mots-clés repérés dans l’article. Ouvre la source pour lire sa publication complète.";
-    detail.append(tags, disclaimer);
+    const place = article.location?.places?.[0];
+    if (place?.evidence) {
+      const locationEvidence = document.createElement("p");
+      locationEvidence.className = "article-disclaimer";
+      const confidence = place.confidence === "medium" ? "contexte moyen" : "dateline à confirmer";
+      locationEvidence.textContent = `Lieu mentionné, événement non confirmé (${confidence}) · repère au centre approximatif de la ville. Passage : « ${place.evidence.text} »`;
+      detail.append(tags, locationEvidence, disclaimer);
+    } else {
+      detail.append(tags, disclaimer);
+    }
     card.append(detail);
   }
 
@@ -1587,8 +1599,10 @@ function renderEuropeMap(articles) {
     countries.set(article.countryCode, country);
     for (const place of article.location?.places || []) {
       if (!place.coordinates) continue;
-      const key = `${article.countryCode}:${normalizePlace(place.name)}`;
-      const city = cities.get(key) || { place, countryCode: article.countryCode, articles: new Map() };
+      const countryCode = place.countryCode || article.countryCode;
+      if (!countryCode) continue;
+      const key = `${countryCode}:${normalizePlace(place.name)}`;
+      const city = cities.get(key) || { place, countryCode, articles: new Map() };
       city.articles.set(article.id, article);
       cities.set(key, city);
     }
@@ -1646,9 +1660,9 @@ function createLocationPopup(name, articles, precision, countryCode = null) {
   else heading.textContent = `${name} · ${articles.length} article${articles.length === 1 ? "" : "s"}`;
   const note = document.createElement("p");
   note.textContent = precision === "commune"
-    ? "La commune est citée dans le titre ou l’extrait ; sa limite et son emplacement exact ne sont pas représentés."
+    ? "La commune est citée dans le titre ou l’extrait ; cela ne confirme pas qu’elle soit le lieu de l’événement."
     : precision === "city"
-      ? "Cette ville est citée dans un article ; le repère indique son centre approximatif."
+      ? "Cette ville est mentionnée dans le texte ; le repère indique son centre approximatif, pas nécessairement le lieu de l’événement."
       : precision === "country"
         ? "Le contour représente le pays suivi ; il indique une couverture médiatique associée, pas la localisation d’un événement."
         : precision === "country-marker"
@@ -1663,6 +1677,13 @@ function createLocationPopup(name, articles, precision, countryCode = null) {
     link.rel = "noopener noreferrer";
     link.textContent = article.title;
     item.append(link);
+    const place = article.location?.places?.find((candidate) => normalizePlace(candidate.name) === normalizePlace(name));
+    if (place?.evidence) {
+      const evidence = document.createElement("small");
+      evidence.className = "map-popup-evidence";
+      evidence.textContent = `Mention dans le ${place.evidence.field === "title" ? "titre" : "extrait"} : « ${place.evidence.text} »`;
+      item.append(evidence);
+    }
     list.append(item);
   });
   popup.append(heading, note);

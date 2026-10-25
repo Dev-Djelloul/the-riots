@@ -85,18 +85,30 @@ function hasLocationCue(tokens, start, isDepartment) {
   return /(?:^| )(?:a proximite de|a cote de|autour de|pres de|dans la|dans le|dans les|dans l|departement de|departement de la|departement du|departement des|departement de l)$/.test(prefix);
 }
 
-function findMentions(text, nameIndex, isTitle, isDepartment = false) {
+function findMentions(text, nameIndex, isTitle, isDepartment = false, field = "description") {
   const tokens = normalizeName(text).split(" ").filter(Boolean);
   const candidates = [];
   for (let start = 0; start < tokens.length; start += 1) {
     for (let length = Math.min(nameIndex.maxWords, tokens.length - start); length > 0; length -= 1) {
       const name = tokens.slice(start, start + length).join(" ");
       const entries = nameIndex.index.get(name);
-      if (!entries || (!hasLocationCue(tokens, start, isDepartment)
-        && !(isTitle && start === 0 && entries.some((entry) => hasTitleDatelineCue(text, entry.name))))) continue;
+      const hasCue = hasLocationCue(tokens, start, isDepartment);
+      const hasDateline = isTitle && start === 0 && entries?.some((entry) => hasTitleDatelineCue(text, entry.name));
+      if (!entries || (!hasCue && !hasDateline)) continue;
       const clearEntries = entries.filter((entry) => hasClearCommonNameCapitalization(text, entry.name));
       if (!clearEntries.length) continue;
-      candidates.push({ entries: clearEntries, start, end: start + length - 1, length });
+      candidates.push({
+        entries: clearEntries,
+        start,
+        end: start + length - 1,
+        length,
+        evidence: {
+          field,
+          text: text.trim().slice(0, 280),
+          signal: hasCue ? "location-cue" : "title-dateline",
+          confidence: hasCue ? "medium" : "low",
+        },
+      });
       break;
     }
   }
@@ -115,43 +127,56 @@ function resolveMentions(mentions, departmentMentions) {
   const departments = new Set(departmentMentions.flatMap((mention) => mention.entries.map((entry) => entry.code)));
   const places = [];
   const ambiguousNames = [];
+  const ambiguousEvidence = [];
   for (const mention of mentions) {
     const matches = mention.entries.length > 1
       ? mention.entries.filter((entry) => departments.has(entry.departmentCode))
       : mention.entries;
     if (matches.length !== 1) {
       ambiguousNames.push(mention.entries[0].name);
+      ambiguousEvidence.push(mention.evidence);
       continue;
     }
-    if (!places.some((place) => place.code === matches[0].code)) places.push(matches[0]);
+    if (!places.some((place) => place.code === matches[0].code)) {
+      places.push({ ...matches[0], evidence: mention.evidence });
+    }
   }
-  return { places, ambiguousNames };
+  return { places, ambiguousNames, ambiguousEvidence };
 }
 
 export function locateArticle(article, geography) {
   const title = article.title || "";
   const description = article.description || "";
   const departments = [
-    ...findMentions(title, geography.departments, true, true),
-    ...findMentions(description, geography.departments, false, true),
+    ...findMentions(title, geography.departments, true, true, "title"),
+    ...findMentions(description, geography.departments, false, true, "description"),
   ];
   const communes = resolveMentions([
-    ...findMentions(title, geography.communes, true),
-    ...findMentions(description, geography.communes, false),
+    ...findMentions(title, geography.communes, true, false, "title"),
+    ...findMentions(description, geography.communes, false, false, "description"),
   ], departments);
 
   if (communes.ambiguousNames.length) {
-    return { precision: "ambiguous", places: [], label: [...new Set(communes.ambiguousNames)].join(", ") };
+    return {
+      precision: "ambiguous",
+      places: [],
+      label: [...new Set(communes.ambiguousNames)].join(", "),
+      evidence: communes.ambiguousEvidence[0] || null,
+    };
   }
   if (communes.places.length) {
     return {
       precision: "commune",
-      places: communes.places.map((place) => ({
+      role: "mentioned",
+      places: communes.places.map(({ evidence, ...place }) => ({
         code: place.code,
         name: place.name,
+        countryCode: "FR",
         departmentCode: place.departmentCode,
         precision: "commune",
         coordinates: place.coordinates,
+        confidence: evidence.confidence,
+        evidence,
       })),
     };
   }
@@ -160,11 +185,15 @@ export function locateArticle(article, geography) {
   if (departmentPlaces.length) {
     return {
       precision: "department",
-      places: departmentPlaces.map((place) => ({
+      role: "mentioned",
+      places: departmentPlaces.map(({ evidence, ...place }) => ({
         code: place.code,
         name: place.name,
+        countryCode: "FR",
         departmentCode: place.code,
         precision: "department",
+        confidence: evidence.confidence,
+        evidence,
       })),
     };
   }

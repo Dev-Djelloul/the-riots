@@ -47,6 +47,8 @@ test("Agora translates recent articles with an owl icon and linked citations", a
   const stylesheet = await readFile(new URL("styles.css", root), "utf8");
   const worker = await readFile(new URL("service-worker.js", root), "utf8");
   const api = await readFile(new URL("functions/api/agora.js", root), "utf8");
+  const feedApi = await readFile(new URL("functions/api/veille.js", root), "utf8");
+  const readme = await readFile(new URL("README.md", root), "utf8");
   const owl = await readFile(new URL("icons/owl.svg", root), "utf8");
 
   assert.match(html, /id="agora-open"[^>]*aria-label="Ouvrir Agora/);
@@ -75,6 +77,12 @@ test("Agora translates recent articles with an owl icon and linked citations", a
   assert.match(app, /agora-citation-preview/);
   assert.match(app, /source\.kind === "web" \? " agora-citation-preview--web"/);
   assert.match(app, /className = "agora-preview-description"/);
+  assert.match(app, /Lieu mentionné, événement non confirmé/);
+  assert.match(app, /Mention dans le \$\{place\.evidence\.field/);
+  assert.match(feedApi, /placeMention: matchedCity \? createPlaceMention\(matchedCity\) : null/);
+  assert.match(feedApi, /countryCodeBasis/);
+  assert.match(feedApi, /confidence: "low"/);
+  assert.match(readme, /Cette confiance mesure la force du signal textuel/);
   assert.match(app, /positionAgoraPreview/);
   assert.match(app, /className = "agora-press-highlight"/);
   assert.match(app, /className = "agora-web-link"/);
@@ -106,7 +114,7 @@ test("Agora translates recent articles with an owl icon and linked citations", a
   assert.match(api, /model: result\?\.model/);
   assert.match(app, /webSearch: agoraWebSearch\.checked/);
   assert.match(app, /archiveDate,/);
-  assert.match(worker, /veille-shell-v32/);
+  assert.match(worker, /veille-shell-v33/);
   assert.ok(worker.includes('"/favicon.ico"'));
   assert.ok(worker.includes('"/icons/owl.svg"'));
 });
@@ -180,7 +188,7 @@ test("personal alerts, saved articles and European coverage comparison are wired
   assert.match(app, /selectedStart = new Date\(`\$\{state\.selectedDate\}T00:00:00`\)/);
   assert.match(app, /navigator\.clipboard\.writeText/);
   assert.match(app, /function renderTrends\(\)/);
-  assert.match(serviceWorker, /veille-shell-v32/);
+  assert.match(serviceWorker, /veille-shell-v33/);
   assert.ok(serviceWorker.includes('"/europe-countries.js"'));
   assert.match(readme, /À lire plus tard/);
   assert.match(readme, /alertes personnalisées/i);
@@ -244,7 +252,7 @@ test("European live video cards point to official players and broadcasters", asy
   assert.match(html, /https:\/\/www\.vrt\.be\/vrtnws\/nl\/kijk\//);
   assert.match(html, /https:\/\/www\.raiplay\.it\/dirette\/rainews24/);
   assert.match(html, /https:\/\/www\.tagesschau\.de\/multimedia\/livestreams\//);
-  assert.match(serviceWorker, /veille-shell-v32/);
+  assert.match(serviceWorker, /veille-shell-v33/);
   assert.match(app, /card\.dataset\.type/);
   assert.match(html, /id="group-by"/);
   assert.match(app, /function renderGroupedFeed\(/);

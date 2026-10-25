@@ -28,10 +28,19 @@ test("repère une commune citée dans le titre et une commune dans l’extrait",
   assert.deepEqual(titleLocation.places[0], {
     code: "16015",
     name: "Angoulême",
+    countryCode: "FR",
     departmentCode: "16",
     precision: "commune",
     coordinates: [45.6458, 0.145],
+    confidence: "medium",
+    evidence: {
+      field: "title",
+      text: "Manifestation à Angoulême",
+      signal: "location-cue",
+      confidence: "medium",
+    },
   });
+  assert.equal(titleLocation.role, "mentioned");
 
   const excerptLocation = locateArticle({
     title: "Des tensions après un rassemblement",
@@ -45,6 +54,8 @@ test("utilise une mention de département sans inventer une commune", () => {
   assert.equal(location.precision, "department");
   assert.equal(location.places[0].code, "69");
   assert.equal(location.places[0].name, "Rhône");
+  assert.equal(location.places[0].evidence.field, "title");
+  assert.equal(location.places[0].evidence.text, "Tensions dans le Rhône");
 });
 
 test("signale les homonymes et peut les lever avec le département", () => {
@@ -83,6 +94,8 @@ test("ne prend pas une ville citée comme sujet pour le lieu d’un événement"
   const dateline = locateArticle({ title: "Nantes : le club annonce un nouvel entraîneur", description: "" }, geography);
   assert.equal(dateline.precision, "commune");
   assert.equal(dateline.places[0].name, "Nantes");
+  assert.equal(dateline.places[0].confidence, "low");
+  assert.equal(dateline.places[0].evidence.signal, "title-dateline");
 });
 
 test("attribue une teinte distincte du spectre à chaque département concerné", () => {

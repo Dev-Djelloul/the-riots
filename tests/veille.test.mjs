@@ -60,6 +60,22 @@ test("analyse un flux Atom VRT et localise une manifestation à Bruxelles", asyn
   assert.ok(article);
   assert.equal(article.city, "Bruxelles");
   assert.equal(article.countryCode, "BE");
+  assert.equal(article.countryCodeBasis, "place-mention");
+  assert.deepEqual(article.placeMention, {
+    name: "Bruxelles",
+    region: null,
+    countryCode: "BE",
+    coordinates: [50.8503, 4.3517],
+    precision: "city",
+    role: "mentioned",
+    confidence: "medium",
+    evidence: {
+      field: "title",
+      text: "Betoging in Brussel houdt verkeer tegen",
+      signal: "location-cue",
+      confidence: "medium",
+    },
+  });
   assert.equal(article.type, "rassemblement");
   assert.equal(article.link, "https://vrtnws.be/article/123");
   assert.equal(article.description, "De manifestatie trekt door het centrum.");
@@ -104,6 +120,9 @@ test("classe des titres espagnols, italiens et allemands avec leur ville et pays
     assert.equal(article.city, city);
     assert.equal(article.countryCode, countryCode);
     assert.equal(article.type, "rassemblement");
+    assert.equal(article.placeMention.name, city);
+    assert.equal(article.placeMention.countryCode, countryCode);
+    assert.equal(article.placeMention.evidence.field, "title");
   }
 });
 

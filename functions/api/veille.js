@@ -463,6 +463,7 @@ async function fetchGdeltByCountryDay(date, countryCodes) {
     const sourceName = cleanText(item.domain || "") || "Archive";
     const slug = normalize(sourceName).replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "archive";
     const matchedCity = findMatchedCity(title, "");
+    const mentionedCountry = findCountryCode(title);
     return [{
       id: `archive-${slug}:${link}`,
       title,
@@ -481,7 +482,9 @@ async function fetchGdeltByCountryDay(date, countryCodes) {
       city: matchedCity?.name || null,
       region: matchedCity?.region || null,
       position: matchedCity?.position || null,
-      countryCode: matchedCity?.countryCode || (matchedCity ? "FR" : findCountryCode(title)) || countryCode,
+      placeMention: matchedCity ? createPlaceMention(matchedCity) : null,
+      countryCode: matchedCity?.countryCode || (matchedCity ? "FR" : mentionedCountry) || countryCode,
+      countryCodeBasis: matchedCity ? "place-mention" : mentionedCountry ? "country-mention" : "archive-query",
     }];
   });
   return [...new Map(articles.map((article) => [article.link, article])).values()];
@@ -535,8 +538,8 @@ async function fetchGnewsDay(date, apiKey, countryCodes = EUROPE_COUNTRIES.map((
         const sourceName = cleanText(item.source?.name || "") || "GNews";
         const slug = normalize(sourceName).replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "archive";
         const matchedCity = findMatchedCity(title, description);
-        const detectedCountry = matchedCity?.countryCode
-          || (matchedCity ? "FR" : findCountryCode(`${title} ${description}`));
+        const mentionedCountry = findCountryCode(`${title} ${description}`);
+        const detectedCountry = matchedCity?.countryCode || (matchedCity ? "FR" : mentionedCountry);
         if (globalSearch && !detectedCountry) continue;
         articles.push({
           id: `archive-${slug}:${link}`,
@@ -556,7 +559,9 @@ async function fetchGnewsDay(date, apiKey, countryCodes = EUROPE_COUNTRIES.map((
           city: matchedCity?.name || null,
           region: matchedCity?.region || null,
           position: matchedCity?.position || null,
+          placeMention: matchedCity ? createPlaceMention(matchedCity) : null,
           countryCode: detectedCountry || query.countryCode,
+          countryCodeBasis: matchedCity ? "place-mention" : mentionedCountry ? "country-mention" : "search-country",
         });
       }
       return { ok: true, articles };
@@ -707,6 +712,7 @@ function parseArchiveFeed(xml, query, feed) {
     seen.add(link);
 
     const matchedCity = findMatchedCity(title, "");
+    const mentionedCountry = findCountryCode(title);
     const slug = normalize(sourceName).replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "archive";
     articles.push({
       id: `archive-${slug}:${link}`,
@@ -726,7 +732,9 @@ function parseArchiveFeed(xml, query, feed) {
       city: matchedCity?.name || null,
       region: matchedCity?.region || null,
       position: matchedCity?.position || null,
-      countryCode: matchedCity?.countryCode || (matchedCity ? "FR" : findCountryCode(title)) || query.countryCode,
+      placeMention: matchedCity ? createPlaceMention(matchedCity) : null,
+      countryCode: matchedCity?.countryCode || (matchedCity ? "FR" : mentionedCountry) || query.countryCode,
+      countryCodeBasis: matchedCity ? "place-mention" : mentionedCountry ? "country-mention" : "archive-query",
     });
   }
   return articles;
@@ -797,6 +805,7 @@ function parseFeed(xml, source) {
     seen.add(link);
 
     const matchedCity = findMatchedCity(title, description);
+    const mentionedCountry = findCountryCode(`${title} ${description}`);
     articles.push({
       id: `${source.id}:${link}`,
       title,
@@ -814,7 +823,9 @@ function parseFeed(xml, source) {
       city: matchedCity?.name || null,
       region: matchedCity?.region || null,
       position: matchedCity?.position || null,
-      countryCode: matchedCity?.countryCode || (matchedCity ? "FR" : findCountryCode(`${title} ${description}`)) || source.countryCode || null,
+      placeMention: matchedCity ? createPlaceMention(matchedCity) : null,
+      countryCode: matchedCity?.countryCode || (matchedCity ? "FR" : mentionedCountry) || source.countryCode || null,
+      countryCodeBasis: matchedCity ? "place-mention" : mentionedCountry ? "country-mention" : source.countryCode ? "publisher-country" : null,
     });
     if (articles.length >= MAX_ARTICLES_PER_SOURCE) break;
   }
@@ -844,19 +855,49 @@ function findMatchedCity(title, description) {
       const index = normalized.indexOf(entry.normalizedName);
       const prefix = normalized.slice(0, index).trim().split(/\s+/);
       const lastWord = prefix.at(-1);
-      if (["a", "au", "aux", "en", "in", "near", "bei", "naar", "w", "we", "v", "ve", "i", "pa", "στη", "στην", "στο", "σε", "u", "na", "do", "em"].includes(lastWord)
-        || ["in der", "in den", "in het"].some((cue) => normalized.slice(0, index).trim().endsWith(cue))) {
-        return entry.city;
+      const hasLocationCue = ["a", "au", "aux", "en", "in", "near", "bei", "naar", "w", "we", "v", "ve", "i", "pa", "στη", "στην", "στο", "σε", "u", "na", "do", "em"].includes(lastWord)
+        || ["in der", "in den", "in het"].some((cue) => normalized.slice(0, index).trim().endsWith(cue));
+      if (hasLocationCue) {
+        return {
+          ...entry.city,
+          evidence: {
+            field: isTitle ? "title" : "description",
+            text: text.trim().slice(0, 280),
+            signal: "location-cue",
+            confidence: "medium",
+          },
+        };
       }
       const escapedName = entry.name.split(/\s+/)
         .map((part) => part.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"))
         .join("\\s+");
       if (isTitle && index === 0 && new RegExp(`^\\s*${escapedName}\\s*(?:[:,—–-])`, "u").test(text)) {
-        return entry.city;
+        return {
+          ...entry.city,
+          evidence: {
+            field: "title",
+            text: text.trim().slice(0, 280),
+            signal: "title-dateline",
+            confidence: "low",
+          },
+        };
       }
     }
   }
   return null;
+}
+
+function createPlaceMention(city) {
+  return {
+    name: city.name,
+    region: city.region || null,
+    countryCode: city.countryCode || null,
+    coordinates: city.position,
+    precision: "city",
+    role: "mentioned",
+    confidence: city.evidence.confidence,
+    evidence: city.evidence,
+  };
 }
 
 function findCountryCode(text) {
