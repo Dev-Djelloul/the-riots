@@ -36,8 +36,8 @@ test("map supports touch gestures, keyboard and zoom/recenter controls", async (
   assert.match(app, /addButton\("\+", "Zoom avant"/);
   assert.match(app, /addButton\("−", "Zoom arrière"/);
   assert.match(app, /addButton\("⌂", "Recentrer sur la zone affichée", fitMapToCurrentArea\)/);
-  assert.match(html, /aria-describedby="map-gesture-hint"/);
-  assert.match(html, /PINCER À 2 DOIGTS · GLISSER POUR DÉPLACER/);
+  assert.doesNotMatch(html, /map-gesture-hint|PINCER À 2 DOIGTS · GLISSER POUR DÉPLACER/);
+  assert.doesNotMatch(stylesheet, /\.map-gesture-hint/);
   assert.match(stylesheet, /\.map-navigation-button:focus-visible/);
 });
 
@@ -116,7 +116,7 @@ test("Agora translates recent articles with an owl icon and linked citations", a
   assert.match(api, /model: result\?\.model/);
   assert.match(app, /webSearch: agoraWebSearch\.checked/);
   assert.match(app, /archiveDate,/);
-  assert.match(worker, /veille-shell-v34/);
+  assert.match(worker, /veille-shell-v35/);
   assert.ok(worker.includes('"/favicon.ico"'));
   assert.ok(worker.includes('"/icons/owl.svg"'));
 });
@@ -190,7 +190,7 @@ test("personal alerts, saved articles and European coverage comparison are wired
   assert.match(app, /selectedStart = new Date\(`\$\{state\.selectedDate\}T00:00:00`\)/);
   assert.match(app, /navigator\.clipboard\.writeText/);
   assert.match(app, /function renderTrends\(\)/);
-  assert.match(serviceWorker, /veille-shell-v34/);
+  assert.match(serviceWorker, /veille-shell-v35/);
   assert.ok(serviceWorker.includes('"/europe-countries.js"'));
   assert.match(readme, /À lire plus tard/);
   assert.match(readme, /alertes personnalisées/i);
@@ -254,7 +254,7 @@ test("European live video cards point to official players and broadcasters", asy
   assert.match(html, /https:\/\/www\.vrt\.be\/vrtnws\/nl\/kijk\//);
   assert.match(html, /https:\/\/www\.raiplay\.it\/dirette\/rainews24/);
   assert.match(html, /https:\/\/www\.tagesschau\.de\/multimedia\/livestreams\//);
-  assert.match(serviceWorker, /veille-shell-v34/);
+  assert.match(serviceWorker, /veille-shell-v35/);
   assert.match(app, /card\.dataset\.type/);
   assert.match(html, /id="group-by"/);
   assert.match(app, /function renderGroupedFeed\(/);
