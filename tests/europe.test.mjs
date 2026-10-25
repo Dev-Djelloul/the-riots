@@ -107,7 +107,13 @@ test("configure le collecteur quotidien sans remplacer les limites cartographiqu
   assert.match(worker, /REQUEST_GAP_MS = 1_100/);
   assert.match(app, /COUNTRY_BOUNDARY_CODES = new Set\(\["BE", "DE", "ES", "FR", "IT"\]\)/);
   assert.match(app, /combineEuropeBoundaries\(localEurope\?\.features, worldFeatures\)/);
-  assert.match(app, /Contours européens incomplets/);
-  assert.doesNotMatch(app, /Contours Europe partiels · \d+\/\d+ pays · repères approximatifs/);
+  assert.doesNotMatch(app, /Contours européens incomplets|mapDataWarningMode = "europe"/);
+  assert.match(app, /mapDataWarning\.hidden = mapDataWarningMode !== "all"/);
+  assert.match(app, /countryArticlesByCode\.get\(code\)\?\.articles\.size/);
+  assert.match(app, /departmentArticlesByCode\.get\(feature\.properties\.code\)\?\.articles\.size/);
+  assert.match(app, /group \? \[\.\.\.group\.articles\.values\(\)\] : \[\],\s*"country",\s*code,/);
+  assert.match(app, /nom,\s*group \? \[\.\.\.group\.articles\.values\(\)\] : \[\],\s*"department",/);
+  assert.match(app, /ARTICLE\$\{mapped\.length === 1 \? "" : "S"\} ASSOCIÉ/);
+  assert.match(app, /Aucun article associé aux pays sélectionnés/);
   assert.match(await readFile(new URL("../styles.css", import.meta.url), "utf8"), /\.map-result-count--europe\s*\{[^}]*color:\s*#e7bd78;/);
 });
