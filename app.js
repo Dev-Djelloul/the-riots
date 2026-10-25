@@ -968,6 +968,23 @@ function renderGroupedFeed(articles, mode) {
   feed.replaceChildren(...sections);
 }
 
+function openArticleInFeed(articleId) {
+  map?.closePopup();
+  state.showSaved = false;
+  state.selected = articleId;
+  render();
+
+  const card = [...feed.querySelectorAll(".event-card")]
+    .find((candidate) => candidate.dataset.articleId === articleId);
+  if (!card) return;
+
+  requestAnimationFrame(() => {
+    const behavior = window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth";
+    card.scrollIntoView({ behavior, block: "center" });
+    card.querySelector(".event-summary")?.focus({ preventScroll: true });
+  });
+}
+
 function renderCoverageComparison(articles) {
   const panel = document.querySelector("#coverage-compare");
   panel.hidden = state.mapMode !== "europe" || state.showSaved;
@@ -1431,6 +1448,7 @@ function isSafeImageUrl(value) {
 function createArticleCard(article) {
   const card = document.createElement("article");
   card.className = `event-card${state.selected === article.id ? " selected" : ""}`;
+  card.dataset.articleId = article.id;
   card.dataset.type = COLORS[article.type] ? article.type : "autre";
 
   const toggle = document.createElement("button");
@@ -1499,7 +1517,7 @@ function createArticleCard(article) {
     preview.className = "article-preview";
     preview.src = article.image;
     preview.alt = "";
-    preview.loading = "lazy";
+    preview.loading = state.selected === article.id ? "eager" : "lazy";
     preview.decoding = "async";
     preview.referrerPolicy = "no-referrer";
     preview.addEventListener("error", () => { preview.remove(); card.classList.remove("has-preview"); }, { once: true });
@@ -1719,10 +1737,13 @@ function createLocationPopup(name, articles, precision, countryCode = null) {
   articles.forEach((article) => {
     const item = document.createElement("li");
     const link = document.createElement("a");
-    link.href = article.link;
-    link.target = "_blank";
-    link.rel = "noopener noreferrer";
+    link.href = "#feed-list";
+    link.setAttribute("aria-label", `Afficher dans le fil : ${article.title}`);
     link.textContent = article.title;
+    link.addEventListener("click", (event) => {
+      event.preventDefault();
+      openArticleInFeed(article.id);
+    });
     item.append(link);
     const place = article.location?.places?.find((candidate) => normalizePlace(candidate.name) === normalizePlace(name));
     if (place?.evidence) {
