@@ -115,6 +115,8 @@ test("relit les résultats de la collecte européenne pays par pays depuis KV", 
     link: "https://example.test/athens",
     publishedAt: "2026-09-01T10:00:00Z",
     countryCode: "GR",
+    city: "Athens",
+    countryCodeBasis: "place-mention",
   }]));
 
   const result = await (await onRequestGet({
@@ -355,6 +357,12 @@ test("retire la fausse localisation des anciennes entrées de collecte en cache"
     publishedAt: "2026-09-15T10:00:00Z",
     countryCode: "CZ",
     countryCodeBasis: "search-country",
+  }, {
+    id: "legacy-tanzania-article",
+    title: "Tanzania opposition plans hunger strike",
+    link: "https://example.test/old-tanzania",
+    publishedAt: "2026-09-15T11:00:00Z",
+    countryCode: "CZ",
   }]));
 
   const response = await onRequestGet({

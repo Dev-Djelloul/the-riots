@@ -1,8 +1,12 @@
 import { fetchArchiveDay, readHistoryDay, shiftDate } from "./veille.js";
 import { EUROPE_COUNTRIES } from "../../europe-countries.js";
 
-function clearSearchCountryLocation(article) {
-  if (!article || article.countryCodeBasis !== "search-country") return article;
+function clearUnprovenSearchLocation(article) {
+  if (!article || !article.countryCode) return article;
+  const hasExplicitPlace = article.city || article.placeMention || article.position;
+  const inferredFromSearch = article.countryCodeBasis === "search-country"
+    || (!article.countryCodeBasis && !hasExplicitPlace);
+  if (!inferredFromSearch) return article;
   return {
     ...article,
     searchCountryCode: article.searchCountryCode || article.countryCode || null,
@@ -12,7 +16,7 @@ function clearSearchCountryLocation(article) {
 }
 
 function normalizeCachedArticles(value) {
-  return Array.isArray(value) ? value.map(clearSearchCountryLocation) : null;
+  return Array.isArray(value) ? value.map(clearUnprovenSearchLocation) : null;
 }
 
 export async function onRequestGet({ request, env }) {
@@ -38,7 +42,7 @@ export async function onRequestGet({ request, env }) {
   const archiveKey = `archive:${date}`;
   const archivedDay = env?.HISTORY ? await env.HISTORY.get(archiveKey, "json").catch(() => null) : null;
   const normalizedArchivedDay = Array.isArray(archivedDay)
-    ? archivedDay.map(clearSearchCountryLocation)
+    ? archivedDay.map(clearUnprovenSearchLocation)
     : archivedDay;
   let articles = Array.isArray(normalizedArchivedDay)
     ? countryCode ? normalizedArchivedDay.filter((article) => article.countryCode === countryCode) : normalizedArchivedDay
@@ -73,7 +77,7 @@ export async function onRequestGet({ request, env }) {
   if (!articles.length && env?.HISTORY && countryCode) {
     const historyDays = await Promise.all([-1, 0, 1]
       .map((offset) => readHistoryDay(env.HISTORY, shiftDate(date, offset))));
-    const days = historyDays.map((day) => day.map(clearSearchCountryLocation));
+    const days = historyDays.map((day) => day.map(clearUnprovenSearchLocation));
     if (!collectedCountries) articles = days.flat().filter((article) => article.countryCode === countryCode);
   }
   let result = {
