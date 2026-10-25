@@ -1745,6 +1745,20 @@ function createLocationPopup(name, articles, precision, countryCode = null) {
       openArticleInFeed(article.id);
     });
     item.append(link);
+    if (isSafeImageUrl(article.image)) {
+      const preview = document.createElement("img");
+      preview.className = "map-popup-preview";
+      preview.src = article.image;
+      preview.alt = "";
+      preview.loading = "lazy";
+      preview.decoding = "async";
+      preview.referrerPolicy = "no-referrer";
+      preview.addEventListener("error", () => preview.remove(), { once: true });
+      const prioritizePreview = () => { preview.loading = "eager"; };
+      link.addEventListener("mouseenter", prioritizePreview, { once: true });
+      link.addEventListener("focus", prioritizePreview, { once: true });
+      item.append(preview);
+    }
     const place = article.location?.places?.find((candidate) => normalizePlace(candidate.name) === normalizePlace(name));
     if (place?.evidence) {
       const evidence = document.createElement("small");
