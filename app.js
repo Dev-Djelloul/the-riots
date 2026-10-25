@@ -407,6 +407,13 @@ const mapDataWarning = document.querySelector("#map-data-warning");
 const emptyState = document.querySelector("#empty-state");
 const refreshButton = document.querySelector("#refresh-button");
 const L = window.L;
+const MAP_POPUP_OPTIONS = {
+  maxWidth: 360,
+  minWidth: 240,
+  autoPan: true,
+  autoPanPadding: [40, 56],
+  keepInView: true,
+};
 const map = window.L
   ? L.map(mapElement, {
     zoomControl: false,
@@ -430,6 +437,7 @@ let countryColors = new Map();
 let geographyIndex = null;
 let geographyPromise = Promise.resolve(null);
 let mapDataWarningMode = "none";
+let activeMapPopup = null;
 
 if (map) {
   const navigationControl = L.control({ position: "topright" });
@@ -453,6 +461,16 @@ if (map) {
     return control;
   };
   navigationControl.addTo(map);
+  map.on("popupopen", ({ popup }) => {
+    activeMapPopup = popup;
+    fitPopupToMap(popup);
+  });
+  map.on("popupclose", ({ popup }) => {
+    if (activeMapPopup === popup) activeMapPopup = null;
+  });
+  map.on("resize", () => {
+    if (activeMapPopup) fitPopupToMap(activeMapPopup);
+  });
   L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
     maxZoom: 19,
     attribution: '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer">OpenStreetMap</a> contributors',
@@ -468,6 +486,26 @@ if (map) {
 } else {
   mapEmpty.hidden = false;
   mapEmpty.textContent = "La carte n’a pas pu être chargée. Vérifie ta connexion puis actualise la page.";
+}
+
+function fitPopupToMap(popup) {
+  const popupElement = popup.getElement();
+  const articleList = popupElement?.querySelector(".map-popup ul");
+  if (!popupElement || !articleList) return;
+
+  const surroundingHeight = popupElement.offsetHeight - articleList.offsetHeight;
+  const availableHeight = map.getSize().y - surroundingHeight - 32;
+  const viewportLimit = Math.min(window.innerHeight * 0.52, 430);
+  const maxListHeight = Math.max(80, Math.min(articleList.scrollHeight, viewportLimit, availableHeight));
+  articleList.style.maxHeight = `${maxListHeight}px`;
+  if (articleList.scrollHeight > maxListHeight) {
+    articleList.tabIndex = 0;
+    articleList.setAttribute("aria-label", "Liste des articles associés au lieu");
+  } else {
+    articleList.removeAttribute("tabindex");
+    articleList.removeAttribute("aria-label");
+  }
+  popup.update();
 }
 
 async function loadGeography() {
@@ -508,7 +546,7 @@ async function loadGeography() {
       onEachFeature(feature, layer) {
         const { code, nom } = feature.properties;
         departmentLayers.set(code, layer);
-        layer.bindPopup(createLocationPopup(nom, [], "department"));
+        layer.bindPopup(createLocationPopup(nom, [], "department"), MAP_POPUP_OPTIONS);
         layer.on("click", () => {
           const group = departmentArticlesByCode.get(code);
           layer.setPopupContent(createLocationPopup(
@@ -525,7 +563,7 @@ async function loadGeography() {
         onEachFeature(feature, layer) {
           const code = feature.properties.countryCode;
           countryLayers.set(code, layer);
-          layer.bindPopup(createLocationPopup(COUNTRY_NAMES[code], [], "country", code));
+          layer.bindPopup(createLocationPopup(COUNTRY_NAMES[code], [], "country", code), MAP_POPUP_OPTIONS);
           layer.on("click", () => {
             const group = countryArticlesByCode.get(code);
             layer.setPopupContent(createLocationPopup(
@@ -1585,13 +1623,7 @@ function renderMap(articles) {
       title: `${group.place.name} · ${articlesForPlace.length} article${articlesForPlace.length === 1 ? "" : "s"}`,
       alt: `Articles mentionnant ${group.place.name}`,
     });
-    marker.bindPopup(createLocationPopup(group.place.name, articlesForPlace, "commune"), {
-      maxWidth: 360,
-      minWidth: 240,
-      autoPan: true,
-      autoPanPadding: [24, 24],
-      keepInView: true,
-    });
+    marker.bindPopup(createLocationPopup(group.place.name, articlesForPlace, "commune"), MAP_POPUP_OPTIONS);
     marker.addTo(communeMarkerLayer);
   }
 
@@ -1646,7 +1678,7 @@ function renderEuropeMap(articles) {
       fillColor: color,
       fillOpacity: 0.9,
     })
-      .bindPopup(createLocationPopup(COUNTRY_NAMES[code], [...group.articles.values()], "country-marker", code), { maxWidth: 360, minWidth: 240 })
+      .bindPopup(createLocationPopup(COUNTRY_NAMES[code], [...group.articles.values()], "country-marker", code), MAP_POPUP_OPTIONS)
       .addTo(europeMarkerLayer);
   }
   for (const group of cities.values()) {
@@ -1661,7 +1693,7 @@ function renderEuropeMap(articles) {
       title: `${group.place.name}, ${COUNTRY_NAMES[group.countryCode]} · ${articlesForCity.length} article(s)`,
       alt: `Articles mentionnant ${group.place.name}`,
     });
-    marker.bindPopup(createLocationPopup(group.place.name, articlesForCity, "city"), { maxWidth: 360, minWidth: 240 });
+    marker.bindPopup(createLocationPopup(group.place.name, articlesForCity, "city"), MAP_POPUP_OPTIONS);
     marker.addTo(europeMarkerLayer);
   }
   return { communeCount: 0, departmentCount: 0, countryCount: countries.size, cityCount: cities.size };
