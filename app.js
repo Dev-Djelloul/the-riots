@@ -2192,6 +2192,7 @@ const agoraMessages = document.querySelector("#agora-messages");
 const agoraQuestion = document.querySelector("#agora-question");
 const agoraSend = document.querySelector("#agora-send");
 const agoraRefresh = document.querySelector("#agora-refresh");
+const agoraQuickPrompts = document.querySelector("#agora-quick-prompts");
 const agoraContextCount = document.querySelector("#agora-context-count");
 const agoraConversation = [];
 let agoraBusy = false;
@@ -2199,23 +2200,83 @@ let agoraBusy = false;
 function addAgoraMessage(role, text, sources = [], error = false) {
   const message = document.createElement("div");
   message.className = `agora-message ${role}${error ? " error" : ""}`;
-  message.textContent = text;
-  if (sources.length) {
-    const sourceList = document.createElement("div");
-    sourceList.className = "agora-message-sources";
-    for (const source of sources) {
-      const link = document.createElement("a");
-      link.href = source.link;
-      link.target = "_blank";
-      link.rel = "noopener noreferrer";
-      link.textContent = `[${source.reference}] ${source.sourceName} · ${source.title}`;
-      sourceList.append(link);
+  const sourcesByReference = new Map(sources.map((source) => [source.reference, source]));
+  const formatted = role === "assistant" && !error
+    ? text.matchAll(/\*\*([^*\n]{1,300})\*\*|\[(\d{1,2})\]/g)
+    : [];
+  let cursor = 0;
+  for (const match of formatted) {
+    message.append(document.createTextNode(text.slice(cursor, match.index)));
+    if (match[1]) {
+      const highlight = document.createElement("strong");
+      highlight.className = "agora-press-highlight";
+      highlight.textContent = match[1];
+      message.append(highlight);
+    } else {
+      const source = sourcesByReference.get(Number(match[2]));
+      if (!source) {
+        message.append(document.createTextNode(match[0]));
+      } else {
+        const citation = document.createElement("span");
+        citation.className = "agora-citation";
+        const reference = document.createElement("a");
+        reference.className = "agora-citation-link";
+        reference.href = source.link;
+        reference.target = "_blank";
+        reference.rel = "noopener noreferrer";
+        reference.textContent = `[${source.reference}]`;
+        reference.setAttribute("aria-label", `Ouvrir l’article ${source.title} dans un nouvel onglet`);
+
+        const preview = document.createElement("span");
+        preview.className = "agora-citation-preview";
+        if (source.image) {
+          const imageLink = document.createElement("a");
+          imageLink.href = source.link;
+          imageLink.target = "_blank";
+          imageLink.rel = "noopener noreferrer";
+          imageLink.tabIndex = -1;
+          const image = document.createElement("img");
+          image.src = source.image;
+          image.alt = `Aperçu de l’article « ${source.title} »`;
+          image.loading = "lazy";
+          image.referrerPolicy = "no-referrer";
+          imageLink.append(image);
+          preview.append(imageLink);
+        }
+        const meta = document.createElement("span");
+        meta.className = "agora-preview-source";
+        meta.textContent = source.sourceName;
+        const titleLink = document.createElement("a");
+        titleLink.className = "agora-preview-title";
+        titleLink.href = source.link;
+        titleLink.target = "_blank";
+        titleLink.rel = "noopener noreferrer";
+        titleLink.textContent = source.title;
+        preview.append(meta, titleLink);
+        citation.append(reference, preview);
+        citation.addEventListener("pointerenter", () => positionAgoraPreview(citation, preview));
+        citation.addEventListener("focusin", () => positionAgoraPreview(citation, preview));
+        message.append(citation);
+      }
     }
-    message.append(sourceList);
+    cursor = match.index + match[0].length;
   }
+  message.append(document.createTextNode(text.slice(cursor)));
   agoraMessages.append(message);
   agoraMessages.scrollTop = agoraMessages.scrollHeight;
   return message;
+}
+
+function positionAgoraPreview(citation, preview) {
+  const bounds = citation.getBoundingClientRect();
+  const width = Math.min(300, window.innerWidth - 24);
+  const estimatedHeight = preview.querySelector("img") ? 230 : 110;
+  const left = Math.max(12, Math.min(bounds.left, window.innerWidth - width - 12));
+  const top = bounds.bottom + estimatedHeight + 12 < window.innerHeight
+    ? bounds.bottom + 8
+    : Math.max(12, bounds.top - estimatedHeight - 8);
+  preview.style.setProperty("--agora-preview-left", `${left}px`);
+  preview.style.setProperty("--agora-preview-top", `${top}px`);
 }
 
 async function askAgora(question = "") {
@@ -2228,6 +2289,7 @@ async function askAgora(question = "") {
       title: article.title,
       description: article.description || "",
       link: article.link,
+      image: article.image || null,
       publishedAt: article.publishedAt,
       sourceName: article.sourceName,
       country: COUNTRY_NAMES[article.countryCode] || (article.countryCode === "FR" ? "France" : ""),
@@ -2246,6 +2308,7 @@ async function askAgora(question = "") {
   agoraBusy = true;
   agoraSend.disabled = true;
   agoraRefresh.disabled = true;
+  agoraQuickPrompts.querySelectorAll("button").forEach((button) => { button.disabled = true; });
   agoraQuestion.disabled = true;
   try {
     const response = await fetch("/api/agora", {
@@ -2272,6 +2335,7 @@ async function askAgora(question = "") {
     agoraBusy = false;
     agoraSend.disabled = false;
     agoraRefresh.disabled = false;
+    agoraQuickPrompts.querySelectorAll("button").forEach((button) => { button.disabled = false; });
     agoraQuestion.disabled = false;
     agoraQuestion.focus();
   }
@@ -2298,6 +2362,11 @@ document.querySelector("#agora-form").addEventListener("submit", (event) => {
   if (!question || agoraBusy) return;
   agoraQuestion.value = "";
   askAgora(question);
+});
+agoraQuickPrompts.addEventListener("click", (event) => {
+  const button = event.target.closest("[data-agora-prompt]");
+  if (!button || agoraBusy) return;
+  askAgora(button.dataset.agoraPrompt);
 });
 
 document.addEventListener("keydown", (event) => {

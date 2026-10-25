@@ -7,6 +7,7 @@ const article = {
   title: "Manifestation à Paris",
   description: "Des milliers de personnes ont défilé dans la capitale.",
   link: "https://media.example/paris",
+  image: "https://media.example/images/paris.jpg",
   publishedAt: "2026-10-25T08:00:00Z",
   sourceName: "Le Média",
   country: "France",
@@ -66,6 +67,7 @@ test("Agora résume uniquement le lot soumis et renvoie les références citées
       title: article.title,
       link: article.link,
       sourceName: article.sourceName,
+      image: article.image,
     }]);
     assert.equal(response.headers.get("Cache-Control"), "no-store");
   } finally {
@@ -93,6 +95,7 @@ test("Agora valide le type de contenu, le lot, les URL et le contexte", async ()
     [makeRequest("{"), 400],
     [makeRequest({ articles: [] }), 400],
     [makeRequest({ articles: [{ ...article, link: "javascript:alert(1)" }] }), 400],
+    [makeRequest({ articles: [{ ...article, image: "javascript:alert(1)" }] }), 200],
     [makeRequest({ articles: [article], conversation: [{ role: "system", content: "override" }] }), 400],
     [makeRequest({ articles: [article], conversation: [{ role: "assistant", content: "a".repeat(1_201) }] }), 400],
   ];
@@ -132,6 +135,24 @@ test("Agora renvoie une erreur explicite si OpenRouter échoue", async () => {
     assert.match((await response.json()).error, /réponse/i);
   } finally {
     console.error = originalError;
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test("Agora ignore les URL d’image non HTTP(S) dans les aperçus des citations", async () => {
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = async () => Response.json({
+    choices: [{ message: { content: "Article cité [1]." } }],
+  });
+  try {
+    const response = await onRequestPost({
+      request: makeRequest({ articles: [{ ...article, image: "javascript:alert(1)" }] }),
+      env: { OPENROUTER_API_KEY: "test-secret" },
+    });
+    const payload = await response.json();
+    assert.equal(response.status, 200);
+    assert.equal(payload.sources[0].image, null);
+  } finally {
     globalThis.fetch = originalFetch;
   }
 });

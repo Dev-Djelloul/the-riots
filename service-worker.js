@@ -1,4 +1,4 @@
-const SHELL_CACHE = "veille-shell-v26";
+const SHELL_CACHE = "veille-shell-v27";
 const FEED_CACHE = "veille-feed-v2";
 const SHELL_FILES = [
   "/",
@@ -10,6 +10,7 @@ const SHELL_FILES = [
   "/pwa.js",
   "/manifest.webmanifest",
   "/icons/veille.svg",
+  "/icons/owl.svg",
   "/icons/veille-192.png",
   "/icons/veille-512.png",
   "/icons/apple-touch-icon.png",

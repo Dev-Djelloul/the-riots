@@ -571,12 +571,7 @@
         <span>Haut</span>
       </button>
       <button class="agora-trigger" id="agora-open" type="button" aria-label="Ouvrir Agora, l’assistant de veille" title="Parler à Agora">
-        <svg viewBox="0 0 24 24" aria-hidden="true">
-          <path class="agora-owl-bubble" d="m7.1 5.7-.4-2.3 3 1.8a8 8 0 0 1 4.6 0l3-1.8-.4 2.3a7.5 7.5 0 0 1 2.6 5.8 7.4 7.4 0 0 1-7.5 7.4H9.3L5 21v-4.5a7.4 7.4 0 0 1-2.5-5A7.5 7.5 0 0 1 7.1 5.7Z"></path>
-          <circle cx="9" cy="11" r="1.7"></circle>
-          <circle cx="15" cy="11" r="1.7"></circle>
-          <path d="m10.7 14.1 1.3 1.4 1.3-1.4"></path>
-        </svg>
+        <img src="/icons/owl.svg" alt="" aria-hidden="true">
         <span>Agora</span>
       </button>
     </div>
@@ -594,7 +589,7 @@
       <header class="agora-header">
         <div class="agora-heading">
           <span class="agora-avatar" aria-hidden="true">
-            <svg viewBox="0 0 24 24"><path d="m7.1 5.7-.4-2.3 3 1.8a8 8 0 0 1 4.6 0l3-1.8-.4 2.3a7.5 7.5 0 0 1 2.6 5.8 7.4 7.4 0 0 1-7.5 7.4H9.3L5 21v-4.5a7.4 7.4 0 0 1-2.5-5A7.5 7.5 0 0 1 7.1 5.7Z"></path><circle cx="9" cy="11" r="1.7"></circle><circle cx="15" cy="11" r="1.7"></circle><path d="m10.7 14.1 1.3 1.4 1.3-1.4"></path></svg>
+            <img src="/icons/owl.svg" alt="" aria-hidden="true">
           </span>
           <div>
             <span class="section-kicker">L’ASSISTANT DE VEILLE</span>
@@ -608,6 +603,13 @@
       </header>
       <p class="agora-intro" id="agora-disclaimer">Je traduis et résume les articles récents chargés par Veille. Mes réponses s’appuient uniquement sur ces sources ; vérifie toujours les articles originaux.</p>
       <div class="agora-messages" id="agora-messages" role="log" aria-live="polite" aria-relevant="additions"></div>
+      <div class="agora-quick-prompts" id="agora-quick-prompts" role="group" aria-label="Suggestions de questions">
+        <button type="button" data-agora-prompt="Fais un briefing des cinq principaux événements, en français, avec les sources.">Briefing express</button>
+        <button type="button" data-agora-prompt="Traduis les titres des articles non francophones et résume-les avec leurs sources.">Traduire les titres</button>
+        <button type="button" data-agora-prompt="Quels événements sont repris par plusieurs médias ? Compare uniquement les articles de ce lot et cite les sources.">Comparer les reprises</button>
+        <button type="button" data-agora-prompt="Pour les événements rapportés, distingue ce qui est confirmé par les articles de ce qui reste incertain ou à vérifier. Cite les sources.">Faits et incertitudes</button>
+        <button type="button" data-agora-prompt="Compare les événements récents par pays et indique les différences rapportées dans les articles. Cite les sources.">Comparer les pays</button>
+      </div>
       <form class="agora-form" id="agora-form">
         <label class="visually-hidden" for="agora-question">Question à Agora</label>
         <textarea id="agora-question" name="question" maxlength="500" rows="2" placeholder="Pose une question sur les derniers événements…" required></textarea>
